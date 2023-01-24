@@ -1,0 +1,60 @@
+
+
+# Commands are the basic units of commandeer
+# 1. Anything starting with . is a parent command
+# 2. Subcommands are nested
+# 3. Command values can be a script, bash commands or pipelines
+# 4. Param values can be referenced with double-curly brackets i.e. {{ param }}
+commands:
+  .git: $(echo "git")
+  git:
+    status: $(echo "git status")
+  run: run.py
+  sh: run.sh
+  inspect: ^inspect[namespace={{namespace}}],^log["{{namespace}} inspected"]
+  update:
+    k8s:
+      tag: >
+        kubectl get pod {{ pod }} -o yaml | sed 's/\(image: {{ image }}\):.*$/\1:{{ tag }}/' | kubectl replace -f -
+
+# Parameters define variables that store given values for a command
+# 1. Positionally parsed in the order defined
+# 2. Param key starting with ^ indicate public params for a pipeline
+params: 
+  inspect:
+    - namespace: Namespace to inspect
+  update.k8s.tag:
+    - pod: Pod to update
+    - image: New image
+    - tag: New image tag
+
+# Options are hyphen-prefixed parameters that can store boolean or a value
+# 1. By default, options will a value to be set i.e. --option=value
+# 2. Boolean options can be specified with !bool after the alias
+# 3. By default, all options are optional
+# 4. Required options can be suffixed with *
+# 5. - or !bool for no alias
+options:
+  git:
+    - help: h !bool
+    - version: v !bool
+    - paginate: p,P !bool
+    - bare: -
+  git.status:
+    - verbose: v
+    - short: s
+    - branch: b
+  update.k8s.tag:
+    - namespace*: n
+
+# Pipelines are a stream of commands which layer above the commands
+# 1. Executed in the order defined
+# 2. Can reference other commands directly
+# 3. Pipelines can accept their own private named and positional arguments
+pipelines:
+  inspect:
+    - kubectl get deployments --namespace {{namespace}}
+    - kubectl get pods --namespace {{namespace}}
+  log:
+    - echo "{{0}}" > log.txt
+    - $git.status[v]
