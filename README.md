@@ -1,0 +1,2 @@
+# commandeer
+$ cli generate
