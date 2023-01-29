@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "commandeer"
+version = "0.1.0"
+description = "$ cli generate"
+authors = ["Jay"]
+readme = "README.md"
+packages = [{include = "commandeer"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+rich-click = "^1.6.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.12.0"
+pytest = "^7.2.1"
+isort = "^5.11.4"
+flake8 = "^6.0.0"
+autoflake = "^2.0.0"
+
+[tool.poetry.scripts]
+commandeer = "commandeer.cli:run"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 120
+skip-string-normalization = 1
+
+[tool.isort]
+profile = "black"
+line_length = 120
+default_section = "THIRDPARTY"
+known_first_party = "commandeer"
