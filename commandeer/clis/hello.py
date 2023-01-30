@@ -1,7 +1,8 @@
 ## Generated hello on 2023-01-29 23:03:41.519982
 
-import rich_click as click
 import subprocess
+
+import rich_click as click
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
