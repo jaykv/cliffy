@@ -1,8 +1,7 @@
-## Generated hello on 2023-01-29 23:03:41.519982
-
-import subprocess
+## Generated hello on 2023-01-29 23:32:25.144228
 
 import rich_click as click
+import subprocess
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 

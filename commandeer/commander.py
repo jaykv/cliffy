@@ -4,6 +4,7 @@ from collections import namedtuple
 from .parser import Parser
 
 Command = namedtuple('Command', ['name', 'script'])
+CLI = namedtuple('CLI', ['name', 'version', 'code'])
 
 
 class Commander:
@@ -53,8 +54,7 @@ def {command.name}():
 """
 
 
-def build_cli(command_config: dict):
+def build_cli(command_config: dict) -> CLI:
     commander = Commander(command_config)
     commander.build_cli()
-    print(commander.cli)
-    return commander.cli
+    return CLI(command_config['name'], command_config['version'], commander.cli)

@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "commandeer"
 version = "0.1.0"
-description = "$ cli generate"
+description = "$ cli generate --dynamic --from-yaml"
 authors = ["Jay"]
+repository = "https://github.com/jaykv/commandeer"
 readme = "README.md"
 packages = [{include = "commandeer"}]
 

@@ -16,5 +16,7 @@ def cli():
 @click.argument('manifest', type=click.File('rb'))
 def generate(manifest):
     """Dynamically generate CLI with a given manifest"""
-    Transformer(manifest).generate()
-    print(f"~ Generated CLI")
+    cli = Transformer(manifest).generate()
+    click.secho(f"~ Generated {cli.name} CLI v{cli.version} ~", fg="green")
+    click.secho(click.style("$", fg="magenta"), nl=False)
+    click.echo(f" {cli.name} -h")

@@ -20,12 +20,12 @@ class Transformer:
     def __init__(self, manifest: TextIO) -> None:
         self.manifest = manifest
         self.command_config = self.load_manifest()
-        print(self.command_config)
 
     def generate(self):
         self.cli = build_cli(self.command_config)
         self.deploy_script()
         self.deploy_cli()
+        return self.cli
 
     def load_manifest(self) -> dict:
         try:
@@ -35,7 +35,7 @@ class Transformer:
 
     def deploy_cli(self) -> bool:
         cli_path = f"{COMMANDEER_CLI_DIR}/{self.command_config['name']}.py"
-        write_to_file(cli_path, self.cli)
+        write_to_file(cli_path, self.cli.code)
 
     def deploy_script(self) -> bool:
         script_path = f"{PYTHON_BIN}/{self.command_config['name']}"
@@ -66,5 +66,5 @@ def write_to_file(path, text, executable=False):
 
 def make_executable(path):
     mode = os.stat(path).st_mode
-    mode |= (mode & 0o444) >> 2  # copy R bits to X
+    mode |= (mode & 0o444) >> 2
     os.chmod(path, mode)
