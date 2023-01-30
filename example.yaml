@@ -1,4 +1,8 @@
 
+### THIS EXAMPLE
+## CLI metadata
+name: example
+version: 0.1.0
 
 # Commands are the basic units of commandeer
 # 1. Anything starting with . is a parent command
@@ -39,7 +43,7 @@ options:
     - help: h !bool
     - version: v !bool
     - paginate: p,P !bool
-    - bare: -
+    - bare: "-"
   git.status:
     - verbose: v
     - short: s

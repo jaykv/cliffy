@@ -9,6 +9,8 @@ packages = [{include = "commandeer"}]
 [tool.poetry.dependencies]
 python = "^3.9"
 rich-click = "^1.6.1"
+pybash = "^0.2.3"
+pyyaml = "^6.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"
@@ -18,7 +20,7 @@ flake8 = "^6.0.0"
 autoflake = "^2.0.0"
 
 [tool.poetry.scripts]
-commandeer = "commandeer.cli:run"
+commandeer = "commandeer.run:run"
 
 [build-system]
 requires = ["poetry-core"]

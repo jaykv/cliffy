@@ -1,4 +1,7 @@
+## CLI to generate CLIs
 import rich_click as click
+
+from .transformer import Transformer
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -13,8 +16,5 @@ def cli():
 @click.argument('manifest', type=click.File('rb'))
 def generate(manifest):
     """Dynamically generate CLI with a given manifest"""
-    print(f"generating cli with {manifest}")
-
-
-def run():
-    cli()
+    Transformer(manifest).generate()
+    print(f"~ Generated CLI")
