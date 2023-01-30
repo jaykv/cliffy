@@ -3,8 +3,9 @@
 import os
 import pathlib
 import sys
-import yaml
 from typing import TextIO
+
+import yaml
 
 from .commander import build_cli
 
@@ -12,19 +13,20 @@ PYTHON_BIN = f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
 COMMANDEER_CLI_DIR = f"{pathlib.Path(__file__).parent.resolve()}/clis"
 
-class Transformer():
+
+class Transformer:
     """Loads command manifest and transforms it into a CLI"""
 
     def __init__(self, manifest: TextIO) -> None:
         self.manifest = manifest
         self.command_config = self.load_manifest()
         print(self.command_config)
-    
+
     def generate(self):
         self.cli = build_cli(self.command_config)
         self.deploy_script()
         self.deploy_cli()
-                
+
     def load_manifest(self) -> dict:
         try:
             return yaml.safe_load(self.manifest)
@@ -34,7 +36,7 @@ class Transformer():
     def deploy_cli(self) -> bool:
         cli_path = f"{COMMANDEER_CLI_DIR}/{self.command_config['name']}.py"
         write_to_file(cli_path, self.cli)
-    
+
     def deploy_script(self) -> bool:
         script_path = f"{PYTHON_BIN}/{self.command_config['name']}"
         write_to_file(script_path, self.get_cli_script(), executable=True)
@@ -55,14 +57,14 @@ def write_to_file(path, text, executable=False):
     except Exception as e:
         print("write_to_file", e)
         return False
-    
+
     if executable:
         make_executable(path)
-        
+
     return True
-    
-    
+
+
 def make_executable(path):
     mode = os.stat(path).st_mode
-    mode |= (mode & 0o444) >> 2    # copy R bits to X
+    mode |= (mode & 0o444) >> 2  # copy R bits to X
     os.chmod(path, mode)

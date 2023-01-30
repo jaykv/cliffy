@@ -1,7 +1,8 @@
 ## Command parser
 import pybash
 
-class Parser():
+
+class Parser:
     def __init__(self, command_config) -> None:
         self.command_config = command_config
 
