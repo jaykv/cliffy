@@ -1,13 +1,13 @@
 # commandeer
-$ cli generate
+$ cli generate --dynamic --from-yaml
 
 
-# CLI Usage
+# Usage
 `commandeer generate <manifest>`
 
 ### Example:
 ```
-commander generate examples/hello.yaml
+commandeer generate examples/hello.yaml
 hello -h
 hello bash
 hello python
