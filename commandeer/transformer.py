@@ -8,6 +8,7 @@ from typing import TextIO
 import yaml
 
 from .commander import build_cli
+from .commanders.typer import TyperCommander
 
 PYTHON_BIN = f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
@@ -22,7 +23,7 @@ class Transformer:
         self.command_config = self.load_manifest()
 
     def generate(self):
-        self.cli = build_cli(self.command_config)
+        self.cli = build_cli(self.command_config, commander_cls=TyperCommander)
         self.deploy_script()
         self.deploy_cli()
         return self.cli
