@@ -8,8 +8,8 @@ class TyperCommander(Commander):
 
     def add_imports(self):
         self.cli = f"""## Generated {self.command_config['name']} on {datetime.datetime.now()}
-import typer; import subprocess; CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
-from typing import Optional;
+import typer; import subprocess; from typing import Optional;
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
         """
 
     def add_base_cli(self):
