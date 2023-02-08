@@ -21,24 +21,25 @@ commands:
   home.buy: |
     print(f"buying home {address} for {money}")
     print("test123")
-  # (*).list: print(f"listing {{(*)}}")
+  (*).list: print(f"listing {{(*)}}")
   
 args:
-  land.build: "name: Name, address: str, value: Optional[int] = 100"
-  land.sell: "name: Name, money: Money"
-  land.buy: "name: Name, money: Money"
-  people.add: "fullname: str, age: int, home: Optional[str]"
-  people.remove: "fullname: str"
-  shops.build: "name: Name, land: str, type: Optional[str]"
-  shops.sell: "name: Name, money: Money"
-  shops.buy: "name: Name, money: Money"
+  land.build: "name:! Name, address:! str, value:- int = 100"
+  land.sell: "name:! Name, money: Money"
+  land.buy: "name:! Name, money: Money"
+  people.add: "fullname:! str, age:! int, home:- str"
+  people.remove: "fullname:! str"
+  shops.build: "name:! Name, land:! str, type:- str"
+  shops.sell: "name:! Name, money: Money"
+  shops.buy: "name:! Name, money: Money"
   home.build: "address:! str, land: str, owner: str"
   home.sell: "address:! str, money: Money"
   home.buy: "address:! str, money: Money"
-  # (*).list: "limit: Optional[int]"
+  (*).list: "limit:- int"
 
 types:
   Money: float = typer.Option(..., help="Amount of money", min=0)
   Name: str = typer.Argument(..., help="Name")
 
+# TODO
 db: sqlite

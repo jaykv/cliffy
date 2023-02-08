@@ -5,6 +5,7 @@ import pybash
 class Parser:
     def __init__(self, command_config) -> None:
         self.command_config = command_config
+        self.args = self.command_config.get("args") or {}
 
     def parse(self, script: str):
         ## Bash commands start with $
@@ -20,7 +21,7 @@ class Parser:
     def build_param_type(self, arg_name: str, arg_type: str, typer_cls: str):
         required = arg_type.startswith('!')
         if required:
-            arg_type = arg_type[1:]
+            arg_type = arg_type[1:].strip()
 
         if '=' not in arg_type:
             parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}"
@@ -43,7 +44,7 @@ class Parser:
     def parse_arg(self, arg_name: str, arg_type: str):
         parsed_arg_type = ""
         if arg_type.startswith('-'):
-            arg_type = arg_type[1:]
+            arg_type = arg_type[1:].strip()
             parsed_arg_type = self.build_param_type(arg_name, arg_type, typer_cls='Option')
             ## Option
         else:
@@ -63,11 +64,10 @@ class Parser:
         return f"{arg_name}: {types[arg_type]},"
 
     def parse_args(self, command):
-        args = self.command_config.get("args")
-        if not args:
+        if not self.args:
             return ""
 
-        command_args = args.get(command.name)
+        command_args = self.args.get(command.name)
         if not command_args:
             return ""
 

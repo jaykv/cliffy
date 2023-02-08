@@ -1,6 +1,4 @@
 import datetime
-from collections import defaultdict
-
 from ..commander import Command, Commander
 
 
@@ -14,7 +12,6 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
         """
 
     def add_base_cli(self):
-        self.groups = defaultdict(lambda: defaultdict())
         self.cli += f"""
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
 
@@ -31,6 +28,9 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
     pass
 """
 
+    def add_group(self, group, command: Command):
+        self.cli += f"""{group}_app = typer.Typer(); cli.add_typer({group}_app, name="{group}");"""
+        
     def add_group_command(self, command: Command):
         self.cli += f"""
 @cli.command("{self.parser.get_parsed_command_name(command)}")
@@ -41,12 +41,6 @@ def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command
 """
 
     def add_sub_command(self, command: Command, group: str):
-        if group not in self.groups:
-            self.cli += f"""{group}_app = typer.Typer(); cli.add_typer({group}_app, name="{group}");"""
-            self.groups[group].update({command.name: command})
-        else:
-            self.groups[group][command.name] = command
-
         self.cli += f"""
 @{group}_app.command("{self.parser.get_parsed_command_name(command)}")
 def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command)}):
