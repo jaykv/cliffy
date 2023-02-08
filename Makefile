@@ -20,17 +20,17 @@ publish: package
 	twine upload dist/*
 
 format:
-	autoflake --in-place --recursive --remove-all-unused-imports --ignore-init-module-imports ${SOURCE_FILES}
-	isort --project=commandeer ${SOURCE_FILES}
-	black ${SOURCE_FILES}
+	autoflake --in-place --recursive --remove-all-unused-imports --ignore-init-module-imports ${SOURCE_FILES} --exclude=commandeer/clis
+	isort --project=commandeer ${SOURCE_FILES} --skip=commandeer/clis
+	black ${SOURCE_FILES} --exclude=commandeer/clis
 
 lint:
-	isort --check --diff --project=commandeer ${SOURCE_FILES}
-	black --check --diff ${SOURCE_FILES}
-	flake8 $(SOURCE_FILES) --count --show-source --statistics
-	flake8 $(SOURCE_FILES) --count --exit-zero --statistics
+	isort --check --diff --project=commandeer ${SOURCE_FILES} --skip=commandeer/clis
+	black --check --diff ${SOURCE_FILES} --exclude=commandeer/clis
+	flake8 $(SOURCE_FILES) --count --show-source --statistics --exclude=commandeer/clis
+	flake8 $(SOURCE_FILES) --count --exit-zero --statistics --exclude=commandeer/clis
 
 shell:
-	source $(poetry env info --path)/bin/activate
+	source .venv/bin/activate
 
 .PHONY: test clean
