@@ -31,6 +31,6 @@ lint:
 	flake8 $(SOURCE_FILES) --count --exit-zero --statistics --exclude=commandeer/clis
 
 shell:
-	source $(poetry env info --path)/bin/activate
+	source .venv/bin/activate
 
 .PHONY: test clean

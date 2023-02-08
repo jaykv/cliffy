@@ -12,7 +12,10 @@ class Parser:
             script = '>' + script[1:]
             return pybash.Transformer.transform_source(script)
 
-        return script
+        parsed_script = ""
+        for line in script.split('\n'):
+            parsed_script += "    " + line + "\n"
+        return parsed_script
 
     def build_param_type(self, arg_name: str, arg_type: str, typer_cls: str):
         required = arg_type.startswith('!')
@@ -25,12 +28,15 @@ class Parser:
             # Required param needs ...
             parsed_arg_type += "(None)," if not required else "(...),"
         else:
-            ## Optional if default val given
+            # Capture the base arg type
+            base_arg_type = arg_type.split('=')[0].strip()
+
+            # Optional if default val given
             default_val = arg_type.split('=')[1].strip()
             if arg_type == "str":
-                parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}('{default_val}'),"
+                parsed_arg_type = f"{arg_name}: {base_arg_type} = typer.{typer_cls}('{default_val}'),"
             else:
-                parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}({default_val}),"
+                parsed_arg_type = f"{arg_name}: {base_arg_type} = typer.{typer_cls}({default_val}),"
 
         return parsed_arg_type
 
@@ -38,12 +44,17 @@ class Parser:
         parsed_arg_type = ""
         if arg_type.startswith('-'):
             arg_type = arg_type[1:]
-            parsed_arg_type = self.build_param_type(arg_name, arg_type, paramtyper_cls_type='Option')
+            parsed_arg_type = self.build_param_type(arg_name, arg_type, typer_cls='Option')
             ## Option
         else:
             ## Param
             parsed_arg_type = self.build_param_type(arg_name, arg_type, typer_cls='Argument')
 
+        # strip ! after parsing it
+        if arg_type.startswith('!'):
+            arg_type = arg_type[1:].strip()
+        
+        # check for type def that matches arg_type
         types = self.command_config.get("types")
         if not types or arg_type not in types:
             return parsed_arg_type
@@ -63,9 +74,10 @@ class Parser:
         parsed_command_args = ""
         for arg in command_args.split(','):
             arg_name, arg_type = arg.split(':')
-            parsed_command_args += self.parse_arg(arg_name.strip(), arg_type.strip())
+            parsed_command_args += self.parse_arg(arg_name.strip(), arg_type.strip()) + ' '
 
-        return parsed_command_args[:-1]
+        # strip the extra ", "
+        return parsed_command_args[:-2]
 
     def get_command_func_name(self, command):
         """land.build -> land_build, sell -> sell"""

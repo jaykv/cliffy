@@ -36,7 +36,8 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 @cli.command("{self.parser.get_parsed_command_name(command)}")
 def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command)}):
     \"\"\"Help for {command.name}\"\"\"
-    {self.parser.parse(command.script)}
+{self.parser.parse(command.script)}
+
 """
 
     def add_sub_command(self, command: Command, group: str):
@@ -50,5 +51,6 @@ def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command
 @{group}_app.command("{self.parser.get_parsed_command_name(command)}")
 def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command)}):
     \"\"\"Help for {command.name}\"\"\"
-    {self.parser.parse(command.script)}
+{self.parser.parse(command.script)}
+
 """
