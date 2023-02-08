@@ -1,8 +1,14 @@
 # commandeer
 $ cli generate --dynamic --from-yaml
 
+## Features
+* Generate and load YAML-defined CLIs
+* Easily sharable- just send the CLI manifest and load it wherever
+* Dynamic abstractions to streamline CLI building
+* Shell and Python script support
 
-# Usage
+
+## Usage
 `commandeer generate <manifest>`
 
 ### Example:
@@ -27,7 +33,7 @@ $ commandeer generate hello.yaml
 ![hello-demo](docs/images/hello.png)
 
 
-# Development
+## Development
 ```
 poetry shell
 commandeer -h
