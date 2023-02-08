@@ -1,4 +1,5 @@
 import datetime
+
 from ..commander import Command, Commander
 
 
@@ -30,7 +31,7 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 
     def add_group(self, group, command: Command):
         self.cli += f"""{group}_app = typer.Typer(); cli.add_typer({group}_app, name="{group}");"""
-        
+
     def add_group_command(self, command: Command):
         self.cli += f"""
 @cli.command("{self.parser.get_parsed_command_name(command)}")

@@ -1,4 +1,4 @@
-from collections import namedtuple, defaultdict
+from collections import defaultdict, namedtuple
 
 from .parser import Parser
 
@@ -24,9 +24,9 @@ class Commander:
         for name, script in commands.items():
             current_command = Command(name, script)
             self.parse_command(current_command)
-            
+
         self.parse_greedy_commands()
-        
+
     def parse_command(self, command: Command):
         # Check for greedy commands- evaluate them at the end
         if self.is_greedy(command.name):
@@ -36,11 +36,11 @@ class Commander:
         if '.' in command.name:
             # Sub command- nested commands
             group = command.name.split('.')[:-1][-1]
-            
+
             # Add the group
             if group not in self.groups:
                 self.add_group(group, command)
-                
+
             # Save to groups dict
             self.groups[group][command.name] = command
 
@@ -53,7 +53,7 @@ class Commander:
 
             # Add the group command
             self.add_group_command(command)
-                
+
     def add_functions(self):
         funcs = self.command_config.get('functions')
         if not funcs:
@@ -69,19 +69,19 @@ def {func_name}({params}):
 
     def parse_greedy_commands(self):
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""
-        
+
         for greedy_command in self.greedy:
             if greedy_command.name.startswith('(*)'):
                 for group in self.groups:
                     # make it lazy
                     lazy_command_name = greedy_command.name.replace('(*)', group)
-                    lazy_command_script = greedy_command.script.replace('{{(*)}}', group)   
-                    
+                    lazy_command_script = greedy_command.script.replace('{{(*)}}', group)
+
                     # lazy load the greedy args
                     greedy_command_args = self.parser.args.get(greedy_command.name)
                     if greedy_command_args:
                         self.parser.args[lazy_command_name] = greedy_command_args
-                        
+
                     # lazy parse
                     self.parse_command(Command(lazy_command_name, lazy_command_script))
 
@@ -91,7 +91,7 @@ def {func_name}({params}):
 
     def add_group(self):
         raise NotImplementedError
-    
+
     def add_imports(self):
         raise NotImplementedError
 
