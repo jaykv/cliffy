@@ -53,7 +53,7 @@ class Parser:
         # strip ! after parsing it
         if arg_type.startswith('!'):
             arg_type = arg_type[1:].strip()
-        
+
         # check for type def that matches arg_type
         types = self.command_config.get("types")
         if not types or arg_type not in types:
