@@ -1,4 +1,6 @@
 ## Command parser
+from typing import Any
+
 import pybash
 
 
@@ -6,6 +8,15 @@ class Parser:
     def __init__(self, command_config) -> None:
         self.command_config = command_config
         self.args = self.command_config.get("args") or {}
+
+    def is_param_required(self, param: str):
+        return param.strip().endswith('!') if '=' not in param else param.split('=')[0].strip().endswith('!')
+
+    def is_option_param(self, param: str):
+        return '-' in param
+
+    def get_default_param_val(self, param: str):
+        return param.split('=')[1].strip() if '=' in param else None
 
     def parse(self, script: str):
         ## Bash commands start with $
@@ -18,42 +29,44 @@ class Parser:
             parsed_script += "    " + line + "\n"
         return parsed_script
 
-    def build_param_type(self, arg_name: str, arg_type: str, typer_cls: str):
-        required = arg_type.startswith('!')
-        if required:
-            arg_type = arg_type[1:].strip()
+    def build_param_type(
+        self, arg_name: str, arg_type: str, typer_cls: str, default_val: Any = None, is_required: bool = False
+    ):
+        parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}"
 
-        if '=' not in arg_type:
-            parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}"
-
+        if not default_val:
             # Required param needs ...
-            parsed_arg_type += "(None)," if not required else "(...),"
+            parsed_arg_type += "(...)," if is_required else "(None),"
         else:
-            # Capture the base arg type
-            base_arg_type = arg_type.split('=')[0].strip()
-
-            # Optional if default val given
-            default_val = arg_type.split('=')[1].strip()
+            # Optional if default_val given
             if arg_type == "str":
-                parsed_arg_type = f"{arg_name}: {base_arg_type} = typer.{typer_cls}('{default_val}'),"
+                parsed_arg_type += f"('{default_val}'),"
             else:
-                parsed_arg_type = f"{arg_name}: {base_arg_type} = typer.{typer_cls}({default_val}),"
+                parsed_arg_type += f"({default_val}),"
 
         return parsed_arg_type
 
     def parse_arg(self, arg_name: str, arg_type: str):
         parsed_arg_type = ""
-        if arg_type.startswith('-'):
-            arg_type = arg_type[1:].strip()
-            parsed_arg_type = self.build_param_type(arg_name, arg_type, typer_cls='Option')
-            ## Option
-        else:
-            ## Param
-            parsed_arg_type = self.build_param_type(arg_name, arg_type, typer_cls='Argument')
+        is_required = self.is_param_required(arg_type)
+        default_val = self.get_default_param_val(arg_type)
+        param_type = 'Option' if self.is_option_param(arg_type) else 'Argument'
 
-        # strip ! after parsing it
-        if arg_type.startswith('!'):
-            arg_type = arg_type[1:].strip()
+        # extract default val before parsing it
+        if '=' in arg_type:
+            arg_type = arg_type.split('=')[0].strip()
+
+        # strip - before parsing it
+        if self.is_option_param(arg_type):
+            arg_type = arg_type[1:]
+
+        # strip ! before parsing it
+        if is_required:
+            arg_type = arg_type[:-1]
+
+        parsed_arg_type = self.build_param_type(
+            arg_name, arg_type, typer_cls=param_type, default_val=default_val, is_required=is_required
+        )
 
         # check for type def that matches arg_type
         types = self.command_config.get("types")
@@ -72,8 +85,8 @@ class Parser:
             return ""
 
         parsed_command_args = ""
-        for arg in command_args.split(','):
-            arg_name, arg_type = arg.split(':')
+        for arg in command_args:
+            arg_name, arg_type = next(iter(arg.items()))
             parsed_command_args += self.parse_arg(arg_name.strip(), arg_type.strip()) + ' '
 
         # strip the extra ", "
