@@ -13,7 +13,7 @@ class Parser:
         return param.strip().endswith('!') if '=' not in param else param.split('=')[0].strip().endswith('!')
 
     def is_param_option(self, param: str):
-        return '-' in param
+        return param.startswith('-')
 
     def get_default_param_val(self, param: str):
         return param.split('=')[1].strip() if '=' in param else None
@@ -57,7 +57,7 @@ class Parser:
             arg_type = arg_type.split('=')[0].strip()
 
         # strip - before parsing it
-        if self.is_option_param(arg_type):
+        if self.is_param_option(arg_type):
             arg_type = arg_type[1:]
 
         # strip ! before parsing it
