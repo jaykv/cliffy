@@ -12,7 +12,7 @@ class Parser:
     def is_param_required(self, param: str):
         return param.strip().endswith('!') if '=' not in param else param.split('=')[0].strip().endswith('!')
 
-    def is_option_param(self, param: str):
+    def is_param_option(self, param: str):
         return '-' in param
 
     def get_default_param_val(self, param: str):
@@ -50,7 +50,7 @@ class Parser:
         parsed_arg_type = ""
         is_required = self.is_param_required(arg_type)
         default_val = self.get_default_param_val(arg_type)
-        param_type = 'Option' if self.is_option_param(arg_type) else 'Argument'
+        param_type = 'Option' if self.is_param_option(arg_type) else 'Argument'
 
         # extract default val before parsing it
         if '=' in arg_type:
