@@ -1,6 +1,10 @@
 name: town
 version: 0.1.0
 
+imports: |
+  import re
+  import time
+
 functions:
   format_money:
     - "money: float"
@@ -24,18 +28,18 @@ commands:
   (*).list: print(f"listing {{(*)}}")
   
 args:
-  land.build: [name: Name!, address: str!, value: -int = 100]
+  land.build: [name: Name!, address: str!, --value|-v: int = 100]
   land.sell: [name: Name!, money: Money]
   land.buy: [name: Name!, money: Money]
-  people.add: [fullname: str!, age: int!, home: -str]
+  people.add: [fullname: str!, age: int!, --home|-h: str]
   people.remove: [fullname: str!]
-  shops.build: [name: Name!, land: str!, type: -str]
+  shops.build: [name: Name!, land: str!, --type|-t: str]
   shops.sell: [name: Name!, money: Money]
   shops.buy: [name: Name!, money: Money]
   home.build: [address: str!, land: str, owner: str]
   home.sell: [address: str!, money: Money]
   home.buy: [address: str!, money: Money]
-  (*).list: [limit: -int]
+  (*).list: [--limit|-l: int]
 
 types:
   Money: float = typer.Option(..., help="Amount of money", min=0)

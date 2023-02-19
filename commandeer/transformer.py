@@ -19,11 +19,16 @@ class Transformer:
     """Loads command manifest and transforms it into a CLI"""
 
     def __init__(self, manifest: TextIO) -> None:
-        self.manifest = manifest
-        self.command_config = self.load_manifest()
+        self.manifest: TextIO = manifest
+        self.command_config: dict = self.load_manifest()
+        self.cli: str = ""
 
-    def generate(self):
+    def render_cli(self) -> None:
         self.cli = build_cli(self.command_config, commander_cls=TyperCommander)
+        return self.cli
+
+    def load_cli(self) -> str:
+        self.render_cli()
         self.deploy_script()
         self.deploy_cli()
         return self.cli
@@ -42,7 +47,7 @@ class Transformer:
         script_path = f"{PYTHON_BIN}/{self.command_config['name']}"
         write_to_file(script_path, self.get_cli_script(), executable=True)
 
-    def get_cli_script(self):
+    def get_cli_script(self) -> None:
         return f"""#!{PYTHON_EXECUTABLE}
 import sys
 from commandeer.clis.{self.command_config['name']} import cli
@@ -51,7 +56,7 @@ if __name__ == '__main__':
     sys.exit(cli())"""
 
 
-def write_to_file(path, text, executable=False):
+def write_to_file(path, text, executable=False) -> bool:
     try:
         with open(path, "w") as s:
             s.write(text)
@@ -65,7 +70,7 @@ def write_to_file(path, text, executable=False):
     return True
 
 
-def make_executable(path):
+def make_executable(path) -> None:
     mode = os.stat(path).st_mode
     mode |= (mode & 0o444) >> 2
     os.chmod(path, mode)
