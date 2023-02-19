@@ -9,7 +9,7 @@ $ cli generate --dynamic --from-yaml
 
 
 ## Usage
-`commandeer generate <manifest>`
+`commandeer load <manifest>`
 
 ### Example:
 
@@ -24,9 +24,9 @@ commands:
   python: print("hello from python")
 ```
 
-2. Generate CLI
+2. Load CLI
 ```
-$ commandeer generate hello.yaml
+$ commandeer cli hello.yaml
 ```
 
 3. Run CLI directly
