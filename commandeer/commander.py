@@ -26,11 +26,11 @@ class Commander:
         self.add_functions()
         for name, script in self.commands.items():
             current_command = Command(name, script)
-            self.parse_command(current_command)
+            self.add_command(current_command)
 
-        self.parse_greedy_commands()
+        self.add_greedy_commands()
 
-    def parse_command(self, command: Command) -> None:
+    def add_command(self, command: Command) -> None:
         # Check for greedy commands- evaluate them at the end
         if self.is_greedy(command.name):
             self.greedy.append(command)
@@ -70,7 +70,7 @@ def {func_name}({params}):
 
 """
 
-    def parse_greedy_commands(self) -> None:
+    def add_greedy_commands(self) -> None:
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""
         for greedy_command in self.greedy:
             if greedy_command.name.startswith('(*)'):
@@ -85,7 +85,7 @@ def {func_name}({params}):
                         self.parser.args[lazy_command_name] = greedy_command_args
 
                     # lazy parse
-                    self.parse_command(Command(lazy_command_name, lazy_command_script))
+                    self.add_command(Command(lazy_command_name, lazy_command_script))
 
     def is_greedy(self, val: str) -> bool:
         """Greedy strings must contain (*)- marked to be evaluated lazily."""

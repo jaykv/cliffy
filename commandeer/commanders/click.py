@@ -24,7 +24,7 @@ def cli():
 @cli.command()
 def {command.name}():
     \"\"\"Help for {command.name}\"\"\"
-    {self.parser.parse(command.script)}
+    {self.parser.parse_command(command.script)}
 """
 
     def add_sub_command(self, command: Command, group: str):
@@ -32,5 +32,5 @@ def {command.name}():
 @{group}.command()
 def {command.name}():
     \"\"\"Help for {command.name}\"\"\"
-    {self.parser.parse(command.script)}
+    {self.parser.parse_command(command.script)}
 """

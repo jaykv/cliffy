@@ -1,4 +1,4 @@
-## Generated town on 2023-02-26 22:53:18.004499
+## Generated town on 2023-02-27 10:20:58.947705
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 import re
@@ -20,6 +20,7 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 
 def format_money(money: float):
     return "${:.2f}".format(money)
+
 land_app = typer.Typer(); cli.add_typer(land_app, name="land");
 @land_app.command("build")
 def land_build(name: str = typer.Argument(..., help="Name"), address: str = typer.Argument(...), value: int = typer.Option(100, "--value", "-v")):

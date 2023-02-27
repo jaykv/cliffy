@@ -26,7 +26,7 @@ commands:
 
 2. Load CLI
 ```
-$ commandeer cli hello.yaml
+$ commandeer load hello.yaml
 ```
 
 3. Run CLI directly

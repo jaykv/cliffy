@@ -1,4 +1,4 @@
-## Generated pydev on 2023-02-26 22:54:32.749665
+## Generated pydev on 2023-02-27 17:53:19.380001
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 import sys
@@ -32,20 +32,20 @@ def run_cmd(cmd: str):
     
     return result.stdout.decode('utf-8').strip()
 
+
 @cli.command("clean")
 def clean():
+    """Clean pycache artifacts"""
     subprocess.run(["find",".","-type","f","-name","*.pyc","-delete"])
-
     subprocess.run(["find",".","-type","d","-name","__pycache__","-delete"])
-
     subprocess.run(["echo","Cleaned!"])
 
 
 
 @cli.command("format")
 def format():
+    """Format code with black"""
     subprocess.run(["black","."])
-
     subprocess.run(["echo","Formatted!"])
 
 
@@ -53,9 +53,9 @@ def format():
 @cli.command("lint")
 def lint():
     """Run linters on the code"""
-    run_cmd('flake8 .')
-    run_cmd('black --check .')
-    run_cmd('mypy .')
+    print(run_cmd('flake8 .'))
+    print(run_cmd('black --check .'))
+    print(run_cmd('mypy .'))
     print("Linting successful!")
     
 
@@ -64,7 +64,7 @@ def lint():
 @cli.command("test")
 def test():
     """Run tests"""
-    run_cmd('pytest')
+    print(run_cmd('pytest'))
     print("Tests passed!")
     
 

@@ -45,7 +45,7 @@ class Parser:
 
     def parse_command(self, block: Union[str, list[str]]) -> str:
         if isinstance(block, list):
-            code = "\n".join(map(self.parse_command_block, block))
+            code = "".join(map(self.parse_command_block, block))
         else:
             code = self.parse_command_block(block)
 

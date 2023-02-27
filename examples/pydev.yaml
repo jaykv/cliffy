@@ -24,24 +24,26 @@ functions:
 
 commands:
   clean:
+    - '"""Clean pycache artifacts"""'
     - $find . -type f -name "*.pyc" -delete
     - $find . -type d -name "__pycache__" -delete
     - $echo Cleaned!
 
   format:
+    - '"""Format code with black"""'
     - $black .
     - $echo Formatted!
 
   lint: |
     """Run linters on the code"""
-    run_cmd('flake8 .')
-    run_cmd('black --check .')
-    run_cmd('mypy .')
+    print(run_cmd('flake8 .'))
+    print(run_cmd('black --check .'))
+    print(run_cmd('mypy .'))
     print("Linting successful!")
 
   test: |
     """Run tests"""
-    run_cmd('pytest')
+    print(run_cmd('pytest'))
     print("Tests passed!")
 
   bump: |
