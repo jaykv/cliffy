@@ -1,4 +1,4 @@
-## Generated hello on 2023-02-19 01:30:18.552255
+## Generated hello on 2023-02-26 22:54:32.740705
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 
@@ -18,14 +18,12 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 
 @cli.command("bash")
 def bash():
-    """Help for bash"""
-subprocess.run(["echo","hello from bash"])
+    subprocess.run(["echo","hello from bash"])
 
 
 
 @cli.command("python")
 def python():
-    """Help for python"""
     print("hello from python")
 
 

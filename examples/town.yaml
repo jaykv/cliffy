@@ -12,21 +12,44 @@ functions:
       return "${:.2f}".format(money)
 
 commands:
-  land.build: print(f"building land {name}")
-  land.sell: print(f"selling land {name}")
-  land.buy: print(f"buying land {name} for {format_money(money)}")
-  people.add: print(f"adding person {fullname}, {age}, {home}")
-  people.remove: print(f"removing person {fullname}")
-  shops.build: print(f"building shop {name} ({type}) on land {land}")
-  shops.sell: print(f"selling shop {name} for ${money}")
-  shops.buy: print(f"buying shop {name} for ${money}")
-  home.build: print(f"building home at {address} for {owner} on land {land}")
-  home.sell: print(f"selling home {address} for {format_money(money)}")
+  land.build: |
+    """Build land"""
+    print(f"building land {name}")
+  land.sell: |
+    """Sell land"""
+    print(f"selling land {name}")
+  land.buy: |
+    """Buy land"""
+    print(f"buying land {name} for {format_money(money)}")
+  people.add: |
+    """Add a person to town"""
+    print(f"adding person {fullname}, {age}, {home}")
+  people.remove: |
+    """Remove person from town"""
+    print(f"removing person {fullname}")
+  shops.build: |
+    """Build a shop"""
+    print(f"building shop {name} ({type}) on land {land}")
+  shops.sell: |
+    """Sell a shop"""
+    print(f"selling shop {name} for ${money}")
+  shops.buy: |
+    """Buy a shop"""
+    print(f"buying shop {name} for ${money}")
+  home.build: |
+    """Build a home"""
+    print(f"building home at {address} for {owner} on land {land}")
+  home.sell: |
+    """Sell a home"""
+    print(f"selling home {address} for {format_money(money)}")
   home.buy: |
+    """Buy a home"""
     print(f"buying home {address} for {money}")
     print("test123")
-  (*).list: print(f"listing {{(*)}}")
-  
+  (*).list: |
+    """Get a list of {{(*)}}"""
+    print(f"listing {{(*)}}")
+
 args:
   land.build: [name: Name!, address: str!, --value|-v: int = 100]
   land.sell: [name: Name!, money: Money]

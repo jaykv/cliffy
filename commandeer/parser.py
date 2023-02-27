@@ -1,5 +1,5 @@
 ## Command parser
-from typing import Any, Tuple
+from typing import Any, Tuple, Union
 
 import pybash
 
@@ -25,23 +25,31 @@ class Parser:
 
     def capture_param_aliases(self, param_name: str) -> Tuple[str, list[str]]:
         if '|' not in param_name:
-            return param_name.replace('-', '')
+            return param_name.replace('-', ''), []
 
         base_param_name = param_name.split('|')[0].replace('-', '')
         aliases = param_name.split('|')[1:]
 
         return base_param_name, aliases
 
-    def parse(self, script: str) -> str:
+    def parse_command_block(self, script: str):
         ## Bash commands start with $
         if script.startswith('$'):
             script = '>' + script[1:]
-            return pybash.Transformer.transform_source(script)
+            return " " * 4 + pybash.Transformer.transform_source(script)
 
         parsed_script = ""
         for line in script.split('\n'):
-            parsed_script += "    " + line + "\n"
+            parsed_script += " " * 4 + line + "\n"
         return parsed_script
+
+    def parse_command(self, block: Union[str, list[str]]) -> str:
+        if isinstance(block, list):
+            code = "\n".join(map(self.parse_command_block, block))
+        else:
+            code = self.parse_command_block(block)
+
+        return code
 
     def build_param_type(
         self,
@@ -124,12 +132,17 @@ class Parser:
         return parsed_command_args[:-2]
 
     def get_command_func_name(self, command) -> str:
-        """land.build -> land_build, sell -> sell"""
+        """land.build -> land_build or sell -> sell"""
         return command.name.replace('.', '_')
 
     def get_parsed_command_name(self, command) -> str:
-        """land.build -> build, sell -> sell"""
+        """land.build -> build or sell -> sell"""
         if '.' in command.name:
             return command.name.split('.')[-1]
 
         return command.name
+
+    def indent_block(self, block: str) -> str:
+        blocklines = block.splitlines()
+        indented_block = "\n".join([" " * 4 + line for line in blocklines])
+        return indented_block

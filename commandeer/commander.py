@@ -66,7 +66,7 @@ class Commander:
             params, body = func
             self.cli += f"""
 def {func_name}({params}):
-    {body}
+{self.parser.indent_block(body)}
 
 """
 
