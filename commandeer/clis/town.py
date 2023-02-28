@@ -1,11 +1,10 @@
-## Generated town on 2023-02-27 10:20:58.947705
+## Generated town on 2023-02-27 20:27:41.321227
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 import re
 import time
 
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
-
 __version__ = '0.1.1'
 __cli_name__ = 'town'
 

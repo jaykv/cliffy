@@ -18,6 +18,7 @@ class Commander:
         self.cli: str = ""
         self.groups: dict = defaultdict(lambda: defaultdict())
         self.greedy: list = []
+        self.help: str = self.command_config.get("help")
         self.cli_options: dict = self.command_config.get("cli_options", {})
 
     def build_cli(self) -> None:

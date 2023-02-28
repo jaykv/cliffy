@@ -1,8 +1,8 @@
 name: db
 version: 0.1.0
+help: Database CLI
 cli_options:
   add_completion: False
-  help: '"Database CLI"'
   
 imports: |
   from rich.console import Console

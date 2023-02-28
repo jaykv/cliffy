@@ -1,11 +1,10 @@
-## Generated db on 2023-02-27 19:22:17.387912
+## Generated db on 2023-02-27 20:28:49.241529
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 from rich.console import Console
 console = Console()
 
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS,  add_completion=False, help="Database CLI")
-
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, add_completion=False, help="Database CLI")
 __version__ = '0.1.0'
 __cli_name__ = 'db'
 
