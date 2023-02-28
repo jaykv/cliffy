@@ -10,24 +10,29 @@ class Commander:
     """Generates commands based on the command config"""
 
     def __init__(self, command_config: dict) -> None:
-        self.command_config = command_config
-        self.parser = Parser(command_config)
-        self.cli = ""
+        self.command_config: dict = command_config
+        self.commands: dict = self.command_config.get("commands", {})
+        self.functions: dict = self.command_config.get("functions", {})
+        self.imports: str = self.command_config.get("imports", "")
+        self.parser: Parser = Parser(self.command_config)
+        self.cli: str = ""
+        self.groups: dict = defaultdict(lambda: defaultdict())
+        self.greedy: list = []
+        self.help: str = self.command_config.get("help")
+        self.cli_options: dict = self.command_config.get("cli_options", {})
 
-    def build_cli(self):
-        self.groups = defaultdict(lambda: defaultdict())
-        self.greedy = []
+    def build_cli(self) -> None:
+        self.add_base_imports()
         self.add_imports()
         self.add_base_cli()
         self.add_functions()
-        commands = self.command_config["commands"]
-        for name, script in commands.items():
+        for name, script in self.commands.items():
             current_command = Command(name, script)
-            self.parse_command(current_command)
+            self.add_command(current_command)
 
-        self.parse_greedy_commands()
+        self.add_greedy_commands()
 
-    def parse_command(self, command: Command):
+    def add_command(self, command: Command) -> None:
         # Check for greedy commands- evaluate them at the end
         if self.is_greedy(command.name):
             self.greedy.append(command)
@@ -54,26 +59,25 @@ class Commander:
             # Add the group command
             self.add_group_command(command)
 
-    def add_functions(self):
-        funcs = self.command_config.get('functions')
-        if not funcs:
-            return
+    def add_imports(self) -> None:
+        if self.imports:
+            self.cli += self.imports
 
-        for func_name, func in funcs.items():
+    def add_functions(self) -> None:
+        for func_name, func in self.functions.items():
             params, body = func
             self.cli += f"""
 def {func_name}({params}):
-    {body}
+{self.parser.indent_block(body)}
 
 """
 
-    def parse_greedy_commands(self):
+    def add_greedy_commands(self) -> None:
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""
-
         for greedy_command in self.greedy:
             if greedy_command.name.startswith('(*)'):
                 for group in self.groups:
-                    # make it lazy
+                    # make it lazy and interpolate
                     lazy_command_name = greedy_command.name.replace('(*)', group)
                     lazy_command_script = greedy_command.script.replace('{{(*)}}', group)
 
@@ -83,25 +87,25 @@ def {func_name}({params}):
                         self.parser.args[lazy_command_name] = greedy_command_args
 
                     # lazy parse
-                    self.parse_command(Command(lazy_command_name, lazy_command_script))
+                    self.add_command(Command(lazy_command_name, lazy_command_script))
 
-    def is_greedy(self, val: str):
+    def is_greedy(self, val: str) -> bool:
         """Greedy strings must contain (*)- marked to be evaluated lazily."""
         return '(*)' in val
 
-    def add_group(self):
+    def add_group(self) -> None:
         raise NotImplementedError
 
-    def add_imports(self):
+    def add_base_imports(self) -> None:
         raise NotImplementedError
 
-    def add_base_cli(self):
+    def add_base_cli(self) -> None:
         raise NotImplementedError
 
-    def add_group_command(self, command: Command):
+    def add_group_command(self, command: Command) -> None:
         raise NotImplementedError
 
-    def add_sub_command(self, command: Command, group: str):
+    def add_sub_command(self, command: Command, group: str) -> None:
         raise NotImplementedError
 
 

@@ -1,0 +1,67 @@
+name: pydev
+version: 0.1.0
+
+imports: |
+  import sys
+  import subprocess
+
+functions:
+  run_cmd: 
+    - "cmd: str"
+    - |
+      """Helper function to run a command."""
+      try:
+          result = subprocess.run(cmd, shell=True, check=True,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+      except subprocess.CalledProcessError as e:
+          print(f"Error running command: {cmd}")
+          print(f"Exit code: {e.returncode}")
+          print(f"Output: {e.output.decode('utf-8').strip()}")
+          sys.exit(1)
+
+      return result.stdout.decode('utf-8').strip()
+
+commands:
+  clean:
+    - '"""Clean pycache artifacts"""'
+    - $find . -type f -name "*.pyc" -delete
+    - $find . -type d -name "__pycache__" -delete
+    - $echo Cleaned!
+
+  format:
+    - '"""Format code with black"""'
+    - $black .
+    - $echo Formatted!
+
+  lint: |
+    """Run linters on the code"""
+    print(run_cmd('flake8 .'))
+    print(run_cmd('black --check .'))
+    print(run_cmd('mypy .'))
+    print("Linting successful!")
+
+  test: |
+    """Run tests"""
+    print(run_cmd('pytest'))
+    print("Tests passed!")
+
+  bump: |
+    """Bump the package version"""
+    current_version = run_cmd('python setup.py --version')
+    print(f"Current version: {current_version}")
+    parts = current_version.split('.')
+    new_version = '.'.join(parts[:-1] + [str(int(parts[-1]) + 1)])
+    print(f"New version: {new_version}")
+    with open('setup.py', 'r') as f:
+        contents = f.read()
+    contents = contents.replace(current_version, new_version)
+    with open('setup.py', 'w') as f:
+        f.write(contents)
+    print(f"Bumped version from {current_version} to {new_version}.")
+
+args:
+  bump: [--major: VersionPart, --minor: VersionPart, --patch: VersionPart]
+
+types:
+  VersionPart: int = typer.Option(..., help="Version part", min=0)

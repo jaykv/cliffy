@@ -1,5 +1,7 @@
 ## CLI to generate CLIs
 import rich_click as click
+from rich.console import Console
+from rich.syntax import Syntax
 
 from .transformer import Transformer
 
@@ -14,9 +16,20 @@ def cli():
 
 @cli.command()
 @click.argument('manifest', type=click.File('rb'))
-def generate(manifest):
+def load(manifest):
     """Dynamically generate CLI with a given manifest"""
-    cli = Transformer(manifest).generate()
+    cli = Transformer(manifest).load_cli()
     click.secho(f"~ Generated {cli.name} CLI v{cli.version} ~", fg="green")
     click.secho(click.style("$", fg="magenta"), nl=False)
     click.echo(f" {cli.name} -h")
+
+
+@cli.command()
+@click.argument('manifest', type=click.File('rb'))
+def render(manifest):
+    """Display rendered CLI code with a given manifest"""
+    cli = Transformer(manifest).render_cli()
+    syntax = Syntax(cli.code, "python", theme="monokai", line_numbers=False)
+    console = Console()
+    console.print(syntax)
+    click.secho(f"# Rendered {cli.name} CLI v{cli.version} ~", fg="green")
