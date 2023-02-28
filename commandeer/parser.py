@@ -146,7 +146,7 @@ class Parser:
         blocklines = block.splitlines()
         indented_block = "\n".join([" " * 4 + line for line in blocklines])
         return indented_block
-    
+
     def to_args(self, d: dict) -> str:
         s = ""
         for k, v in d.items():
