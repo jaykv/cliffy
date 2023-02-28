@@ -1,0 +1,32 @@
+name: db
+version: 0.1.0
+cli_options:
+  add_completion: False
+  help: '"Database CLI"'
+  
+imports: |
+  from rich.console import Console
+  console = Console()
+
+commands:
+  create: |
+    """Create a new database"""
+    console.print(f"Creating database {name}", style="green")
+  delete: |
+    """Delete a database"""
+    sure = typer.confirm("Are you really really really sure?")
+    if sure:
+        console.print(f"Deleting database {name}", style="red")
+    else:
+        console.print(f"Back to safety!", style="green")
+  list: |
+    """List databases"""
+    print(f"Listing all databases")
+
+args:
+  create: &db_args
+    - name: DatabaseName
+  delete: *db_args
+
+types:
+  DatabaseName: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)

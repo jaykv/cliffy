@@ -14,7 +14,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 
     def add_base_cli(self) -> None:
         self.cli += f"""
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, {self.parser.to_args(self.cli_options)})
 
 __version__ = '{self.command_config['version']}'
 __cli_name__ = '{self.command_config['name']}'

@@ -1,5 +1,7 @@
 ## CLI to generate CLIs
 import rich_click as click
+from rich.console import Console
+from rich.syntax import Syntax
 
 from .transformer import Transformer
 
@@ -27,5 +29,7 @@ def load(manifest):
 def render(manifest):
     """Display rendered CLI code with a given manifest"""
     cli = Transformer(manifest).render_cli()
-    click.echo(cli.code)
+    syntax = Syntax(cli.code, "python", theme="monokai", line_numbers=False)
+    console = Console()
+    console.print(syntax)
     click.secho(f"# Rendered {cli.name} CLI v{cli.version} ~", fg="green")
