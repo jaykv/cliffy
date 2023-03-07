@@ -1,5 +1,5 @@
 from click.testing import CliRunner
-from commandeer.cli import cli, load, render
+from cliffy.cli import cli, load, render
 
 
 def test_cli_help():

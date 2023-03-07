@@ -1,11 +1,10 @@
-## Generated pydev on 2023-02-27 17:53:19.380001
+## Generated pydev on 2023-03-04 12:05:24.282881
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 import sys
 import subprocess
 
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
-
 __version__ = '0.1.0'
 __cli_name__ = 'pydev'
 

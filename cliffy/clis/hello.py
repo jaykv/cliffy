@@ -1,9 +1,8 @@
-## Generated hello on 2023-02-27 17:53:19.371353
+## Generated hello on 2023-03-04 12:05:24.235285
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
-
 __version__ = '0.1.0'
 __cli_name__ = 'hello'
 
