@@ -1,11 +1,11 @@
-# cliffy
-YAML-based CLI generator and manager
+# cliffy :mountain:
+YAML-defined CLI generator and manager
 
 ## Features
-* Generate and load YAML-defined CLIs
+* Build and generate YAML-defined CLIs
+* Dynamic abstractions to rapidly build and test CLIs
 * Manage CLIs- load, enable, disable, update, and remove
 * Easily shareable- just send the manifest and load it
-* Dynamic abstractions to rapidly build and test CLIs
 * Built-in shell and Python script support
 
 

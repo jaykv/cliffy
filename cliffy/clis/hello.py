@@ -1,4 +1,4 @@
-## Generated hello on 2023-03-04 12:05:24.235285
+## Generated hello on 2023-03-08 23:58:09.476453
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 

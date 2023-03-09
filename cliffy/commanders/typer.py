@@ -19,7 +19,7 @@ cli = typer.Typer(context_settings=CONTEXT_SETTINGS"""
         if self.cli_options:
             self.cli += f",{self.parser.to_args(self.cli_options)}"
         if self.help:
-            self.cli += f',help="{self.help}"'
+            self.cli += f', help="{self.help}"'
 
         self.cli += f""")
 __version__ = '{self.command_config['version']}'

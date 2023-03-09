@@ -2,7 +2,7 @@
 name = "cliffy"
 version = "0.2.0"
 description = "$ cli generate --dynamic --from-yaml"
-authors = ["Jay"]
+authors = ["Jay <jay.github0@gmail.com>"]
 repository = "https://github.com/jaykv/cliffy"
 readme = "README.md"
 packages = [{include = "cliffy"}]

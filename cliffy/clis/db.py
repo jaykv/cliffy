@@ -1,4 +1,4 @@
-## Generated db on 2023-02-27 20:28:49.241529
+## Generated db on 2023-03-06 23:24:08.447426
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 from rich.console import Console
