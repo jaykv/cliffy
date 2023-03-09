@@ -1,3 +1,7 @@
+![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/cliffy/python-app.yaml?branch=main)
+![PyPI](https://img.shields.io/pypi/v/cliffy)
+![GitHub](https://img.shields.io/github/license/jaykv/cliffy)
+
 # cliffy :mountain:
 YAML-defined CLI generator and manager
 
@@ -5,9 +9,10 @@ YAML-defined CLI generator and manager
 * Build and generate YAML-defined CLIs
 * Dynamic abstractions to rapidly build and test CLIs
 * Manage CLIs- load, enable, disable, update, and remove
-* Easily shareable- just send the manifest and load it
 * Built-in shell and Python script support
 
+## Install
+`pip install cliffy`
 
 ## Usage
 * `cli init <cli name>`: Generate a template CLI manifest
@@ -18,7 +23,7 @@ YAML-defined CLI generator and manager
 * `cli enable <cli name>`: Enable a disabled CLI
 * `cli unload <cli name>`: Remove a loaded CLI
 
-### Example:
+### Example
 
 1. Define a manifest
 ```yaml
@@ -39,6 +44,7 @@ $ cli load hello.yaml
 3. Run CLI directly
 ![hello-demo](docs/images/hello.png)
 
+For more examples, check [examples](examples/) directory.
 
 ## Development
 ```
