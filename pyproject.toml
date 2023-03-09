@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cliffy"
-version = "0.2.0"
+version = "0.2.1"
 description = "$ cli generate --dynamic --from-yaml"
 authors = ["Jay <jay.github0@gmail.com>"]
 repository = "https://github.com/jaykv/cliffy"
