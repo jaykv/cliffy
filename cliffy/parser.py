@@ -99,6 +99,11 @@ class Parser:
         if is_required:
             arg_type = arg_type[:-1]
 
+        # check for a type def that matches arg_type
+        if arg_type in self.types:
+            return f"{arg_name}: {self.types[arg_type]},"
+
+        # otherwise parse it
         parsed_arg_type = self.build_param_type(
             arg_name,
             arg_type,
@@ -108,12 +113,7 @@ class Parser:
             is_required=is_required,
         )
 
-        # check for type def that matches arg_type
-        if arg_type not in self.types:
-            return parsed_arg_type
-
-        ## Override with types refs
-        return f"{arg_name}: {self.types[arg_type]},"
+        return parsed_arg_type
 
     def parse_args(self, command) -> str:
         if not self.args:

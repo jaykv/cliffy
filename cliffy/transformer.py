@@ -12,7 +12,7 @@ from .commanders.typer import TyperCommander
 
 PYTHON_BIN = f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
-COMMANDEER_CLI_DIR = f"{pathlib.Path(__file__).parent.resolve()}/clis"
+CLIFFY_CLI_DIR = f"{pathlib.Path(__file__).parent.resolve()}/clis"
 
 
 class Transformer:
@@ -40,7 +40,7 @@ class Transformer:
             print("load_manifest", e)
 
     def deploy_cli(self) -> bool:
-        cli_path = f"{COMMANDEER_CLI_DIR}/{self.command_config['name']}.py"
+        cli_path = f"{CLIFFY_CLI_DIR}/{self.command_config['name']}.py"
         write_to_file(cli_path, self.cli.code)
 
     def deploy_script(self) -> bool:
@@ -50,7 +50,7 @@ class Transformer:
     def get_cli_script(self) -> None:
         return f"""#!{PYTHON_EXECUTABLE}
 import sys
-from commandeer.clis.{self.command_config['name']} import cli
+from cliffy.clis.{self.command_config['name']} import cli
 
 if __name__ == '__main__':
     sys.exit(cli())"""

@@ -1,15 +1,22 @@
-# commandeer
-$ cli generate --dynamic --from-yaml
+# cliffy :mountain:
+YAML-defined CLI generator and manager
 
 ## Features
-* Generate and load YAML-defined CLIs
-* Easily sharable- just send the CLI manifest and load it wherever
-* Dynamic abstractions to streamline CLI building
-* Shell and Python script support
+* Build and generate YAML-defined CLIs
+* Dynamic abstractions to rapidly build and test CLIs
+* Manage CLIs- load, enable, disable, update, and remove
+* Easily shareable- just send the manifest and load it
+* Built-in shell and Python script support
 
 
 ## Usage
-`commandeer load <manifest>`
+* `cli init <cli name>`: Generate a template CLI manifest
+* `cli load <manifest>`: Add a new CLI based on the manifest
+* `cli render <manifest>`: Render the YAML manifest into executable code
+* `cli list`: Ouput a list of loaded CLIs 
+* `cli disable <cli name>`: Disable a CLI
+* `cli enable <cli name>`: Enable a disabled CLI
+* `cli unload <cli name>`: Remove a loaded CLI
 
 ### Example:
 
@@ -26,7 +33,7 @@ commands:
 
 2. Load CLI
 ```
-$ commandeer load hello.yaml
+$ cli load hello.yaml
 ```
 
 3. Run CLI directly
@@ -36,5 +43,5 @@ $ commandeer load hello.yaml
 ## Development
 ```
 poetry shell
-commandeer -h
+cli -h
 ```

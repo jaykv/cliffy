@@ -27,9 +27,38 @@ def load(manifest):
 @cli.command()
 @click.argument('manifest', type=click.File('rb'))
 def render(manifest):
-    """Display rendered CLI code with a given manifest"""
+    """Render the manifest as code"""
     cli = Transformer(manifest).render_cli()
     syntax = Syntax(cli.code, "python", theme="monokai", line_numbers=False)
     console = Console()
     console.print(syntax)
     click.secho(f"# Rendered {cli.name} CLI v{cli.version} ~", fg="green")
+
+
+@cli.command()
+@click.argument('cli_name', type=str)
+def init(cli_name):
+    click.echo("# TODO")
+
+
+@cli.command()
+@click.argument('cli_name', type=str)
+def enable(cli_name):
+    click.echo("# TODO")
+
+
+@cli.command()
+@click.argument('cli_name', type=str)
+def disable(cli_name):
+    click.echo("# TODO")
+
+
+@cli.command("list")
+def list_clis():
+    click.echo("# TODO")
+
+
+@cli.command()
+@click.argument('cli_name', type=str)
+def unload(cli_name):
+    click.echo("# TODO")

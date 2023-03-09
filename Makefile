@@ -1,6 +1,6 @@
 check: lint test
 
-SOURCE_FILES=commandeer
+SOURCE_FILES=cliffy
 
 install:
 	pip install -e .
@@ -20,15 +20,15 @@ publish: package
 	twine upload dist/*
 
 format:
-	autoflake --in-place --recursive --remove-all-unused-imports --ignore-init-module-imports ${SOURCE_FILES} --exclude=commandeer/clis
-	isort --project=commandeer ${SOURCE_FILES} --skip=commandeer/clis
-	black ${SOURCE_FILES} --exclude=commandeer/clis
+	autoflake --in-place --recursive --remove-all-unused-imports --ignore-init-module-imports ${SOURCE_FILES} --exclude=cliffy/clis
+	isort --project=cliffy ${SOURCE_FILES} --skip=cliffy/clis
+	black ${SOURCE_FILES} --exclude=cliffy/clis
 
 lint:
-	isort --check --diff --project=commandeer ${SOURCE_FILES} --skip=commandeer/clis
-	black --check --diff ${SOURCE_FILES} --exclude=commandeer/clis
-	flake8 $(SOURCE_FILES) --count --show-source --statistics --exclude=commandeer/clis
-	flake8 $(SOURCE_FILES) --count --exit-zero --statistics --exclude=commandeer/clis
+	isort --check --diff --project=cliffy ${SOURCE_FILES} --skip=cliffy/clis
+	black --check --diff ${SOURCE_FILES} --exclude=cliffy/clis
+	flake8 $(SOURCE_FILES) --count --show-source --statistics --exclude=cliffy/clis
+	flake8 $(SOURCE_FILES) --count --exit-zero --statistics --exclude=cliffy/clis
 
 shell:
 	source .venv/bin/activate
