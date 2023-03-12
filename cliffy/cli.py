@@ -16,13 +16,14 @@ def cli():
 
 
 @cli.command()
-@click.argument('manifest', type=click.File('rb'))
-def load(manifest):
-    """Load a CLI for a given manifest"""
-    cli = Transformer(manifest).load_cli()
-    click.secho(f"~ Generated {cli.name} CLI v{cli.version} ~", fg="green")
-    click.secho(click.style("$", fg="magenta"), nl=False)
-    click.echo(f" {cli.name} -h")
+@click.argument('manifests', type=click.File('rb'), nargs=-1)
+def load(manifests):
+    """Load CLI for given manifest(s)"""
+    for manifest in manifests:
+        cli = Transformer(manifest).load_cli()
+        click.secho(f"~ Generated {cli.name} CLI v{cli.version} ~", fg="green")
+        click.secho(click.style("$", fg="magenta"), nl=False)
+        click.echo(f" {cli.name} -h")
 
 
 @cli.command()
