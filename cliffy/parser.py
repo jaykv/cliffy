@@ -35,6 +35,7 @@ class Parser:
     def parse_command_block(self, script: str):
         ## Bash commands start with $
         if script.startswith('$'):
+            script = script.replace('$ ', '$', 1)
             script = '>' + script[1:]
             return " " * 4 + pybash.Transformer.transform_source(script)
 
@@ -53,7 +54,7 @@ class Parser:
                 else:
                     script_block.append(block_elem)
 
-            code = f'"""\n{help_text}\n"""' if help_text else ""
+            code = f'    """\n    {help_text}\n    """\n' if help_text else ""
             code += "".join(map(self.parse_command_block, script_block))
         else:
             code = self.parse_command_block(block)
@@ -81,10 +82,10 @@ class Parser:
             else:
                 parsed_arg_type += f"({default_val}"
 
-            if aliases:
-                parsed_arg_type += f', "--{arg_name}"'
-                for alias in aliases:
-                    parsed_arg_type += f', "{alias}"'
+        if aliases:
+            parsed_arg_type += f', "--{arg_name}"'
+            for alias in aliases:
+                parsed_arg_type += f', "{alias}"'
 
         parsed_arg_type += '),'
         return parsed_arg_type

@@ -41,33 +41,33 @@ class Commander:
             # Sub command- nested commands
             group = command.name.split('.')[:-1][-1]
 
-            # Add the group
             if group not in self.groups:
                 self.add_group(group, command)
 
-            # Save to groups dict
             self.groups[group][command.name] = command
-
-            # Add the subcommand
             self.add_sub_command(command, group)
         else:
             # Group command- top-level commands
             if command.name not in self.groups:
                 self.groups[command.name] = {}
 
-            # Add the group command
+                # TODO: by default, add a group app from here to allow for group-level invokes
+                # self.add_group(command.name, command)
+
             self.add_group_command(command)
 
     def add_imports(self) -> None:
         if isinstance(self.manifest.imports, str):
-            self.cli += self.manifest.imports
+            self.cli += self.manifest.imports + "\n"
         elif isinstance(self.manifest.imports, list):
             for _import in self.manifest.imports:
-                self.cli += _import
+                self.cli += _import + "\n"
 
     def add_functions(self) -> None:
+        self.cli += "\n"
         for func in self.manifest.functions:
             self.cli += f"{func}"
+        self.cli += "\n"
 
     def add_greedy_commands(self) -> None:
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""

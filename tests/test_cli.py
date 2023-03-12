@@ -1,4 +1,3 @@
-import re
 from click.testing import CliRunner
 from cliffy.cli import cli, load, render, init
 

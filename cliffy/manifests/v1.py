@@ -85,32 +85,33 @@ imports:
 {cls.get_field_description('functions', as_comment=True)}
 functions:
     - |
-        def greet(name: str):
-            print("hello " + name")
+        def greet_name(name: str):
+            print("hello " + name)
 
 {cls.get_field_description('types', as_comment=True)}
 types:
-    - Language: str = typer.Option(help="Language to greet in", prompt=True)
+    Language: str = typer.Option("english", "-l", help="Language to greet in", prompt=True)
 
 {cls.get_field_description('args', as_comment=True)}
 args:
-    greet: [-n|--name: str!]                      # a REQUIRED option
+    world: [--name|-n: str!]                      # a REQUIRED option
     greet.all: 
         - names: str!                             # a REQUIRED param as denoted by the ! at the end
         - mood: str = "happy"                     # an OPTIONAL param that defaults to "happy"
-        - -l|--language: Language = "english"     # an option with a default that uses Language type as arg definition
+        - --language: Language                    # an option with a default that uses Language type as arg definition
 
 {cls.get_field_description('commands', as_comment=True)}
 commands:
-    # this is a parent command that will get invoked with: hello list
-    greet: |
-        \"\"\"
-        Help text for list
-        \"\"\"
-        print("hello from python")
-        $ echo "i can also prefix lines with $ to run bash commands"
+    # this is a parent command that will get invoked with: hello world
+    world: 
+        - |
+            \"\"\"
+            Help text for list
+            \"\"\"
+            greet_name("world")
+        - $ echo "i can also mix-and-match this command script to run bash commands"
     
-    # this is a nested command that will get invoked with: hello list all
+    # this is a nested command that will get invoked with: hello greet all
     greet.all: 
         - help: Help text for list.all       # you can also define help text like this
         - $ echo "hello all"                 # this is a bash command that will get converted to python subprocess call
