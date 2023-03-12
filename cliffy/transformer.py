@@ -41,20 +41,20 @@ class Transformer:
             print("load_manifest", e)
             return {}
 
-    def deploy_cli(self) -> bool:
-        cli_path = f"{CLIFFY_CLI_DIR}/{self.command_config['name']}.py"
+    def deploy_cli(self) -> str:
+        cli_path = f"{CLIFFY_CLI_DIR}/{self.manifest.name}.py"
         write_to_file(cli_path, self.cli.code)
-        return True
+        return cli_path
 
-    def deploy_script(self) -> bool:
-        script_path = f"{PYTHON_BIN}/{self.command_config['name']}"
+    def deploy_script(self) -> str:
+        script_path = f"{PYTHON_BIN}/{self.manifest.name}"
         write_to_file(script_path, self.get_cli_script(), executable=True)
-        return True
+        return script_path
 
     def get_cli_script(self) -> str:
         return f"""#!{PYTHON_EXECUTABLE}
 import sys
-from cliffy.clis.{self.command_config['name']} import cli
+from cliffy.clis.{self.manifest.name} import cli
 
 if __name__ == '__main__':
     sys.exit(cli())"""

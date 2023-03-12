@@ -1,7 +1,5 @@
-manifestVersion: v1 # optional (Default will be the latest)
 name: hello
 version: 0.1.0
-
 
 commands:
   bash: $echo "hello from bash"

@@ -1,6 +1,8 @@
-from typing import Union
+from typing import Literal, Union
 
 from pydantic import BaseModel, Field
+
+from ..helpers import wrap_as_comment
 
 
 class CLIManifest(BaseModel):
@@ -16,12 +18,14 @@ class CLIManifest(BaseModel):
         "",
         description="A brief description of the CLI that is displayed when the user invokes the --help or -h option.",
     )
-    commands: dict[str, Union[str, list[str]]] = Field(
+    commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = Field(
         {},
         description="A dictionary containing the command definitions for the CLI. "
-        "Each command should have a unique key, which can either reference nested subcommands joined by '.' "
-        "in between each level OR just a parent-level command. The value is the python code to run "
-        "when the command is called OR a list of bash commands to run (prefixed with $).",
+        "Each command should have a unique key- which can be either a group command or nested subcommands. "
+        "Nested subcommands are joined by '.' in between each level. "
+        "A special (*) wildcard can be used to spread the subcommand to all group-level commands. "
+        "The value is the python code to run when the command is called "
+        "OR a list of bash commands to run (prefixed with $).",
     )
     imports: Union[str, list[str]] = Field(
         "",
@@ -37,8 +41,8 @@ class CLIManifest(BaseModel):
     args: dict[str, list] = Field(
         {},
         description="A dictionary containing the arguments and options for each command. "
-        "Each key in the dictionary should correspond to a command in the commands section "
-        "and the value should be a list of dictionaries representing the params and options for that command.",
+        "Each key in the dictionary should correspond to a command in the commands section. "
+        "The value should be a list of dictionaries representing the params and options for that command.",
     )
     types: dict[str, str] = Field(
         {},
@@ -50,3 +54,96 @@ class CLIManifest(BaseModel):
         {},
         Description="A dictionary for any additional options that can be used to customize the behavior of the CLI.",
     )
+
+    @classmethod
+    def get_field_description(cls, field_name, as_comment=False) -> str:
+        field = cls.__fields__.get(field_name)
+        if field and field.field_info.description:
+            if as_comment:
+                return wrap_as_comment(field.field_info.description, split_on=". ")
+            return field.field_info.description
+        return ""
+
+    @classmethod
+    def get_template(cls, name: str) -> str:
+        return f"""# cliffy v1 template
+manifestVersion: v1
+
+{cls.get_field_description('name', as_comment=True)}
+name: {name} 
+
+{cls.get_field_description('version', as_comment=True)}
+version: 0.1.0
+
+{cls.get_field_description('imports', as_comment=True)}
+imports:
+    - import os
+    - |
+        from collections import defaultdict
+        import re
+
+{cls.get_field_description('functions', as_comment=True)}
+functions:
+    - |
+        def greet(name: str):
+            print("hello " + name")
+
+{cls.get_field_description('types', as_comment=True)}
+types:
+    - Language: str = typer.Option(help="Language to greet in", prompt=True)
+
+{cls.get_field_description('args', as_comment=True)}
+args:
+    greet: [-n|--name: str!]                      # a REQUIRED option
+    greet.all: 
+        - names: str!                             # a REQUIRED param as denoted by the ! at the end
+        - mood: str = "happy"                     # an OPTIONAL param that defaults to "happy"
+        - -l|--language: Language = "english"     # an option with a default that uses Language type as arg definition
+
+{cls.get_field_description('commands', as_comment=True)}
+commands:
+    # this is a parent command that will get invoked with: hello list
+    greet: |
+        \"\"\"
+        Help text for list
+        \"\"\"
+        print("hello from python")
+        $ echo "i can also prefix lines with $ to run bash commands"
+    
+    # this is a nested command that will get invoked with: hello list all
+    greet.all: 
+        - help: Help text for list.all       # you can also define help text like this
+        - $ echo "hello all"                 # this is a bash command that will get converted to python subprocess call
+        - print("greetings from python")     # this python code will get directly invoked
+
+"""
+
+    @classmethod
+    def get_raw_template(cls, name: str) -> str:
+        return f"""
+# cliffy v1 raw template
+
+manifestVersion: v1
+
+{cls.get_field_description('name', as_comment=True)}
+name: {name} 
+
+{cls.get_field_description('version', as_comment=True)}
+version: 0.1.0
+
+{cls.get_field_description('imports', as_comment=True)}
+imports:
+
+{cls.get_field_description('functions', as_comment=True)}
+functions:
+
+{cls.get_field_description('types', as_comment=True)}
+types:
+
+{cls.get_field_description('args', as_comment=True)}
+args:
+
+{cls.get_field_description('commands', as_comment=True)}
+commands:
+
+"""

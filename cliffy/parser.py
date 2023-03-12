@@ -1,5 +1,5 @@
 ## Command parser
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Literal, Optional, Tuple, Union
 
 import pybash
 
@@ -43,9 +43,18 @@ class Parser:
             parsed_script += " " * 4 + line + "\n"
         return parsed_script
 
-    def parse_command(self, block: Union[str, list[str]]) -> str:
+    def parse_command(self, block: Union[str, list[Union[str, dict[Literal['help'], str]]]]) -> str:
         if isinstance(block, list):
-            code = "".join(map(self.parse_command_block, block))
+            script_block = []
+            help_text = ""
+            for block_elem in block:
+                if isinstance(block_elem, dict):
+                    help_text = block_elem.get('help', '')
+                else:
+                    script_block.append(block_elem)
+
+            code = f'"""\n{help_text}\n"""' if help_text else ""
+            code += "".join(map(self.parse_command_block, script_block))
         else:
             code = self.parse_command_block(block)
 
