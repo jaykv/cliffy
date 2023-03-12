@@ -1,14 +1,14 @@
 ## Command parser
-from typing import Any, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import pybash
 
+from .manifests import Manifest
+
 
 class Parser:
-    def __init__(self, command_config) -> None:
-        self.command_config: dict = command_config
-        self.args: dict = self.command_config.get("args", {})
-        self.types: dict = self.command_config.get("types", {})
+    def __init__(self, manifest: Manifest) -> None:
+        self.manifest = manifest
 
     def is_param_required(self, param_type: str) -> bool:
         return (
@@ -21,7 +21,7 @@ class Parser:
         return '-' in param_name
 
     def get_default_param_val(self, param_type: str) -> str:
-        return param_type.split('=')[1].strip() if '=' in param_type else None
+        return param_type.split('=')[1].strip() if '=' in param_type else ""
 
     def capture_param_aliases(self, param_name: str) -> Tuple[str, list[str]]:
         if '|' not in param_name:
@@ -56,7 +56,7 @@ class Parser:
         arg_name: str,
         arg_type: str,
         typer_cls: str,
-        aliases: list[str] = None,
+        aliases: Optional[list[str]] = None,
         default_val: Any = None,
         is_required: bool = False,
     ) -> str:
@@ -100,8 +100,8 @@ class Parser:
             arg_type = arg_type[:-1]
 
         # check for a type def that matches arg_type
-        if arg_type in self.types:
-            return f"{arg_name}: {self.types[arg_type]},"
+        if arg_type in self.manifest.types:
+            return f"{arg_name}: {self.manifest.types[arg_type]},"
 
         # otherwise parse it
         parsed_arg_type = self.build_param_type(
@@ -116,10 +116,10 @@ class Parser:
         return parsed_arg_type
 
     def parse_args(self, command) -> str:
-        if not self.args:
+        if not self.manifest.args:
             return ""
 
-        command_args = self.args.get(command.name)
+        command_args = self.manifest.args.get(command.name)
         if not command_args:
             return ""
 

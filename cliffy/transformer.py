@@ -7,8 +7,9 @@ from typing import TextIO
 
 import yaml
 
-from .commander import build_cli
+from .commander import CLI, build_cli
 from .commanders.typer import TyperCommander
+from .manifests import get_cli_manifest
 
 PYTHON_BIN = f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
@@ -18,16 +19,16 @@ CLIFFY_CLI_DIR = f"{pathlib.Path(__file__).parent.resolve()}/clis"
 class Transformer:
     """Loads command manifest and transforms it into a CLI"""
 
-    def __init__(self, manifest: TextIO) -> None:
-        self.manifest: TextIO = manifest
-        self.command_config: dict = self.load_manifest()
-        self.cli: str = ""
+    def __init__(self, manifest_io: TextIO) -> None:
+        self.manifest_io = manifest_io
+        self.command_config = self.load_manifest()
+        self.manifestVersion = self.command_config.pop('manifestVersion', '')
+        self.manifest = get_cli_manifest(self.manifestVersion)(**self.command_config)
 
     def render_cli(self) -> None:
-        self.cli = build_cli(self.command_config, commander_cls=TyperCommander)
-        return self.cli
+        self.cli = build_cli(self.manifest, commander_cls=TyperCommander)
 
-    def load_cli(self) -> str:
+    def load_cli(self) -> CLI:
         self.render_cli()
         self.deploy_script()
         self.deploy_cli()
@@ -35,19 +36,22 @@ class Transformer:
 
     def load_manifest(self) -> dict:
         try:
-            return yaml.safe_load(self.manifest)
+            return yaml.safe_load(self.manifest_io)
         except yaml.YAMLError as e:
             print("load_manifest", e)
+            return {}
 
     def deploy_cli(self) -> bool:
         cli_path = f"{CLIFFY_CLI_DIR}/{self.command_config['name']}.py"
         write_to_file(cli_path, self.cli.code)
+        return True
 
     def deploy_script(self) -> bool:
         script_path = f"{PYTHON_BIN}/{self.command_config['name']}"
         write_to_file(script_path, self.get_cli_script(), executable=True)
+        return True
 
-    def get_cli_script(self) -> None:
+    def get_cli_script(self) -> str:
         return f"""#!{PYTHON_EXECUTABLE}
 import sys
 from cliffy.clis.{self.command_config['name']} import cli

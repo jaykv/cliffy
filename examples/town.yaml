@@ -1,3 +1,4 @@
+manifestVersion: v1 # optional (Default will be the latest)
 name: town
 version: 0.1.1
 
@@ -6,10 +7,9 @@ imports: |
   import time
 
 functions:
-  format_money:
-    - "money: float"
-    - |
-      return "${:.2f}".format(money)
+  - |
+    def format_money(money: float):
+        return "${:.2f}".format(money)
 
 commands:
   land.build: |

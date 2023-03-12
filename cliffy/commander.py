@@ -1,5 +1,7 @@
 from collections import defaultdict, namedtuple
+from typing import DefaultDict
 
+from .manifests import Manifest
 from .parser import Parser
 
 Command = namedtuple('Command', ['name', 'script'])
@@ -9,24 +11,21 @@ CLI = namedtuple('CLI', ['name', 'version', 'code'])
 class Commander:
     """Generates commands based on the command config"""
 
-    def __init__(self, command_config: dict) -> None:
-        self.command_config: dict = command_config
-        self.commands: dict = self.command_config.get("commands", {})
-        self.functions: dict = self.command_config.get("functions", {})
-        self.imports: str = self.command_config.get("imports", "")
-        self.parser: Parser = Parser(self.command_config)
+    __slots__ = ('manifest', 'parser', 'cli', 'groups', 'greedy')
+
+    def __init__(self, manifest: Manifest) -> None:
+        self.manifest = manifest
+        self.parser = Parser(self.manifest)
         self.cli: str = ""
-        self.groups: dict = defaultdict(lambda: defaultdict())
-        self.greedy: list = []
-        self.help: str = self.command_config.get("help")
-        self.cli_options: dict = self.command_config.get("cli_options", {})
+        self.groups: DefaultDict[str, dict] = defaultdict(lambda: defaultdict())
+        self.greedy = []
 
     def build_cli(self) -> None:
         self.add_base_imports()
         self.add_imports()
         self.add_base_cli()
         self.add_functions()
-        for name, script in self.commands.items():
+        for name, script in self.manifest.commands.items():
             current_command = Command(name, script)
             self.add_command(current_command)
 
@@ -60,17 +59,15 @@ class Commander:
             self.add_group_command(command)
 
     def add_imports(self) -> None:
-        if self.imports:
-            self.cli += self.imports
+        if isinstance(self.manifest.imports, str):
+            self.cli += self.manifest.imports
+        elif isinstance(self.manifest.imports, list):
+            for _import in self.manifest.imports:
+                self.cli += _import
 
     def add_functions(self) -> None:
-        for func_name, func in self.functions.items():
-            params, body = func
-            self.cli += f"""
-def {func_name}({params}):
-{self.parser.indent_block(body)}
-
-"""
+        for func in self.manifest.functions:
+            self.cli += f"{func}"
 
     def add_greedy_commands(self) -> None:
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""
@@ -82,9 +79,9 @@ def {func_name}({params}):
                     lazy_command_script = greedy_command.script.replace('{{(*)}}', group)
 
                     # lazy load the greedy args
-                    greedy_command_args = self.parser.args.get(greedy_command.name)
+                    greedy_command_args = self.manifest.args.get(greedy_command.name)
                     if greedy_command_args:
-                        self.parser.args[lazy_command_name] = greedy_command_args
+                        self.manifest.args[lazy_command_name] = greedy_command_args
 
                     # lazy parse
                     self.add_command(Command(lazy_command_name, lazy_command_script))
@@ -93,7 +90,7 @@ def {func_name}({params}):
         """Greedy strings must contain (*)- marked to be evaluated lazily."""
         return '(*)' in val
 
-    def add_group(self) -> None:
+    def add_group(self, group: str, command: Command) -> None:
         raise NotImplementedError
 
     def add_base_imports(self) -> None:
@@ -109,7 +106,7 @@ def {func_name}({params}):
         raise NotImplementedError
 
 
-def build_cli(command_config: dict, commander_cls=Commander) -> CLI:
-    commander = commander_cls(command_config)
+def build_cli(manifest: Manifest, commander_cls=Commander) -> CLI:
+    commander = commander_cls(manifest)
     commander.build_cli()
-    return CLI(command_config['name'], command_config['version'], commander.cli)
+    return CLI(manifest.name, manifest.version, commander.cli)

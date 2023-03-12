@@ -28,11 +28,12 @@ def load(manifest):
 @click.argument('manifest', type=click.File('rb'))
 def render(manifest):
     """Render the manifest as code"""
-    cli = Transformer(manifest).render_cli()
-    syntax = Syntax(cli.code, "python", theme="monokai", line_numbers=False)
+    T = Transformer(manifest)
+    T.render_cli()
+    syntax = Syntax(T.cli.code, "python", theme="monokai", line_numbers=False)
     console = Console()
     console.print(syntax)
-    click.secho(f"# Rendered {cli.name} CLI v{cli.version} ~", fg="green")
+    click.secho(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
 
 
 @cli.command()
