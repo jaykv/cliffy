@@ -7,7 +7,7 @@ class TyperCommander(Commander):
     """Generates commands based on the command config"""
 
     def add_base_imports(self):
-        self.cli = f"""## Generated {self.command_config['name']} on {datetime.datetime.now()}
+        self.cli = f"""## Generated {self.manifest.name} on {datetime.datetime.now()}
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 """
@@ -16,14 +16,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
         self.cli += """
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS"""
 
-        if self.cli_options:
-            self.cli += f",{self.parser.to_args(self.cli_options)}"
-        if self.help:
-            self.cli += f', help="{self.help}"'
+        if self.manifest.cli_options:
+            self.cli += f",{self.parser.to_args(self.manifest.cli_options)}"
+        if self.manifest.help:
+            self.cli += f', help="{self.manifest.help}"'
 
         self.cli += f""")
-__version__ = '{self.command_config['version']}'
-__cli_name__ = '{self.command_config['name']}'
+__version__ = '{self.manifest.version}'
+__cli_name__ = '{self.manifest.name}'
 
 def version_callback(value: bool):
     if value:
@@ -35,7 +35,7 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
     pass
 """
 
-    def add_group(self, group, command: Command) -> None:
+    def add_group(self, group: str, command: Command) -> None:
         self.cli += f"""{group}_app = typer.Typer(); cli.add_typer({group}_app, name="{group}");"""
 
     def add_group_command(self, command: Command) -> None:
