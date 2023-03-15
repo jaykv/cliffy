@@ -23,12 +23,12 @@ format:
 	autoflake --in-place --recursive --remove-all-unused-imports --ignore-init-module-imports ${SOURCE_FILES} --exclude=cliffy/clis
 	isort --project=cliffy ${SOURCE_FILES} --skip=cliffy/clis
 	black ${SOURCE_FILES} --exclude=cliffy/clis
+	ruff ${SOURCE_FILES} --fix
 
 lint:
 	isort --check --diff --project=cliffy ${SOURCE_FILES} --skip=cliffy/clis
 	black --check --diff ${SOURCE_FILES} --exclude=cliffy/clis
-	flake8 $(SOURCE_FILES) --count --show-source --statistics --exclude=cliffy/clis
-	flake8 $(SOURCE_FILES) --count --exit-zero --statistics --exclude=cliffy/clis
+	ruff $(SOURCE_FILES)
 
 shell:
 	source .venv/bin/activate

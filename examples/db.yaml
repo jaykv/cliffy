@@ -1,3 +1,4 @@
+manifestVersion: v1 # optional (Default will be the latest)
 name: db
 version: 0.1.0
 help: Database CLI

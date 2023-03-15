@@ -7,14 +7,14 @@ class ClickCommander(Commander):
     """Generates commands based on the command config"""
 
     def add_base_imports(self):
-        self.cli = f"""## Generated {self.command_config['name']} on {datetime.datetime.now()}
+        self.cli = f"""## Generated {self.manifest.name} on {datetime.datetime.now()}
 import rich_click as click; import subprocess; CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 """
 
     def add_base_cli(self):
         self.cli += f"""
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option('{self.command_config['version']}')
+@click.version_option('{self.manifest.version}')
 def cli():
     pass
 """
