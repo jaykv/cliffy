@@ -2,7 +2,7 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
-from ..helpers import wrap_as_comment
+from ..helper import wrap_as_comment
 
 
 class CLIManifest(BaseModel):
@@ -17,6 +17,12 @@ class CLIManifest(BaseModel):
     help: str = Field(
         "",
         description="A brief description of the CLI that is displayed when the user invokes the --help or -h option.",
+    )
+    includes: list[str] = Field(
+        [],
+        description="!TODO! List of external CLI manifest paths to include into the main manifest. "
+        "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest "
+        "and finally, deep merges the merged manifest with the main manifest.",
     )
     commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = Field(
         {},
@@ -56,7 +62,7 @@ class CLIManifest(BaseModel):
     )
 
     @classmethod
-    def get_field_description(cls, field_name, as_comment=False) -> str:
+    def get_field_description(cls, field_name: str, as_comment: bool = False) -> str:
         field = cls.__fields__.get(field_name)
         if field and field.field_info.description:
             if as_comment:
@@ -74,6 +80,9 @@ name: {name}
 
 {cls.get_field_description('version', as_comment=True)}
 version: 0.1.0
+
+{cls.get_field_description('includes', as_comment=True)}
+includes: []
 
 {cls.get_field_description('imports', as_comment=True)}
 imports:
@@ -132,19 +141,22 @@ name: {name}
 {cls.get_field_description('version', as_comment=True)}
 version: 0.1.0
 
+{cls.get_field_description('includes', as_comment=True)}
+includes: []
+
 {cls.get_field_description('imports', as_comment=True)}
-imports:
+imports: []
 
 {cls.get_field_description('functions', as_comment=True)}
-functions:
+functions: []
 
 {cls.get_field_description('types', as_comment=True)}
-types:
+types: {{}}
 
 {cls.get_field_description('args', as_comment=True)}
-args:
+args: {{}}
 
 {cls.get_field_description('commands', as_comment=True)}
-commands:
+commands: {{}}
 
 """
