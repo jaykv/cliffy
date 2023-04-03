@@ -1,6 +1,0 @@
-name: hello
-version: 0.1.0
-
-commands:
-  bash: $echo "hello from bash"
-  python: print("hello from python")
