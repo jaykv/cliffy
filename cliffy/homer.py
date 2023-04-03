@@ -25,7 +25,7 @@ class Homer:
             )
 
     @staticmethod
-    def remove_cli_metadata(cli_name: str):
+    def remove_cli_metadata(cli_name: str) -> None:
         metadata_paths = glob.glob(f"{CLIFFY_HOME_PATH}/*/{cli_name}")
         for path in metadata_paths:
             parent_path = Path(path).parent.resolve()
@@ -40,3 +40,9 @@ class Homer:
     def get_cli_metadata(path: Path) -> tuple:
         decoded_runnerpath = b32decode(path.parent.name).decode('utf-8')
         return decoded_runnerpath, json.load(path.open("r"))
+
+    @staticmethod
+    def is_cliffy_cli(cli_name: str) -> bool:
+        if not glob.glob(f"{CLIFFY_HOME_PATH}/*/{cli_name}"):
+            return False
+        return True

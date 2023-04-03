@@ -87,10 +87,14 @@ def list_clis() -> None:
 @cli.command()
 @click.argument('cli_names', type=str, nargs=-1)
 def unload(cli_names: list[str]) -> None:
-    "Unload CLI by name"
-    for cli in cli_names:
-        Loader.unload_cli(cli)
-        Homer.remove_cli_metadata(cli)
+    "Remove a loaded CLI by name"
+    for cli_name in cli_names:
+        if Homer.is_cliffy_cli(cli_name):
+            Homer.remove_cli_metadata(cli_name)
+            Loader.unload_cli(cli_name)
+            click.secho(f"~ {cli_name} unloaded", fg="green")
+        else:
+            click.secho(f"~ {cli_name} not found", fg="red")
 
 
 @cli.command()
