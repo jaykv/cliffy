@@ -20,7 +20,7 @@ class CLIManifest(BaseModel):
     )
     includes: list[str] = Field(
         [],
-        description="List of external CLI manifest paths to include into the main manifest. "
+        description="!TODO! List of external CLI manifest paths to include into the main manifest. "
         "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest "
         "and finally, deep merges the merged manifest with the main manifest.",
     )
