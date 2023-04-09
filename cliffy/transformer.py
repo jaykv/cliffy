@@ -17,10 +17,9 @@ class Transformer:
         self.command_config = self.load_manifest(manifest_io)
         self.manifest_version = self.command_config.pop('manifestVersion', 'v1')
 
-        if self.command_config.get("includes") and isinstance(self.command_config['includes'], list):
+        if self.command_config.get("includes"):
             self.includes_config = self.resolve_includes()
             cliffy_merger.merge(self.command_config, self.includes_config)
-            print(self.command_config)
 
         set_manifest_version(self.manifest_version)
         if as_include:
@@ -30,12 +29,11 @@ class Transformer:
             self.cli = build_cli(self.manifest, commander_cls=TyperCommander)
 
     def resolve_includes(self) -> dict:
-        include_transforms = map(self.resolve_include_by_path, self.command_config['includes'])
+        include_transforms = map(self.resolve_include_by_path, set(self.command_config['includes']))
         merged_config = {}
         for transformed_include in include_transforms:
             cliffy_merger.merge(merged_config, transformed_include.command_config)
 
-        print(merged_config)
         return merged_config
 
     @classmethod
