@@ -20,7 +20,7 @@ class CLIManifest(BaseModel):
     )
     includes: list[str] = Field(
         [],
-        description="!TODO! List of external CLI manifest paths to include into the main manifest. "
+        description="List of external CLI manifest paths to include into the main manifest. "
         "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest "
         "and finally, deep merges the merged manifest with the main manifest.",
     )
@@ -160,3 +160,14 @@ args: {{}}
 commands: {{}}
 
 """
+
+
+class IncludeManifest(BaseModel):
+    """Special manifest specifically to define the allowed named objects that can be included"""
+
+    commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = {}
+    imports: Union[str, list[str]] = []
+    functions: list[str] = []
+    args: dict[str, list] = {}
+    types: dict[str, str] = {}
+    cli_options: dict[str, str] = {}

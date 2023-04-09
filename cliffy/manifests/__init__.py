@@ -1,15 +1,12 @@
-from typing import Type
-
 from . import v1
 
-__all__ = ['Manifest', 'v1', 'get_cli_manifest']
-
 Manifest = v1.CLIManifest
+IncludeManifest = v1.IncludeManifest
 
 
-def get_cli_manifest(manifestVersion: str) -> Type:
+def set_manifest_version(manifestVersion: str) -> None:
     global Manifest
+    global IncludeManifest
     if manifestVersion == "v1":
         Manifest = v1.CLIManifest
-
-    return Manifest
+        IncludeManifest = v1.IncludeManifest

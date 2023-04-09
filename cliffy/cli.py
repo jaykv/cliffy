@@ -8,7 +8,7 @@ from rich.syntax import Syntax
 from .helper import print_rich_table, write_to_file
 from .homer import Homer
 from .loader import Loader
-from .manifests import get_cli_manifest
+from .manifests import Manifest, set_manifest_version
 from .transformer import Transformer
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -60,8 +60,8 @@ def render(manifest: TextIO) -> None:
 )
 def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
     """Generate a CLI manifest template"""
-    manifest = get_cli_manifest(version)
-    template = manifest.get_raw_template(cli_name) if raw else manifest.get_template(cli_name)
+    set_manifest_version(version)
+    template = Manifest.get_raw_template(cli_name) if raw else Manifest.get_template(cli_name)
 
     if render:
         syntax = Syntax(template, "yaml", theme="monokai", line_numbers=False)
@@ -69,6 +69,7 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
         console.print(syntax)
     else:
         write_to_file(f'{cli_name}.yaml', text=template)
+        click.secho(f"+ {cli_name}.yaml", fg="green")
 
 
 @cli.command("list")
