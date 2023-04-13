@@ -24,9 +24,16 @@ class CLIManifest(BaseModel):
         "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest "
         "and finally, deep merges the merged manifest with the main manifest.",
     )
+    vars: dict[str, str] = Field(
+        {},
+        description="A mapping defining manifest variables that can be referenced in any other blocks. "
+        "Env variables can be used in this section with ${some_env_var}. "
+        "Supports jinja2 formatted expressions as values. "
+        "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
+    )
     commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = Field(
         {},
-        description="A dictionary containing the command definitions for the CLI. "
+        description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "
         "Nested subcommands are joined by '.' in between each level. "
         "A special (*) wildcard can be used to spread the subcommand to all group-level commands. "
@@ -46,19 +53,19 @@ class CLIManifest(BaseModel):
     )
     args: dict[str, list] = Field(
         {},
-        description="A dictionary containing the arguments and options for each command. "
-        "Each key in the dictionary should correspond to a command in the commands section. "
-        "The value should be a list of dictionaries representing the params and options for that command.",
+        description="A mapping containing the arguments and options for each command. "
+        "Each key in the mapping should correspond to a command in the commands section. "
+        "The value should be a list of mappings representing the params and options for that command.",
     )
     types: dict[str, str] = Field(
         {},
-        description="A dictionary containing any shared type definitions. "
+        description="A mapping containing any shared type definitions. "
         "These types can be referenced by name in the args section to provide type annotations "
         "for params and options defined in the args section.",
     )
     cli_options: dict[str, str] = Field(
         {},
-        Description="A dictionary for any additional options that can be used to customize the behavior of the CLI.",
+        Description="A mapping for any additional options that can be used to customize the behavior of the CLI.",
     )
 
     @classmethod
