@@ -4,6 +4,7 @@ from typing import TextIO
 import rich_click as click
 from rich.console import Console
 from rich.syntax import Syntax
+from rich_click.rich_group import RichGroup
 
 from .helper import print_rich_table, write_to_file
 from .homer import Homer
@@ -14,7 +15,16 @@ from .transformer import Transformer
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+class RichAliasedGroup(RichGroup):
+    def get_command(self, ctx, cmd_name):
+        try:
+            cmd_name = ALIASES[cmd_name].name
+        except KeyError:
+            pass
+        return super().get_command(ctx, cmd_name or "")
+
+
+@click.group(context_settings=CONTEXT_SETTINGS, cls=RichAliasedGroup)
 @click.version_option()
 def cli() -> None:
     pass
@@ -31,6 +41,23 @@ def load(manifests: list[TextIO]) -> None:
         click.secho(f"~ Generated {T.cli.name} CLI v{T.cli.version} ~", fg="green")
         click.secho(click.style("$", fg="magenta"), nl=False)
         click.echo(f" {T.cli.name} -h")
+
+
+@cli.command()
+@click.argument('cli_names', type=str, nargs=-1)
+def update(cli_names: list[str]) -> None:
+    """Reloads CLI by name"""
+    for cli_name in cli_names:
+        cli_metadata = Homer.get_cli_metadata(cli_name)
+        if cli_metadata:
+            T = Transformer(open(cli_metadata.runner_path, "r"))
+            Loader.load_cli(T.cli)
+            Homer.save_cli_metadata(cli_metadata.runner_path, T.cli)
+            click.secho(f"~ Reloaded {T.cli.name} CLI v{T.cli.version} ~", fg="green")
+            click.secho(click.style("$", fg="magenta"), nl=False)
+            click.echo(f" {T.cli.name} -h")
+        else:
+            click.secho(f"~ {cli_name} not found", fg="red")
 
 
 @cli.command()
@@ -74,23 +101,21 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
 
 @cli.command("list")
 def list_clis() -> None:
-    "List of CLIs loaded"
-    metadata_paths = Homer.get_cli_metadata_paths()
+    "List all CLIs loaded"
     cols = ["Name", "Version", "Manifest"]
     rows = []
-    for path in metadata_paths:
-        runnerpath, metadata = Homer.get_cli_metadata(path)
-        rows.append([path.name, metadata.get("version", "error"), runnerpath])
+    for metadata in Homer.get_clis():
+        rows.append([metadata.cli_name, metadata.version, metadata.runner_path])
 
     print_rich_table(cols, rows, styles=["cyan", "magenta", "green"])
 
 
 @cli.command()
 @click.argument('cli_names', type=str, nargs=-1)
-def unload(cli_names: list[str]) -> None:
+def remove(cli_names: list[str]) -> None:
     "Remove a loaded CLI by name"
     for cli_name in cli_names:
-        if Homer.is_cliffy_cli(cli_name):
+        if Homer.get_cliffy_cli(cli_name):
             Homer.remove_cli_metadata(cli_name)
             Loader.unload_cli(cli_name)
             click.secho(f"~ {cli_name} unloaded", fg="green")
@@ -108,3 +133,9 @@ def enable(cli_name) -> None:
 @click.argument('cli_name', type=str)
 def disable(cli_name) -> None:
     click.echo("# TODO")
+
+
+ALIASES = {
+    "rm": remove,
+    "ls": list_clis,
+}

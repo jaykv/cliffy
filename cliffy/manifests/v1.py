@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal, Union
 
 from pydantic import BaseModel, Field
@@ -27,7 +28,7 @@ class CLIManifest(BaseModel):
     vars: dict[str, str] = Field(
         {},
         description="A mapping defining manifest variables that can be referenced in any other blocks. "
-        "Env variables can be used in this section with ${some_env_var}. "
+        "Environments variables can be used in this section with ${some_env_var} for dynamic parsing. "
         "Supports jinja2 formatted expressions as values. "
         "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
     )
@@ -91,6 +92,9 @@ version: 0.1.0
 {cls.get_field_description('includes', as_comment=True)}
 includes: []
 
+{cls.get_field_description('vars', as_comment=True)}
+vars: {{}}
+
 {cls.get_field_description('imports', as_comment=True)}
 imports:
     - import os
@@ -151,6 +155,9 @@ version: 0.1.0
 {cls.get_field_description('includes', as_comment=True)}
 includes: []
 
+{cls.get_field_description('vars', as_comment=True)}
+vars: {{}}
+
 {cls.get_field_description('imports', as_comment=True)}
 imports: []
 
@@ -178,3 +185,13 @@ class IncludeManifest(BaseModel):
     args: dict[str, list] = {}
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
+
+
+class CLIMetadata(BaseModel):
+    """Metadata model"""
+
+    cli_name: str
+    runner_path: str
+    version: str
+    loaded: datetime
+    manifest: str

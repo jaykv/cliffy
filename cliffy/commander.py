@@ -76,7 +76,7 @@ class Commander:
                 for group in self.groups:
                     # make it lazy and interpolate
                     lazy_command_name = greedy_command.name.replace('(*)', group)
-                    lazy_command_script = greedy_command.script.replace('{{(*)}}', group)
+                    lazy_command_script = greedy_command.script.replace('{(*)}', group)
 
                     # lazy load the greedy args
                     greedy_command_args = self.manifest.args.get(greedy_command.name)
