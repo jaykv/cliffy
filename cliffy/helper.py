@@ -41,6 +41,8 @@ def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
 
     return f"# {text}"
 
+def wrap_as_var(text: str) -> str:
+    return '{{' + text + '}}'
 
 def print_rich_table(cols: list[str], rows: list[list[str]], styles: list[str]) -> None:
     table = Table()

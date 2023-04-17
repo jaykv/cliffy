@@ -3,7 +3,7 @@ from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
-from ..helper import wrap_as_comment
+from ..helper import wrap_as_comment, wrap_as_var
 
 
 class CLIManifest(BaseModel):
@@ -93,7 +93,8 @@ version: 0.1.0
 includes: []
 
 {cls.get_field_description('vars', as_comment=True)}
-vars: {{}}
+vars:
+    default_mood: happy
 
 {cls.get_field_description('imports', as_comment=True)}
 imports:
@@ -117,7 +118,7 @@ args:
     world: [--name|-n: str!]                      # a REQUIRED option
     greet.all: 
         - names: str!                             # a REQUIRED param as denoted by the ! at the end
-        - mood: str = "happy"                     # an OPTIONAL param that defaults to "happy"
+        - mood: str = "{wrap_as_var("default_mood")}"          # an OPTIONAL param that uses a manifest var as default
         - --language: Language                    # an option with a default that uses Language type as arg definition
 
 {cls.get_field_description('commands', as_comment=True)}

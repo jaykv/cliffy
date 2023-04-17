@@ -76,11 +76,7 @@ class Parser:
             # Required param needs ...
             parsed_arg_type += "(..." if is_required else "(None"
         else:
-            # Optional if default_val given
-            if arg_type == "str":
-                parsed_arg_type += f"('{default_val}'"
-            else:
-                parsed_arg_type += f"({default_val}"
+            parsed_arg_type += f"({default_val}"
 
         if aliases:
             parsed_arg_type += f', "--{arg_name}"'
