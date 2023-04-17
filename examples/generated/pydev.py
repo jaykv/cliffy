@@ -1,8 +1,9 @@
-## Generated pydev on 2023-03-08 23:58:09.524916
+## Generated pydev on 2023-04-16 23:26:47.601299
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 import sys
 import subprocess
+
 
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
 __version__ = '0.1.0'
@@ -28,7 +29,7 @@ def run_cmd(cmd: str):
         print(f"Exit code: {e.returncode}")
         print(f"Output: {e.output.decode('utf-8').strip()}")
         sys.exit(1)
-    
+
     return result.stdout.decode('utf-8').strip()
 
 

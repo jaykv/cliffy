@@ -1,8 +1,9 @@
-## Generated town on 2023-03-06 23:21:54.033969
+## Generated town on 2023-04-16 23:26:47.609495
 import typer; import subprocess; from typing import Optional;
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
 import re
 import time
+
 
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
 __version__ = '0.1.1'
@@ -46,7 +47,7 @@ def land_buy(name: str = typer.Argument(..., help="Name"), money: float = typer.
 
 people_app = typer.Typer(); cli.add_typer(people_app, name="people");
 @people_app.command("add")
-def people_add(fullname: str = typer.Argument(...), age: int = typer.Argument(...), home: str = typer.Option(None)):
+def people_add(fullname: str = typer.Argument(...), age: int = typer.Argument(...), home: str = typer.Option(None, "--home", "-h")):
     """Add a person to town"""
     print(f"adding person {fullname}, {age}, {home}")
     
@@ -62,7 +63,7 @@ def people_remove(fullname: str = typer.Argument(...)):
 
 shops_app = typer.Typer(); cli.add_typer(shops_app, name="shops");
 @shops_app.command("build")
-def shops_build(name: str = typer.Argument(..., help="Name"), land: str = typer.Argument(...), type: str = typer.Option(None)):
+def shops_build(name: str = typer.Argument(..., help="Name"), land: str = typer.Argument(...), type: str = typer.Option(None, "--type", "-t")):
     """Build a shop"""
     print(f"building shop {name} ({type}) on land {land}")
     
@@ -111,7 +112,7 @@ def home_buy(address: str = typer.Argument(...), money: float = typer.Option(...
 
 
 @land_app.command("list")
-def land_list(limit: int = typer.Option(None)):
+def land_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of land"""
     print(f"listing land")
     
@@ -119,7 +120,7 @@ def land_list(limit: int = typer.Option(None)):
 
 
 @people_app.command("list")
-def people_list(limit: int = typer.Option(None)):
+def people_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of people"""
     print(f"listing people")
     
@@ -127,7 +128,7 @@ def people_list(limit: int = typer.Option(None)):
 
 
 @shops_app.command("list")
-def shops_list(limit: int = typer.Option(None)):
+def shops_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of shops"""
     print(f"listing shops")
     
@@ -135,7 +136,7 @@ def shops_list(limit: int = typer.Option(None)):
 
 
 @home_app.command("list")
-def home_list(limit: int = typer.Option(None)):
+def home_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of home"""
     print(f"listing home")
     
