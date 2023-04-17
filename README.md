@@ -126,7 +126,7 @@ commands:
         - print("greetings from python")     # this python code will get directly invoked
 
 ```
-For a barebones templatE: `cli init --raw`
+For a barebones template: `cli init --raw`
 
 ## Development
 ```
