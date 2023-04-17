@@ -47,8 +47,8 @@ commands:
     print(f"buying home {address} for {money}")
     print("test123")
   (*).list: |
-    """Get a list of {{(*)}}"""
-    print(f"listing {{(*)}}")
+    """Get a list of {(*)}"""
+    print(f"listing {(*)}")
 
 args:
   land.build: [name: Name!, address: str!, --value|-v: int = 100]

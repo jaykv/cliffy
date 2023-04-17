@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cliffy"
-version = "0.2.3"
+version = "0.2.4"
 description = "$ cli load from.yaml"
 authors = ["Jay <jay.github0@gmail.com>"]
 repository = "https://github.com/jaykv/cliffy"
@@ -15,6 +15,8 @@ pyyaml = "^6.0"
 typer = "^0.7.0"
 shellingham = "^1.5.0.post1"
 pydantic = "^1.10.6"
+deepmerge = "^1.1.0"
+jinja2 = "^3.1.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^22.12.0"

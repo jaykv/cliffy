@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal, Union
 
 from pydantic import BaseModel, Field
@@ -20,13 +21,20 @@ class CLIManifest(BaseModel):
     )
     includes: list[str] = Field(
         [],
-        description="!TODO! List of external CLI manifest paths to include into the main manifest. "
+        description="List of external CLI manifest paths to include into the main manifest. "
         "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest "
         "and finally, deep merges the merged manifest with the main manifest.",
     )
+    vars: dict[str, str] = Field(
+        {},
+        description="A mapping defining manifest variables that can be referenced in any other blocks. "
+        "Environments variables can be used in this section with ${some_env_var} for dynamic parsing. "
+        "Supports jinja2 formatted expressions as values. "
+        "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
+    )
     commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = Field(
         {},
-        description="A dictionary containing the command definitions for the CLI. "
+        description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "
         "Nested subcommands are joined by '.' in between each level. "
         "A special (*) wildcard can be used to spread the subcommand to all group-level commands. "
@@ -46,19 +54,19 @@ class CLIManifest(BaseModel):
     )
     args: dict[str, list] = Field(
         {},
-        description="A dictionary containing the arguments and options for each command. "
-        "Each key in the dictionary should correspond to a command in the commands section. "
-        "The value should be a list of dictionaries representing the params and options for that command.",
+        description="A mapping containing the arguments and options for each command. "
+        "Each key in the mapping should correspond to a command in the commands section. "
+        "The value should be a list of mappings representing the params and options for that command.",
     )
     types: dict[str, str] = Field(
         {},
-        description="A dictionary containing any shared type definitions. "
+        description="A mapping containing any shared type definitions. "
         "These types can be referenced by name in the args section to provide type annotations "
         "for params and options defined in the args section.",
     )
     cli_options: dict[str, str] = Field(
         {},
-        Description="A dictionary for any additional options that can be used to customize the behavior of the CLI.",
+        Description="A mapping for any additional options that can be used to customize the behavior of the CLI.",
     )
 
     @classmethod
@@ -83,6 +91,9 @@ version: 0.1.0
 
 {cls.get_field_description('includes', as_comment=True)}
 includes: []
+
+{cls.get_field_description('vars', as_comment=True)}
+vars: {{}}
 
 {cls.get_field_description('imports', as_comment=True)}
 imports:
@@ -144,6 +155,9 @@ version: 0.1.0
 {cls.get_field_description('includes', as_comment=True)}
 includes: []
 
+{cls.get_field_description('vars', as_comment=True)}
+vars: {{}}
+
 {cls.get_field_description('imports', as_comment=True)}
 imports: []
 
@@ -160,3 +174,24 @@ args: {{}}
 commands: {{}}
 
 """
+
+
+class IncludeManifest(BaseModel):
+    """Special manifest specifically to define the allowed named objects that can be included"""
+
+    commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = {}
+    imports: Union[str, list[str]] = []
+    functions: list[str] = []
+    args: dict[str, list] = {}
+    types: dict[str, str] = {}
+    cli_options: dict[str, str] = {}
+
+
+class CLIMetadata(BaseModel):
+    """Metadata model"""
+
+    cli_name: str
+    runner_path: str
+    version: str
+    loaded: datetime
+    manifest: str

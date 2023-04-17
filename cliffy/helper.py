@@ -1,21 +1,21 @@
 import os
-import pathlib
 import sys
+from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
 from rich.table import Table
 
-HOME_PATH = str(pathlib.Path.home())
+HOME_PATH = str(Path.home())
 PYTHON_BIN = f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
-CLIFFY_CLI_DIR = f"{pathlib.Path(__file__).parent.resolve()}/clis"
+CLIFFY_CLI_DIR = f"{Path(__file__).parent.resolve()}/clis"
 CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
 
 
 def write_to_file(path: str, text: str, executable: bool = False) -> bool:
     try:
-        output_file = pathlib.Path(path)
+        output_file = Path(path)
         output_file.parent.mkdir(exist_ok=True, parents=True)
         output_file.write_text(text)
     except Exception as e:
