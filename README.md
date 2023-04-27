@@ -16,16 +16,17 @@ YAML-defined CLI generator and manager for python
 `pip install cliffy`
 
 ## Usage
-* `cli init <cli name>`: Generate a template CLI manifest
-* `cli load <manifest>`: Add a new CLI based on the manifest
-* `cli render <manifest>`: Render the YAML manifest into executable code
-* `cli list`/`cli ls`: Ouput a list of loaded CLIs 
-* `cli update <cli name>`: Reloads a CLI
-* `cli disable <cli name>`: Disable a CLI
-* `cli enable <cli name>`: Enable a disabled CLI
-* `cli remove <cli name>`/`cli rm <cli name>`: Remove a loaded CLI
+`cli <command>`
+* `init <cli name>`: Generate a template CLI manifest
+* `load <manifest>`: Add a new CLI based on the manifest
+* `render <manifest>`: Render the YAML manifest into executable code
+* `list` or `ls`: Ouput a list of loaded CLIs 
+* `update <cli name>`: Reloads a CLI
+* `disable <cli name>`: Disable a CLI
+* `enable <cli name>`: Enable a disabled CLI
+* `remove <cli name>` or `rm <cli name>`: Remove a loaded CLI
 
-### Example
+### Basic Example
 
 1. Define a manifest
 ```yaml
