@@ -7,6 +7,7 @@ from typing_extensions import Self
 
 from .commander import build_cli
 from .commanders.typer import TyperCommander
+from .helper import compare_versions, get_installed_pip_packages, parse_requirement
 from .manifests import IncludeManifest, Manifest, set_manifest_version
 from .merger import cliffy_merger
 
@@ -28,7 +29,25 @@ class Transformer:
             self.manifest = IncludeManifest(**self.command_config)
         else:
             self.manifest = Manifest(**self.command_config)
+            self.validate_cli_requires()
             self.cli = build_cli(self.manifest, commander_cls=TyperCommander)
+
+    def validate_cli_requires(self) -> None:
+        if not self.manifest.requires:
+            return
+
+        installed_pip_packages = get_installed_pip_packages()
+        for dep in self.manifest.requires:
+            dep_spec = parse_requirement(dep)
+            if dep_spec.name not in installed_pip_packages:
+                raise SystemExit(f"MissingRequirement: CLI requires `{dep}`, please install it")
+
+            if dep_spec.version and dep_spec.operator:
+                if not compare_versions(installed_pip_packages[dep_spec.name], dep_spec.version, dep_spec.operator):
+                    raise SystemExit(
+                        f"MissingRequirement: CLI requires `{dep}`, "
+                        f"found version {installed_pip_packages[dep_spec.name]}"
+                    )
 
     def resolve_includes(self) -> dict:
         include_transforms = map(self.resolve_include_by_path, set(self.command_config['includes']))

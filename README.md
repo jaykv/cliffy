@@ -19,11 +19,11 @@ YAML-defined CLI generator and manager for python
 * `cli init <cli name>`: Generate a template CLI manifest
 * `cli load <manifest>`: Add a new CLI based on the manifest
 * `cli render <manifest>`: Render the YAML manifest into executable code
-* `cli list/ls`: Ouput a list of loaded CLIs 
+* `cli list`/`cli ls`: Ouput a list of loaded CLIs 
 * `cli update <cli name>`: Reloads a CLI
 * `cli disable <cli name>`: Disable a CLI
 * `cli enable <cli name>`: Enable a disabled CLI
-* `cli remove/rm <cli name>`: Remove a loaded CLI
+* `cli remove <cli name>`/`cli rm <cli name>`: Remove a loaded CLI
 
 ### Example
 
@@ -44,6 +44,9 @@ $ cli load hello.yaml
 ```
 
 3. Run CLI directly
+
+`hello -h`
+
 ![hello-demo](docs/images/hello.png)
 
 For more examples, check [examples](examples/) directory.
@@ -63,8 +66,14 @@ name: cliffy
 version: 0.1.0
 
 # List of external CLI manifest paths to include into the main manifest
-# Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest and finally, deep merges the merged manifest with the main manifest.
+# Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest
+# and finally, deep merges the merged manifest with the main manifest.
 includes: []
+
+# List of Python dependencies required for the CLI
+# Validated on CLI load and update
+# Supports basic requirements specifier syntax.
+requires: []
 
 # A mapping defining manifest variables that can be referenced in any other blocks
 # Environments variables can be used in this section with ${some_env_var} for dynamic parsing

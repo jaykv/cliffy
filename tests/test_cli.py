@@ -32,7 +32,18 @@ def test_cli_render():
     assert result.exit_code == 0
 
 
+def test_cli_db():
+    runner = CliRunner()
+    result = runner.invoke(load, ['examples/db.yaml'])
+    assert result.exit_code == 0
+    
 def test_cli_pydev():
     runner = CliRunner()
     result = runner.invoke(load, ['examples/pydev.yaml'])
     assert result.exit_code == 0
+
+
+def test_cli_requires():
+    runner = CliRunner()
+    result = runner.invoke(load, ['examples/requires.yaml'])
+    assert result.exit_code == 1

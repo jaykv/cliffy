@@ -19,10 +19,15 @@ class CLIManifest(BaseModel):
         "",
         description="A brief description of the CLI that is displayed when the user invokes the --help or -h option.",
     )
+    requires: list[str] = Field(
+        [],
+        description="List of Python dependencies required for the CLI. Validated on CLI load and update. "
+        "Supports basic requirements specifier syntax.",
+    )
     includes: list[str] = Field(
         [],
         description="List of external CLI manifest paths to include into the main manifest. "
-        "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest "
+        "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest. "
         "and finally, deep merges the merged manifest with the main manifest.",
     )
     vars: dict[str, str] = Field(
@@ -91,6 +96,9 @@ version: 0.1.0
 
 {cls.get_field_description('includes', as_comment=True)}
 includes: []
+
+{cls.get_field_description('requires', as_comment=True)}
+requires: []
 
 {cls.get_field_description('vars', as_comment=True)}
 vars:
@@ -186,6 +194,7 @@ class IncludeManifest(BaseModel):
     args: dict[str, list] = {}
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
+    requires: list[str]
 
 
 class CLIMetadata(BaseModel):
