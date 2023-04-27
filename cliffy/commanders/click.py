@@ -8,7 +8,9 @@ class ClickCommander(Commander):
 
     def add_base_imports(self):
         self.cli = f"""## Generated {self.manifest.name} on {datetime.datetime.now()}
-import rich_click as click; import subprocess; CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help']);
+import rich_click as click
+import subprocess
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 """
 
     def add_base_cli(self):
