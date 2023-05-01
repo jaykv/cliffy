@@ -99,8 +99,7 @@ class Homer:
         Returns:
             Optional[str]: CLI metadata path
         """
-        cli_metadata_path = glob.glob(f"{CLIFFY_HOME_PATH}/*/{cli_name}.json")
-        if cli_metadata_path:
+        if cli_metadata_path := glob.glob(f"{CLIFFY_HOME_PATH}/*/{cli_name}.json"):
             return cli_metadata_path[0]
         return None
 

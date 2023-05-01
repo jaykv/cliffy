@@ -36,13 +36,10 @@ class Parser:
         ## Bash commands start with $
         if script.startswith('$'):
             script = script.replace('$ ', '$', 1)
-            script = '>' + script[1:]
+            script = f'>{script[1:]}'
             return " " * 4 + pybash.Transformer.transform_source(script)
 
-        parsed_script = ""
-        for line in script.split('\n'):
-            parsed_script += " " * 4 + line + "\n"
-        return parsed_script
+        return "".join(" " * 4 + line + "\n" for line in script.split('\n'))
 
     def parse_command(self, block: Union[str, list[Union[str, dict[Literal['help'], str]]]]) -> str:
         if isinstance(block, list):
@@ -87,7 +84,6 @@ class Parser:
         return parsed_arg_type
 
     def parse_arg(self, arg_name: str, arg_type: str) -> str:
-        parsed_arg_type = ""
         is_required = self.is_param_required(arg_type)
         default_val = self.get_default_param_val(arg_type)
         param_type = 'Option' if self.is_param_option(arg_name) else 'Argument'
@@ -109,8 +105,7 @@ class Parser:
         if arg_type in self.manifest.types:
             return f"{arg_name}: {self.manifest.types[arg_type]},"
 
-        # otherwise parse it
-        parsed_arg_type = self.build_param_type(
+        return self.build_param_type(
             arg_name,
             arg_type,
             typer_cls=param_type,
@@ -118,8 +113,6 @@ class Parser:
             default_val=default_val,
             is_required=is_required,
         )
-
-        return parsed_arg_type
 
     def parse_args(self, command) -> str:
         if not self.manifest.args:
@@ -132,7 +125,7 @@ class Parser:
         parsed_command_args = ""
         for arg in command_args:
             arg_name, arg_type = next(iter(arg.items()))
-            parsed_command_args += self.parse_arg(arg_name.strip(), arg_type.strip()) + ' '
+            parsed_command_args += f'{self.parse_arg(arg_name.strip(), arg_type.strip())} '
 
         # strip the extra ", "
         return parsed_command_args[:-2]
@@ -143,18 +136,12 @@ class Parser:
 
     def get_parsed_command_name(self, command) -> str:
         """land.build -> build or sell -> sell"""
-        if '.' in command.name:
-            return command.name.split('.')[-1]
-
-        return command.name
+        return command.name.split('.')[-1] if '.' in command.name else command.name
 
     def indent_block(self, block: str) -> str:
         blocklines = block.splitlines()
-        indented_block = "\n".join([" " * 4 + line for line in blocklines])
-        return indented_block
+        return "\n".join([" " * 4 + line for line in blocklines])
 
     def to_args(self, d: dict) -> str:
-        s = ""
-        for k, v in d.items():
-            s += f" {k}={v},"
+        s = "".join(f" {k}={v}," for k, v in d.items())
         return s[:-1]

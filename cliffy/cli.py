@@ -1,10 +1,16 @@
 ## CLI to generate CLIs
+import contextlib
 from typing import TextIO
 
-import rich_click as click
-from rich.console import Console
-from rich.syntax import Syntax
-from rich_click.rich_group import RichGroup
+try:
+    import rich_click as click
+    from rich.console import Console
+    from rich.syntax import Syntax
+    from rich_click.rich_group import RichGroup as AliasGroup
+except ImportError:
+    import click
+    from .rich import Console, Syntax
+    from click import Group as AliasGroup
 
 from .helper import print_rich_table, write_to_file
 from .homer import Homer
@@ -15,16 +21,14 @@ from .transformer import Transformer
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-class RichAliasedGroup(RichGroup):
+class AliasedGroup(AliasGroup):
     def get_command(self, ctx, cmd_name):
-        try:
+        with contextlib.suppress(KeyError):
             cmd_name = ALIASES[cmd_name].name
-        except KeyError:
-            pass
         return super().get_command(ctx, cmd_name or "")
 
 
-@click.group(context_settings=CONTEXT_SETTINGS, cls=RichAliasedGroup)
+@click.group(context_settings=CONTEXT_SETTINGS, cls=AliasedGroup)
 @click.version_option()
 def cli() -> None:
     pass
@@ -48,8 +52,7 @@ def load(manifests: list[TextIO]) -> None:
 def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
     for cli_name in cli_names:
-        cli_metadata = Homer.get_cli_metadata(cli_name)
-        if cli_metadata:
+        if cli_metadata := Homer.get_cli_metadata(cli_name):
             T = Transformer(open(cli_metadata.runner_path, "r"))
             Loader.load_cli(T.cli)
             Homer.save_cli_metadata(cli_metadata.runner_path, T.cli)
@@ -65,9 +68,8 @@ def update(cli_names: list[str]) -> None:
 def render(manifest: TextIO) -> None:
     """Render the CLI manifest generation as code"""
     T = Transformer(manifest)
-    syntax = Syntax(T.cli.code, "python", theme="monokai", line_numbers=False)
     console = Console()
-    console.print(syntax)
+    console.print(T.cli.code, overflow="fold", emoji=False, markup=False)
     click.secho(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
 
 
@@ -103,10 +105,7 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
 def list_clis() -> None:
     "List all CLIs loaded"
     cols = ["Name", "Version", "Manifest"]
-    rows = []
-    for metadata in Homer.get_clis():
-        rows.append([metadata.cli_name, metadata.version, metadata.runner_path])
-
+    rows = [[metadata.cli_name, metadata.version, metadata.runner_path] for metadata in Homer.get_clis()]
     print_rich_table(cols, rows, styles=["cyan", "magenta", "green"])
 
 

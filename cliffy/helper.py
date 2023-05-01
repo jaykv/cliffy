@@ -7,8 +7,12 @@ from typing import Optional
 
 from packaging import version
 from pydantic import BaseModel
-from rich.console import Console
-from rich.table import Table
+
+try:
+    from rich.console import Console
+    from rich.table import Table
+except ImportError:
+    from .rich import Console, Table
 
 HOME_PATH = str(Path.home())
 PYTHON_BIN = f"{sys.exec_prefix}/bin"
@@ -55,7 +59,7 @@ def make_executable(path: str) -> None:
 def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
     if split_on:
         joiner = "\n# "
-        return "# " + joiner.join(text.split(split_on))
+        return f"# {joiner.join(text.split(split_on))}"
 
     return f"# {text}"
 
