@@ -7,7 +7,10 @@ class Console:
         pass
 
     def print(self, text, **kwargs) -> None:
-        print(text)
+        if isinstance(text, Table):
+            click.echo(text)
+        else:
+            print(text)
 
 
 class Syntax:

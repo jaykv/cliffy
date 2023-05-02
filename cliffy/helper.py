@@ -1,5 +1,6 @@
 import operator
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ except ImportError:
     from .rich import Console, Table
 
 HOME_PATH = str(Path.home())
-PYTHON_BIN = f"{sys.exec_prefix}/bin"
+PYTHON_BIN = f"{sys.exec_prefix}/Scripts" if platform.system() == "Windows" else f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
 CLIFFY_CLI_DIR = f"{Path(__file__).parent.resolve()}/clis"
 CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
