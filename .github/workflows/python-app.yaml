@@ -29,9 +29,9 @@ jobs:
       id: cache
       with:
         path: ~/.virtualenvs
-        key: poetry-${{ hashFiles('**/poetry.lock') }}
+        key: poetry-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
         restore-keys: |
-          poetry-${{ hashFiles('**/poetry.lock') }}
+          poetry-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
     - name: Set Poetry config
       run: |
         poetry config virtualenvs.in-project false
