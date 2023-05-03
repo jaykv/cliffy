@@ -365,14 +365,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "pybash"
-version = "0.2.4"
+version = "0.2.5"
 description = ">execute bash commands from python easily"
 category = "main"
 optional = false
 python-versions = ">=3.9,<4.0"
 files = [
-    {file = "pybash-0.2.4-py3-none-any.whl", hash = "sha256:f3b2a2f58dfce4899352d090f6e263087c5d6a10465c3a4292cfc196fbab88a6"},
-    {file = "pybash-0.2.4.tar.gz", hash = "sha256:ce6f0a573faebfec181011832ffc363b19590556dea696c5e2f7c7b07dedec71"},
+    {file = "pybash-0.2.5-py3-none-any.whl", hash = "sha256:86edda33ef8fefc19407bb2a6306db905e529171a43a251bc7dac40dab0d3def"},
+    {file = "pybash-0.2.5.tar.gz", hash = "sha256:3c8a40a1a201235e7d1eb5849f1e824276709d1302a7941d8becf7ad72d4df26"},
 ]
 
 [package.dependencies]
@@ -683,4 +683,4 @@ rich = ["rich-click", "shellingham"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "4f5af936ff41088a05119bf99707cf8c2a8452dee86801abb0ec7e3c0f7c0abe"
+content-hash = "76c737c55a246cd3f5b3641ec1185ee93e2266d31447256609400cb1cdb0cc00"
