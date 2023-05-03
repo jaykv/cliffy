@@ -1,5 +1,6 @@
 import operator
 import os
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -7,11 +8,15 @@ from typing import Optional
 
 from packaging import version
 from pydantic import BaseModel
-from rich.console import Console
-from rich.table import Table
+
+try:
+    from rich.console import Console
+    from rich.table import Table
+except ImportError:
+    from .rich import Console, Table
 
 HOME_PATH = str(Path.home())
-PYTHON_BIN = f"{sys.exec_prefix}/bin"
+PYTHON_BIN = f"{sys.exec_prefix}/Scripts" if platform.system() == "Windows" else f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
 CLIFFY_CLI_DIR = f"{Path(__file__).parent.resolve()}/clis"
 CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
@@ -55,7 +60,7 @@ def make_executable(path: str) -> None:
 def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
     if split_on:
         joiner = "\n# "
-        return "# " + joiner.join(text.split(split_on))
+        return f"# {joiner.join(text.split(split_on))}"
 
     return f"# {text}"
 

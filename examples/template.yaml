@@ -1,0 +1,14 @@
+name: template
+version: 0.1.0
+
+vars:
+  GLOBAL_VAR: hello
+
+args:
+  hello:
+    - local_arg: str!
+    - -local_arg_2: str = ""
+
+commands:
+  hello:
+    - $ {{GLOBAL_VAR}} f{local_arg} --f{local_arg_2}

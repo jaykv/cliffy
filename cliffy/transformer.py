@@ -42,12 +42,19 @@ class Transformer:
             if dep_spec.name not in installed_pip_packages:
                 raise SystemExit(f"MissingRequirement: CLI requires `{dep}`, please install it")
 
-            if dep_spec.version and dep_spec.operator:
-                if not compare_versions(installed_pip_packages[dep_spec.name], dep_spec.version, dep_spec.operator):
-                    raise SystemExit(
-                        f"MissingRequirement: CLI requires `{dep}`, "
-                        f"found version {installed_pip_packages[dep_spec.name]}"
-                    )
+            if (
+                dep_spec.version
+                and dep_spec.operator
+                and not compare_versions(
+                    installed_pip_packages[dep_spec.name],
+                    dep_spec.version,
+                    dep_spec.operator,
+                )
+            ):
+                raise SystemExit(
+                    f"MissingRequirement: CLI requires `{dep}`, "
+                    f"found version {installed_pip_packages[dep_spec.name]}"
+                )
 
     def resolve_includes(self) -> dict:
         include_transforms = map(self.resolve_include_by_path, set(self.command_config['includes']))
@@ -66,11 +73,11 @@ class Transformer:
     def load_manifest(manifest_io: TextIO) -> dict:
         try:
             manifest_path = os.path.realpath(manifest_io.name)
-            vars = yaml.safe_load(open(manifest_path, "r")).get('vars', {})
+            all_vars = yaml.safe_load(open(manifest_path, "r")).get('vars', {})
             var_env = Environment(loader=BaseLoader())
             interpolated_vars = {
-                var_env.from_string(str(k)).render(vars): var_env.from_string(str(v)).render(vars)
-                for k, v in vars.items()
+                var_env.from_string(str(k)).render(all_vars): var_env.from_string(str(v)).render(all_vars)
+                for k, v in all_vars.items()
             }
             manifest_env = Environment(loader=FileSystemLoader(manifest_path)).get_template("")
             return yaml.safe_load(manifest_env.render(interpolated_vars))

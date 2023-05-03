@@ -29,7 +29,7 @@ __cli_name__ = '{self.manifest.name}'
 
 def version_callback(value: bool):
     if value:
-        print(__cli_name__ + ", " + __version__)
+        print(f"{{__cli_name__}}, {{__version__}}")
         raise typer.Exit()
 
 @cli.callback()
