@@ -121,6 +121,7 @@ def remove(cli_names: list[str]) -> None:
         else:
             click.secho(f"~ {cli_name} not found", fg="red")
 
+
 ALIASES = {
     "rm": remove,
     "ls": list_clis,
