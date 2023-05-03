@@ -12,6 +12,9 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        extras: [true, false]
 
     steps:
     - uses: actions/checkout@v3
@@ -26,18 +29,19 @@ jobs:
       id: cache
       with:
         path: ~/.virtualenvs
-        key: poetry-${{ hashFiles('**/poetry.lock') }}
+        key: poetry-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
         restore-keys: |
-          poetry-${{ hashFiles('**/poetry.lock') }}
+          poetry-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
     - name: Set Poetry config
       run: |
         poetry config virtualenvs.in-project false
         poetry config virtualenvs.path ~/.virtualenvs
-
     - name: Install Dependencies
       run: poetry install
-      if: steps.cache.outputs.cache-hit != 'true'
-
+      if: ${{ steps.cache.outputs.cache-hit != 'true' && matrix.extras == false }}
+    - name: Install Dependencies
+      run: poetry install --all-extras
+      if: ${{ steps.cache.outputs.cache-hit != 'true' && matrix.extras }}
     - name: Code Quality
       run: poetry run make lint
 

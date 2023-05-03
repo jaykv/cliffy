@@ -122,18 +122,6 @@ def remove(cli_names: list[str]) -> None:
             click.secho(f"~ {cli_name} not found", fg="red")
 
 
-@cli.command()
-@click.argument('cli_name', type=str)
-def enable(cli_name) -> None:
-    click.echo("# TODO")
-
-
-@cli.command()
-@click.argument('cli_name', type=str)
-def disable(cli_name) -> None:
-    click.echo("# TODO")
-
-
 ALIASES = {
     "rm": remove,
     "ls": list_clis,

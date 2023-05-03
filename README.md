@@ -22,8 +22,6 @@ YAML-defined CLI generator and manager for python
 * `render <manifest>`: Render the YAML manifest into executable code
 * `list` or `ls`: Ouput a list of loaded CLIs 
 * `update <cli name>`: Reloads a CLI
-* `disable <cli name>`: Disable a CLI
-* `enable <cli name>`: Enable a disabled CLI
 * `remove <cli name>` or `rm <cli name>`: Remove a loaded CLI
 
 ### Basic Example
