@@ -13,7 +13,7 @@ except ImportError:
     from click import Group as AliasGroup
 
 from .helper import print_rich_table, write_to_file
-from .homer import Homer
+from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from .loader import Loader
 from .manifests import Manifest, set_manifest_version
 from .transformer import Transformer
@@ -41,7 +41,7 @@ def load(manifests: list[TextIO]) -> None:
     for manifest in manifests:
         T = Transformer(manifest)
         Loader.load_cli(T.cli)
-        Homer.save_cli_metadata(manifest.name, T.cli)
+        save_metadata(manifest.name, T.cli)
         click.secho(f"~ Generated {T.cli.name} CLI v{T.cli.version} ~", fg="green")
         click.secho(click.style("$", fg="magenta"), nl=False)
         click.echo(f" {T.cli.name} -h")
@@ -52,10 +52,10 @@ def load(manifests: list[TextIO]) -> None:
 def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
     for cli_name in cli_names:
-        if cli_metadata := Homer.get_cli_metadata(cli_name):
+        if cli_metadata := get_metadata(cli_name):
             T = Transformer(open(cli_metadata.runner_path, "r"))
             Loader.load_cli(T.cli)
-            Homer.save_cli_metadata(cli_metadata.runner_path, T.cli)
+            save_metadata(cli_metadata.runner_path, T.cli)
             click.secho(f"~ Reloaded {T.cli.name} CLI v{T.cli.version} ~", fg="green")
             click.secho(click.style("$", fg="magenta"), nl=False)
             click.echo(f" {T.cli.name} -h")
@@ -105,7 +105,7 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
 def list_clis() -> None:
     "List all CLIs loaded"
     cols = ["Name", "Version", "Manifest"]
-    rows = [[metadata.cli_name, metadata.version, metadata.runner_path] for metadata in Homer.get_clis()]
+    rows = [[metadata.cli_name, metadata.version, metadata.runner_path] for metadata in get_clis()]
     print_rich_table(cols, rows, styles=["cyan", "magenta", "green"])
 
 
@@ -114,8 +114,8 @@ def list_clis() -> None:
 def remove(cli_names: list[str]) -> None:
     "Remove a loaded CLI by name"
     for cli_name in cli_names:
-        if Homer.get_cliffy_cli(cli_name):
-            Homer.remove_cli_metadata(cli_name)
+        if get_metadata_path(cli_name):
+            remove_metadata(cli_name)
             Loader.unload_cli(cli_name)
             click.secho(f"~ {cli_name} unloaded", fg="green")
         else:

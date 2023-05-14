@@ -1,4 +1,6 @@
 ## Mimic rich API methods for rich-less support
+from typing import Union
+
 import click
 
 
@@ -23,10 +25,10 @@ class Syntax:
 
 class Table:
     def __init__(self) -> None:
-        self.cols = []
-        self.rows = []
+        self.cols: list[str] = []
+        self.rows: list[list[str]] = []
 
-    def add_column(self, col, style=None) -> None:
+    def add_column(self, col: str, style: Union[str, None] = None) -> None:
         self.cols.append(col)
 
     def add_row(self, *row) -> None:

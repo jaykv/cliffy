@@ -1,5 +1,5 @@
 import os
-from typing import Literal, TextIO
+from typing import Any, Literal, TextIO
 
 import yaml
 from jinja2 import BaseLoader, Environment, FileSystemLoader, Undefined
@@ -58,7 +58,7 @@ class Transformer:
 
     def resolve_includes(self) -> dict:
         include_transforms = map(self.resolve_include_by_path, set(self.command_config['includes']))
-        merged_config = {}
+        merged_config: dict[str, Any] = {}
         for transformed_include in include_transforms:
             cliffy_merger.merge(merged_config, transformed_include.command_config)
 
@@ -70,7 +70,7 @@ class Transformer:
             return cls(m, as_include=True)
 
     @staticmethod
-    def load_manifest(manifest_io: TextIO) -> dict:
+    def load_manifest(manifest_io: TextIO) -> dict[str, Any]:
         try:
             manifest_path = os.path.realpath(manifest_io.name)
             all_vars = yaml.safe_load(open(manifest_path, "r")).get('vars', {})

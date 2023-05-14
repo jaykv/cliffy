@@ -18,7 +18,7 @@ class Commander:
         self.parser = Parser(self.manifest)
         self.cli: str = ""
         self.groups: DefaultDict[str, dict] = defaultdict(lambda: defaultdict())
-        self.greedy = []
+        self.greedy: list[Command] = []
 
     def build_cli(self) -> None:
         self.add_base_imports()
