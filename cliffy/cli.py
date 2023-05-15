@@ -5,11 +5,10 @@ from typing import TextIO
 try:
     import rich_click as click
     from rich.console import Console
-    from rich.syntax import Syntax
     from rich_click.rich_group import RichGroup as AliasGroup
 except ImportError:
     import click
-    from .rich import Console, Syntax
+    from .rich import Console
     from click import Group as AliasGroup
 
 from .helper import print_rich_table, write_to_file
@@ -21,7 +20,7 @@ from .transformer import Transformer
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-class AliasedGroup(AliasGroup):
+class AliasedGroup(AliasGroup):  # type: ignore
     def get_command(self, ctx, cmd_name):
         with contextlib.suppress(KeyError):
             cmd_name = ALIASES[cmd_name].name
@@ -73,6 +72,15 @@ def render(manifest: TextIO) -> None:
     click.secho(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
 
 
+@cli.command("run")
+@click.argument('manifest', type=click.File('rb'))
+@click.argument('args', type=str, nargs=-1)
+def run_cli(manifest: TextIO, args: tuple) -> None:
+    """Run CLI for a manifest"""
+    T = Transformer(manifest)
+    Loader.run_cli(T.cli, args)
+
+
 @cli.command()
 @click.argument('cli_name', type=str, default="cliffy")
 @click.option('--version', '-v', type=str, show_default=True, default="v1", help="Manifest version")
@@ -93,9 +101,8 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
     template = Manifest.get_raw_template(cli_name) if raw else Manifest.get_template(cli_name)
 
     if render:
-        syntax = Syntax(template, "yaml", theme="monokai", line_numbers=False)
         console = Console()
-        console.print(syntax)
+        console.print(template, overflow="fold", emoji=False, markup=False)
     else:
         write_to_file(f'{cli_name}.yaml', text=template)
         click.secho(f"+ {cli_name}.yaml", fg="green")

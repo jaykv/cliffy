@@ -15,14 +15,6 @@ class Console:
             print(text)
 
 
-class Syntax:
-    def __init__(self, text, *args, **kwargs) -> None:
-        self.text = text
-
-    def __str__(self) -> str:
-        return self.text
-
-
 class Table:
     def __init__(self) -> None:
         self.cols: list[str] = []

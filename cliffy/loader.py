@@ -1,5 +1,8 @@
 import contextlib
 import os
+import sys
+import tempfile
+from importlib import import_module
 
 from .commander import CLI
 from .helper import CLIFFY_CLI_DIR, PYTHON_BIN, PYTHON_EXECUTABLE, write_to_file
@@ -24,6 +27,19 @@ class Loader:
         L = cls(cli)
         L.deploy_script()
         L.deploy_cli()
+
+    @classmethod
+    def run_cli(cls, cli: CLI, args: tuple) -> None:
+        with tempfile.NamedTemporaryFile(mode='w', prefix=f'{cli.name}_', suffix='.py', delete=True) as runner_file:
+            runner_file.write(cli.code)
+            runner_file.flush()
+            module_path, module_filename = os.path.split(runner_file.name)
+            sys.path.append(module_path)
+            module = import_module(module_filename[:-3])
+
+        runner_argvs = [runner_file.name] + list(args)
+        sys.argv = runner_argvs
+        module.cli()
 
     @classmethod
     def unload_cli(cls, cli_name) -> None:
