@@ -1,6 +1,12 @@
 ## CLI to generate CLIs
 import contextlib
+from shutil import copy
+from tempfile import TemporaryDirectory
 from typing import TextIO
+
+from click.testing import CliRunner
+from shiv import cli as shiv_cli
+from shiv import pip
 
 try:
     import rich_click as click
@@ -11,7 +17,7 @@ except ImportError:
     from .rich import Console
     from click import Group as AliasGroup
 
-from .helper import print_rich_table, write_to_file
+from .helper import CLIFFY_CLI_DIR, print_rich_table, write_to_file
 from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from .loader import Loader
 from .manifests import Manifest, set_manifest_version
@@ -39,7 +45,7 @@ def load(manifests: list[TextIO]) -> None:
     """Load CLI for given manifest(s)"""
     for manifest in manifests:
         T = Transformer(manifest)
-        Loader.load_cli(T.cli)
+        Loader.load_from(T.cli)
         save_metadata(manifest.name, T.cli)
         click.secho(f"~ Generated {T.cli.name} CLI v{T.cli.version} ~", fg="green")
         click.secho(click.style("$", fg="magenta"), nl=False)
@@ -84,9 +90,7 @@ def run_cli(manifest: TextIO, args: tuple) -> None:
 @cli.command()
 @click.argument('cli_name', type=str, default="cliffy")
 @click.option('--version', '-v', type=str, show_default=True, default="v1", help="Manifest version")
-@click.option(
-    '--render', type=bool, is_flag=True, show_default=True, default=False, help="Render template to terminal directly"
-)
+@click.option('--render', is_flag=True, show_default=True, default=False, help="Render template to terminal directly")
 @click.option(
     '--raw',
     type=bool,
@@ -126,7 +130,36 @@ def remove(cli_names: list[str]) -> None:
             Loader.unload_cli(cli_name)
             click.secho(f"~ {cli_name} unloaded", fg="green")
         else:
-            click.secho(f"~ {cli_name} not found", fg="red")
+            click.secho(f"~ {cli_name} not loaded", fg="red")
+
+
+@cli.command()
+@click.argument('cli_name', type=str)
+@click.option('--debug', is_flag=True, show_default=True, default=False, help="Display build output")
+def build(cli_name: str, debug: bool) -> None:
+    "Bundle a CLI into a self-contained zipapp"
+    if not (metadata := get_metadata(cli_name)):
+        click.secho(f"~ {cli_name} not loaded", fg="red")
+        return
+
+    with TemporaryDirectory() as tdist:
+        copy(f'{CLIFFY_CLI_DIR}/{cli_name}.py', tdist)
+        pip_deps = ['typer'] + metadata.requires
+
+        pip.install(["--target", tdist] + pip_deps)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            shiv_cli.main, ['--site-packages', tdist, '--compressed', '-e', f'{cli_name}.cli', '-o', cli_name]
+        )
+
+    if result.exit_code == 0:
+        if debug:
+            click.secho(result.stdout)
+        click.secho(f"+ {cli_name} built", fg="green")
+    else:
+        click.secho(result.stdout)
+        click.secho(f"~ {cli_name} build failed", fg="red")
 
 
 ALIASES = {

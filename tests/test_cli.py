@@ -4,9 +4,10 @@ from click.testing import CliRunner
 from cliffy.cli import cli, render, init, run_cli
 from cliffy.homer import get_metadata
 
+ANSI_RE = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
 
 def escape_ansi(line: str) -> str:
-    return re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]').sub('', line)
+    return ANSI_RE.sub('', line)
 
 
 def test_cli_help():

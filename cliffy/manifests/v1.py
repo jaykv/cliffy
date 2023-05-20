@@ -21,7 +21,7 @@ class CLIManifest(BaseModel):
     )
     requires: list[str] = Field(
         [],
-        description="List of Python dependencies required for the CLI. Validated on CLI load and update. "
+        description="List of Python dependencies required for the CLI. Validated on CLI load, update and build. "
         "Supports basic requirements specifier syntax.",
     )
     includes: list[str] = Field(
@@ -205,3 +205,4 @@ class CLIMetadata(BaseModel):
     version: str
     loaded: datetime
     manifest: str
+    requires: list[str]

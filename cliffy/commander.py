@@ -5,7 +5,7 @@ from .manifests import Manifest
 from .parser import Parser
 
 Command = namedtuple('Command', ['name', 'script'])
-CLI = namedtuple('CLI', ['name', 'version', 'code'])
+CLI = namedtuple('CLI', ['name', 'version', 'code', 'requires'])
 
 
 class Commander:
@@ -30,6 +30,7 @@ class Commander:
             self.add_command(current_command)
 
         self.add_greedy_commands()
+        self.add_main_block()
 
     def add_command(self, command: Command) -> None:
         # Check for greedy commands- evaluate them at the end
@@ -103,8 +104,11 @@ class Commander:
     def add_sub_command(self, command: Command, group: str) -> None:
         raise NotImplementedError
 
+    def add_main_block(self) -> None:
+        raise NotImplementedError
+
 
 def build_cli(manifest: Manifest, commander_cls=Commander) -> CLI:
     commander = commander_cls(manifest)
     commander.build_cli()
-    return CLI(manifest.name, manifest.version, commander.cli)
+    return CLI(manifest.name, manifest.version, commander.cli, manifest.requires)

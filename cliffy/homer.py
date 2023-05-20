@@ -31,6 +31,7 @@ def save_metadata(manifest_path: str, cli: CLI) -> None:
                     version=cli.version,
                     loaded=datetime.now(),
                     manifest=manifest.read(),
+                    requires=cli.requires,
                 ).dict(),
                 default=str,
             ),
@@ -68,6 +69,7 @@ def get_metadata_bypath(path: Path) -> CLIMetadata:
             version="error",
             loaded=datetime.now(),
             manifest=f"could not load: {e}",
+            requires=[],
         )
 
 

@@ -55,3 +55,9 @@ def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command
 {self.parser.parse_command(command.script)}
 
 """
+
+    def add_main_block(self) -> None:
+        self.cli += """
+if __name__ == "__main__":
+    cli()
+"""

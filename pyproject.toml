@@ -18,7 +18,7 @@ jinja2 = "^3.1.2"
 packaging = "^23.1"
 rich-click = { version = "^1.6.1", optional = true }
 shellingham = { version = "^1.5.0.post1", optional = true }
-pyoxidizer = "^0.24.0"
+shiv = "^1.0.3"
 
 [tool.poetry.extras]
 rich = ["rich-click", "shellingham"]
