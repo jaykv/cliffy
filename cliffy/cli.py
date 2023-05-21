@@ -1,22 +1,18 @@
 ## CLI to generate CLIs
 import contextlib
-from shutil import copy
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile
 from typing import TextIO
 
-from click.testing import CliRunner
-from shiv import cli as shiv_cli
-from shiv import pip
-
 try:
-    import rich_click as click
+    import rich_click as click  # type: ignore
     from rich.console import Console
-    from rich_click.rich_group import RichGroup as AliasGroup
+    from rich_click.rich_group import RichGroup as AliasGroup  # type: ignore
 except ImportError:
     import click
     from .rich import Console
     from click import Group as AliasGroup
 
+from .builder import build_cli, run_cli
 from .helper import CLIFFY_CLI_DIR, print_rich_table, write_to_file
 from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from .loader import Loader
@@ -45,7 +41,7 @@ def load(manifests: list[TextIO]) -> None:
     """Load CLI for given manifest(s)"""
     for manifest in manifests:
         T = Transformer(manifest)
-        Loader.load_from(T.cli)
+        Loader.load_from_cli(T.cli)
         save_metadata(manifest.name, T.cli)
         click.secho(f"~ Generated {T.cli.name} CLI v{T.cli.version} ~", fg="green")
         click.secho(click.style("$", fg="magenta"), nl=False)
@@ -59,7 +55,7 @@ def update(cli_names: list[str]) -> None:
     for cli_name in cli_names:
         if cli_metadata := get_metadata(cli_name):
             T = Transformer(open(cli_metadata.runner_path, "r"))
-            Loader.load_cli(T.cli)
+            Loader.load_from_cli(T.cli)
             save_metadata(cli_metadata.runner_path, T.cli)
             click.secho(f"~ Reloaded {T.cli.name} CLI v{T.cli.version} ~", fg="green")
             click.secho(click.style("$", fg="magenta"), nl=False)
@@ -80,11 +76,11 @@ def render(manifest: TextIO) -> None:
 
 @cli.command("run")
 @click.argument('manifest', type=click.File('rb'))
-@click.argument('args', type=str, nargs=-1)
-def run_cli(manifest: TextIO, args: tuple) -> None:
+@click.argument('cli_args', type=str, nargs=-1)
+def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
     """Run CLI for a manifest"""
     T = Transformer(manifest)
-    Loader.run_cli(T.cli, args)
+    run_cli(T.cli.name, T.cli.code, cli_args)
 
 
 @cli.command()
@@ -113,7 +109,7 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
 
 
 @cli.command("list")
-def list_clis() -> None:
+def cliffy_list() -> None:
     "List all CLIs loaded"
     cols = ["Name", "Version", "Manifest"]
     rows = [[metadata.cli_name, metadata.version, metadata.runner_path] for metadata in get_clis()]
@@ -134,35 +130,54 @@ def remove(cli_names: list[str]) -> None:
 
 
 @cli.command()
-@click.argument('cli_name', type=str)
+@click.argument('cli_names', type=str, nargs=-1)
 @click.option('--debug', is_flag=True, show_default=True, default=False, help="Display build output")
-def build(cli_name: str, debug: bool) -> None:
-    "Bundle a CLI into a self-contained zipapp"
-    if not (metadata := get_metadata(cli_name)):
-        click.secho(f"~ {cli_name} not loaded", fg="red")
-        return
+@click.option('--output-dir', '-o', type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
+def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
+    "Bundle a loaded CLI into a zipapp"
+    for cli_name in cli_names:
+        if not (metadata := get_metadata(cli_name)):
+            click.secho(f"~ {cli_name} not loaded", fg="red")
+            continue
 
-    with TemporaryDirectory() as tdist:
-        copy(f'{CLIFFY_CLI_DIR}/{cli_name}.py', tdist)
-        pip_deps = ['typer'] + metadata.requires
-
-        pip.install(["--target", tdist] + pip_deps)
-
-        runner = CliRunner()
-        result = runner.invoke(
-            shiv_cli.main, ['--site-packages', tdist, '--compressed', '-e', f'{cli_name}.cli', '-o', cli_name]
+        result = build_cli(
+            cli_name, script_path=f'{CLIFFY_CLI_DIR}/{cli_name}.py', deps=metadata.requires, output_dir=output_dir
         )
 
-    if result.exit_code == 0:
+        if result.exit_code != 0:
+            click.secho(result.stdout)
+            click.secho(f"~ {cli_name} bundle failed", fg="red", error=True)
+            continue
+
         if debug:
             click.secho(result.stdout)
-        click.secho(f"+ {cli_name} built", fg="green")
-    else:
-        click.secho(result.stdout)
-        click.secho(f"~ {cli_name} build failed", fg="red")
+        click.secho(f"+ {cli_name} bundled", fg="green")
+
+
+@cli.command()
+@click.argument('manifests', type=click.File('rb'), nargs=-1)
+@click.option('--debug', is_flag=True, show_default=True, default=False, help="Display build output")
+@click.option('--output-dir', '-o', type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
+def build(manifests: list[TextIO], debug: bool, output_dir: str) -> None:
+    "Build a CLI manifest into a zipapp"
+    for manifest in manifests:
+        T = Transformer(manifest, validate_requires=False)
+        with NamedTemporaryFile(mode='w', prefix=f'{T.cli.name}_', suffix='.py', delete=True) as script:
+            script.write(T.cli.code)
+            script.flush()
+            result = build_cli(T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir)
+
+        if result.exit_code != 0:
+            click.secho(result.stdout)
+            click.secho(f"~ {T.cli.name} build failed", fg="red", error=True)
+            continue
+
+        if debug:
+            click.secho(result.stdout)
+        click.secho(f"+ {T.cli.name} built", fg="green")
 
 
 ALIASES = {
     "rm": remove,
-    "ls": list_clis,
+    "ls": cliffy_list,
 }

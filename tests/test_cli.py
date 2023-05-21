@@ -1,10 +1,12 @@
 import re
 
 from click.testing import CliRunner
-from cliffy.cli import cli, render, init, run_cli
+
+from cliffy.cli import cli, cliffy_run, init, render
 from cliffy.homer import get_metadata
 
 ANSI_RE = re.compile(r'(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]')
+
 
 def escape_ansi(line: str) -> str:
     return ANSI_RE.sub('', line)
@@ -40,7 +42,7 @@ def test_cli_render():
 
 def test_cli_run():
     runner = CliRunner()
-    result = runner.invoke(run_cli, ['examples/hello.yaml', '--', '-h'])
+    result = runner.invoke(cliffy_run, ['examples/hello.yaml', '--', '-h'])
     assert result.exit_code == 0
     assert 'Usage: hello_' in escape_ansi(result.output)
     assert get_metadata('hello') is None

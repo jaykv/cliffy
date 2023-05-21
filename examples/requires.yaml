@@ -2,9 +2,14 @@ name: requires
 version: 0.1.0
 
 requires:
-  - pybash <= 0.1.0
+  - pybash >= 0.3.0
   - six
+
+imports:
+  - import six
 
 commands:
   bash: $echo "hello from bash"
   python: print("hello from python")
+  py3: assert six.PY3
+  py2: assert six.PY2
