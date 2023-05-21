@@ -1,4 +1,4 @@
-check: format lint test
+check: format lint test clean
 
 SOURCE_FILES=cliffy tests
 

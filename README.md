@@ -83,8 +83,11 @@ imports:
 commands:
   bash: $echo "hello from bash"
   python: print("hello from python")
-  py3: assert six.PY3
-  py2: assert six.PY2
+  py: |
+    if six.PY2:
+        print("python 2")
+    if six.PY3:
+        print("python 3")
 ```
 
 2. Build CLI
