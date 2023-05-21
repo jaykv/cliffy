@@ -1,8 +1,8 @@
 import os
-from typing import Literal, TextIO
+from typing import Any, TextIO
 
 import yaml
-from jinja2 import BaseLoader, Environment, FileSystemLoader, Undefined
+from jinja2 import BaseLoader, Environment, FileSystemLoader
 from typing_extensions import Self
 
 from .commander import build_cli
@@ -15,7 +15,7 @@ from .merger import cliffy_merger
 class Transformer:
     """Loads command manifest and transforms it into a CLI"""
 
-    def __init__(self, manifest_io: TextIO, as_include: bool = False) -> None:
+    def __init__(self, manifest_io: TextIO, as_include: bool = False, validate_requires: bool = True) -> None:
         self.manifest_io = manifest_io
         self.command_config = self.load_manifest(manifest_io)
         self.manifest_version = self.command_config.pop('manifestVersion', 'v1')
@@ -29,7 +29,8 @@ class Transformer:
             self.manifest = IncludeManifest(**self.command_config)
         else:
             self.manifest = Manifest(**self.command_config)
-            self.validate_cli_requires()
+            if validate_requires:
+                self.validate_cli_requires()
             self.cli = build_cli(self.manifest, commander_cls=TyperCommander)
 
     def validate_cli_requires(self) -> None:
@@ -58,7 +59,7 @@ class Transformer:
 
     def resolve_includes(self) -> dict:
         include_transforms = map(self.resolve_include_by_path, set(self.command_config['includes']))
-        merged_config = {}
+        merged_config: dict[str, Any] = {}
         for transformed_include in include_transforms:
             cliffy_merger.merge(merged_config, transformed_include.command_config)
 
@@ -70,7 +71,7 @@ class Transformer:
             return cls(m, as_include=True)
 
     @staticmethod
-    def load_manifest(manifest_io: TextIO) -> dict:
+    def load_manifest(manifest_io: TextIO) -> dict[str, Any]:
         try:
             manifest_path = os.path.realpath(manifest_io.name)
             all_vars = yaml.safe_load(open(manifest_path, "r")).get('vars', {})
@@ -84,8 +85,3 @@ class Transformer:
         except yaml.YAMLError as e:
             print("load_manifest", e)
             raise
-
-
-class NullUndefined(Undefined):
-    def __getattr__(self, key) -> Literal['']:
-        return ''

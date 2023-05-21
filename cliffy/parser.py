@@ -1,7 +1,7 @@
 ## Command parser
 from typing import Any, Literal, Optional, Tuple, Union
 
-import pybash
+from pybash.transformer import transform as transform_bash
 
 from .manifests import Manifest
 
@@ -37,7 +37,7 @@ class Parser:
         if script.startswith('$'):
             script = script.replace('$ ', '$', 1)
             script = f'>{script[1:]}'
-            return " " * 4 + pybash.Transformer.transform_source(script)
+            return " " * 4 + transform_bash(script)
 
         return "".join(" " * 4 + line + "\n" for line in script.split('\n'))
 
@@ -87,7 +87,7 @@ class Parser:
         is_required = self.is_param_required(arg_type)
         default_val = self.get_default_param_val(arg_type)
         param_type = 'Option' if self.is_param_option(arg_name) else 'Argument'
-        arg_aliases = []
+        arg_aliases: list[str] = []
 
         # extract default val before parsing it
         if '=' in arg_type:

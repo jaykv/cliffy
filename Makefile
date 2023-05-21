@@ -1,6 +1,6 @@
-check: lint test
+check: format lint test clean
 
-SOURCE_FILES=cliffy
+SOURCE_FILES=cliffy tests
 
 install:
 	pip install -e .

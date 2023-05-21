@@ -20,7 +20,7 @@ class Loader:
         return script_path
 
     @classmethod
-    def load_cli(cls, cli: CLI) -> None:
+    def load_from_cli(cls, cli: CLI) -> None:
         L = cls(cli)
         L.deploy_script()
         L.deploy_cli()

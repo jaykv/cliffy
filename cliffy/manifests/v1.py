@@ -21,7 +21,7 @@ class CLIManifest(BaseModel):
     )
     requires: list[str] = Field(
         [],
-        description="List of Python dependencies required for the CLI. Validated on CLI load and update. "
+        description="List of Python dependencies required for the CLI. Validated on CLI load, update and build. "
         "Supports basic requirements specifier syntax.",
     )
     includes: list[str] = Field(
@@ -57,7 +57,7 @@ class CLIManifest(BaseModel):
         "Each element of the list can be a separate function. "
         "These functions should be defined as strings that can be executed by the Python interpreter.",
     )
-    args: dict[str, list] = Field(
+    args: dict[str, list[dict[str, str]]] = Field(
         {},
         description="A mapping containing the arguments and options for each command. "
         "Each key in the mapping should correspond to a command in the commands section. "
@@ -191,7 +191,7 @@ class IncludeManifest(BaseModel):
     commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = {}
     imports: Union[str, list[str]] = []
     functions: list[str] = []
-    args: dict[str, list] = {}
+    args: dict[str, list[dict[str, str]]] = {}
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
     requires: list[str]
@@ -205,3 +205,4 @@ class CLIMetadata(BaseModel):
     version: str
     loaded: datetime
     manifest: str
+    requires: list[str]

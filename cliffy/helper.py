@@ -3,6 +3,7 @@ import os
 import platform
 import subprocess
 import sys
+from importlib.resources import files
 from pathlib import Path
 from typing import Optional
 
@@ -18,7 +19,7 @@ except ImportError:
 HOME_PATH = str(Path.home())
 PYTHON_BIN = f"{sys.exec_prefix}/Scripts" if platform.system() == "Windows" else f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
-CLIFFY_CLI_DIR = f"{Path(__file__).parent.resolve()}/clis"
+CLIFFY_CLI_DIR = files('cliffy.clis')
 CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
 OPERATOR_MAP = {
     '==': operator.eq,
