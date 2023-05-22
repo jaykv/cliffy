@@ -9,7 +9,7 @@ from cliffy.homer import get_clis, get_metadata
 
 RICH_INSTALLED = False
 with contextlib.suppress(ImportError):
-    import rich # type: ignore
+
     RICH_INSTALLED = True
 
 CLI_LOADS = ["hello", "db", "pydev", "template", "town", "environ"]
@@ -23,6 +23,7 @@ if not RICH_INSTALLED:
     CLI_BUNDLES = ["hello", "pydev", "template", "town", "environ"]
     CLI_LOAD_FAILS = ["requires", "db"]
     CLI_BUNDLE_FAILS = ["requires", "db"]
+
 
 def setup_module():
     pytest.installed_clis = []  # type: ignore
