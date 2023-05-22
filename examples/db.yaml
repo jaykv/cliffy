@@ -5,6 +5,9 @@ help: Database CLI
 cli_options:
   add_completion: False
   
+requires:
+  - rich
+
 imports: |
   from rich.console import Console
   console = Console()
@@ -22,12 +25,20 @@ commands:
         console.print(f"Back to safety!", style="green")
   list: |
     """List databases"""
-    print(f"Listing all databases")
+    print("Listing all databases")
+  view: |
+    """View database table"""
+    console.print(f"Viewing {table} table for {name} DB")
+
 
 args:
   create: &db_args
     - name: DatabaseName
   delete: *db_args
+  view: 
+    - <<: *db_args
+    - table: TableName
 
 types:
   DatabaseName: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)
+  TableName: str = typer.Option(..., prompt="What is the name of the table?")

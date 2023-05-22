@@ -1,10 +1,10 @@
 manifestVersion: v1 # optional (Default will be the latest)
 name: pydev
 version: 0.1.0
+help: Python developer utilities
 
 imports: |
   import sys
-  import subprocess
 
 functions:
   - |
@@ -21,44 +21,52 @@ functions:
             sys.exit(1)
 
         return result.stdout.decode('utf-8').strip()
+  - |
+    def get_file_contents(file_name: str):
+        with open(file_name, 'r') as f:
+          contents = f.read()
+        return contents
+  - |
+    def write_to_file(file_name: str, contents: str):
+        with open(file_name, 'w') as f:
+          f.write(contents)
 
 commands:
   clean:
-    - '"""Clean pycache artifacts"""'
-    - $find . -type f -name "*.pyc" -delete
-    - $find . -type d -name "__pycache__" -delete
-    - $echo Cleaned!
+    - help: Clean pycache artifacts
+    - $ find . -type f -name "*.pyc" -delete
+    - $ find . -type d -name "__pycache__" -delete
+    - $ echo Cleaned!
 
   format:
-    - '"""Format code with black"""'
-    - $black .
-    - $echo Formatted!
+    - help: Format code with black
+    - $ black .
+    - $ echo Formatted!
 
-  lint: |
-    """Run linters on the code"""
-    print(run_cmd('flake8 .'))
-    print(run_cmd('black --check .'))
-    print(run_cmd('mypy .'))
-    print("Linting successful!")
+  lint:
+    - help: Run linters on the code
+    - $ flake8 .
+    - $ black --check .
+    - $ mypy .
+    - print("Linting successful!")
 
-  test: |
-    """Run tests"""
-    print(run_cmd('pytest'))
-    print("Tests passed!")
+  test:
+    - help: Run tests
+    - $ pytest
+    - print("Tests passed!")
 
-  bump: |
-    """Bump the package version"""
-    current_version = run_cmd('python setup.py --version')
-    print(f"Current version: {current_version}")
-    parts = current_version.split('.')
-    new_version = '.'.join(parts[:-1] + [str(int(parts[-1]) + 1)])
-    print(f"New version: {new_version}")
-    with open('setup.py', 'r') as f:
-        contents = f.read()
-    contents = contents.replace(current_version, new_version)
-    with open('setup.py', 'w') as f:
-        f.write(contents)
-    print(f"Bumped version from {current_version} to {new_version}.")
+  bump: 
+    - help: Bump the package version
+    - |
+      current_version = run_cmd("python setup.py --version")
+      print(f"Current version: {current_version}")
+      parts = current_version.split('.')
+      new_version = '.'.join(parts[:-1] + [str(int(parts[-1]) + 1)])
+      print(f"New version: {new_version}")
+      contents = get_file_contents("setup.py")
+      contents = contents.replace(current_version, new_version)
+      write_to_file("setup.py", contents)
+      print(f"Bumped version from {current_version} to {new_version}.")
 
 args:
   bump: [--major: VersionPart, --minor: VersionPart, --patch: VersionPart]

@@ -1,5 +1,6 @@
 name: hello
 version: 0.1.0
+help: Hello world!
 
 commands:
   bash: $echo "hello from bash"

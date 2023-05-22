@@ -1,5 +1,5 @@
 ## Mimic rich API methods for rich-less support
-from typing import Union
+from typing import Any, Union
 
 import click
 
@@ -8,7 +8,7 @@ class Console:
     def __init__(self) -> None:
         pass
 
-    def print(self, text, **kwargs) -> None:
+    def print(self, text: Any, **kwargs) -> None:
         if isinstance(text, Table):
             click.echo(text)
         else:

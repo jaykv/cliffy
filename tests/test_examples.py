@@ -24,7 +24,7 @@ def teardown_module(cls):
     rmtree('test-bundles')
 
 
-@pytest.mark.parametrize("cli_name", ["hello", "db", "pydev", "template", "town"])
+@pytest.mark.parametrize("cli_name", ["hello", "db", "pydev", "template", "town", "environ"])
 def test_cli_loads(cli_name):
     runner = CliRunner()
     result = runner.invoke(load, [f'examples/{cli_name}.yaml'])
@@ -41,14 +41,14 @@ def test_cli_load_fails(cli_name):
     assert get_metadata(cli_name) is None
 
 
-@pytest.mark.parametrize("cli_name", ["hello", "db", "pydev", "template", "town", "requires"])
+@pytest.mark.parametrize("cli_name", ["hello", "db", "pydev", "template", "town", "requires", "environ"])
 def test_cli_builds(cli_name):
     runner = CliRunner()
     result = runner.invoke(build, [f'examples/{cli_name}.yaml', '-o', 'test-builds'])
     assert result.exit_code == 0
 
 
-@pytest.mark.parametrize("cli_name", ["hello", "db", "pydev", "template", "town"])
+@pytest.mark.parametrize("cli_name", ["hello", "db", "pydev", "template", "town", "environ"])
 def test_cli_bundles(cli_name):
     runner = CliRunner()
     result = runner.invoke(bundle, [f'{cli_name}', '-o', 'test-bundles'])

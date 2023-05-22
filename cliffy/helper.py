@@ -11,8 +11,8 @@ from packaging import version
 from pydantic import BaseModel
 
 try:
-    from rich.console import Console
-    from rich.table import Table
+    from rich.console import Console  # type: ignore
+    from rich.table import Table  # type: ignore
 except ImportError:
     from .rich import Console, Table
 

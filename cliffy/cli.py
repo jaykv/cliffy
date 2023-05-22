@@ -5,7 +5,7 @@ from typing import TextIO
 
 try:
     import rich_click as click  # type: ignore
-    from rich.console import Console
+    from rich.console import Console  # type: ignore
     from rich_click.rich_group import RichGroup as AliasGroup  # type: ignore
 except ImportError:
     import click

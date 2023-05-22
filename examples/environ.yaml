@@ -1,0 +1,11 @@
+name: environ
+description: Read environment variables
+version: 0.1.0
+help: Environment variable reader
+
+
+vars:
+  env_var: "{{ env['TEST'] or 'hello' }}"
+
+commands:
+  test: $ echo {{ env_var }}
