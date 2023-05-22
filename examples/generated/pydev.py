@@ -1,4 +1,4 @@
-## Generated pydev on 2023-05-22 18:14:52.627377
+## Generated pydev on 2023-05-22 19:05:20.141649
 import typer
 import subprocess
 from typing import Optional
@@ -32,13 +32,16 @@ def run_cmd(cmd: str):
         sys.exit(1)
 
     return result.stdout.decode('utf-8').strip()
+
 def get_file_contents(file_name: str):
     with open(file_name, 'r') as f:
-      contents = f.read()
+        contents = f.read()
     return contents
+
 def write_to_file(file_name: str, contents: str):
     with open(file_name, 'w') as f:
-      f.write(contents)
+        f.write(contents)
+
 
 
 @cli.command("clean")

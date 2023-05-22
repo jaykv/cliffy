@@ -24,12 +24,12 @@ functions:
   - |
     def get_file_contents(file_name: str):
         with open(file_name, 'r') as f:
-          contents = f.read()
+            contents = f.read()
         return contents
   - |
     def write_to_file(file_name: str, contents: str):
         with open(file_name, 'w') as f:
-          f.write(contents)
+            f.write(contents)
 
 commands:
   clean:
