@@ -9,8 +9,10 @@ from cliffy.homer import get_clis, get_metadata
 
 RICH_INSTALLED = False
 with contextlib.suppress(ImportError):
+    import rich
 
-    RICH_INSTALLED = True
+    if rich:
+        RICH_INSTALLED = True
 
 CLI_LOADS = ["hello", "db", "pydev", "template", "town", "environ"]
 CLI_BUNDLES = ["hello", "db", "pydev", "template", "town", "environ"]
