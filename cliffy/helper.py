@@ -5,8 +5,9 @@ import subprocess
 import sys
 from importlib.resources import files
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
+from click import secho
 from packaging import version
 from pydantic import BaseModel
 
@@ -37,19 +38,13 @@ class RequirementSpec(BaseModel):
     version: Optional[str]
 
 
-def write_to_file(path: str, text: str, executable: bool = False) -> bool:
-    try:
-        output_file = Path(path)
-        output_file.parent.mkdir(exist_ok=True, parents=True)
-        output_file.write_text(text)
-    except Exception as e:
-        print("write_to_file", e)
-        return False
+def write_to_file(path: str, text: str, executable: bool = False) -> None:
+    output_file = Path(path)
+    output_file.parent.mkdir(exist_ok=True, parents=True)
+    output_file.write_text(text)
 
     if executable:
         make_executable(path)
-
-    return True
 
 
 def make_executable(path: str) -> None:
@@ -104,3 +99,11 @@ def compare_versions(version1: str, version2: str, op: str) -> bool:
     v1 = version.parse(version1)
     v2 = version.parse(version2)
     return OPERATOR_MAP[op](v1, v2)
+
+
+def out(text: str, **echo_kwargs: Any) -> None:
+    secho(text, **echo_kwargs)
+
+
+def out_err(text: str) -> None:
+    secho(f"{text} 💔", fg='red', err=True)

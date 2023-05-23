@@ -7,6 +7,9 @@ from .manifests import Manifest
 
 
 class Parser:
+
+    __slots__ = ('manifest',)
+
     def __init__(self, manifest: Manifest) -> None:
         self.manifest = manifest
 

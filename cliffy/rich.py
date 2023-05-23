@@ -16,6 +16,9 @@ class Console:
 
 
 class Table:
+
+    __slots__ = ('cols', 'rows')
+
     def __init__(self) -> None:
         self.cols: list[str] = []
         self.rows: list[list[str]] = []
