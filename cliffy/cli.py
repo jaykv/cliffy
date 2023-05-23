@@ -5,7 +5,7 @@ from typing import TextIO
 
 try:
     import rich_click as click  # type: ignore
-    from rich.console import Console
+    from rich.console import Console  # type: ignore
     from rich_click.rich_group import RichGroup as AliasGroup  # type: ignore
 except ImportError:
     import click
@@ -13,7 +13,7 @@ except ImportError:
     from click import Group as AliasGroup
 
 from .builder import build_cli, run_cli
-from .helper import CLIFFY_CLI_DIR, print_rich_table, write_to_file
+from .helper import CLIFFY_CLI_DIR, out, out_err, print_rich_table, write_to_file
 from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from .loader import Loader
 from .manifests import Manifest, set_manifest_version
@@ -43,9 +43,9 @@ def load(manifests: list[TextIO]) -> None:
         T = Transformer(manifest)
         Loader.load_from_cli(T.cli)
         save_metadata(manifest.name, T.cli)
-        click.secho(f"~ Generated {T.cli.name} CLI v{T.cli.version} ~", fg="green")
-        click.secho(click.style("$", fg="magenta"), nl=False)
-        click.echo(f" {T.cli.name} -h")
+        out(f"✨ Generated {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
+        out("$", fg="magenta", nl=False)
+        out(f" {T.cli.name} -h")
 
 
 @cli.command()
@@ -57,11 +57,11 @@ def update(cli_names: list[str]) -> None:
             T = Transformer(open(cli_metadata.runner_path, "r"))
             Loader.load_from_cli(T.cli)
             save_metadata(cli_metadata.runner_path, T.cli)
-            click.secho(f"~ Reloaded {T.cli.name} CLI v{T.cli.version} ~", fg="green")
-            click.secho(click.style("$", fg="magenta"), nl=False)
-            click.echo(f" {T.cli.name} -h")
+            out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
+            out("$", fg="magenta", nl=False)
+            out(f" {T.cli.name} -h")
         else:
-            click.secho(f"~ {cli_name} not found", fg="red")
+            out_err(f"~ {cli_name} not found")
 
 
 @cli.command()
@@ -71,7 +71,7 @@ def render(manifest: TextIO) -> None:
     T = Transformer(manifest)
     console = Console()
     console.print(T.cli.code, overflow="fold", emoji=False, markup=False)
-    click.secho(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
+    out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
 
 
 @cli.command("run")
@@ -104,8 +104,12 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
         console = Console()
         console.print(template, overflow="fold", emoji=False, markup=False)
     else:
-        write_to_file(f'{cli_name}.yaml', text=template)
-        click.secho(f"+ {cli_name}.yaml", fg="green")
+        try:
+            write_to_file(f'{cli_name}.yaml', text=template)
+        except Exception as e:
+            out_err(f"~ error writing to file: {e}")
+            raise SystemExit(1)
+        out(f"+ {cli_name}.yaml", fg="green")
 
 
 @cli.command("list")
@@ -124,9 +128,9 @@ def remove(cli_names: list[str]) -> None:
         if get_metadata_path(cli_name):
             remove_metadata(cli_name)
             Loader.unload_cli(cli_name)
-            click.secho(f"~ {cli_name} unloaded", fg="green")
+            out(f"~ {cli_name} removed 💥", fg="green")
         else:
-            click.secho(f"~ {cli_name} not loaded", fg="red")
+            out_err(f"~ {cli_name} not loaded")
 
 
 @cli.command()
@@ -137,7 +141,7 @@ def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
     "Bundle a loaded CLI into a zipapp"
     for cli_name in cli_names:
         if not (metadata := get_metadata(cli_name)):
-            click.secho(f"~ {cli_name} not loaded", fg="red")
+            out_err(f"~ {cli_name} not loaded")
             continue
 
         result = build_cli(
@@ -145,13 +149,13 @@ def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
         )
 
         if result.exit_code != 0:
-            click.secho(result.stdout)
-            click.secho(f"~ {cli_name} bundle failed", fg="red", error=True)
+            out(result.stdout)
+            out_err(f"~ {cli_name} bundle failed")
             continue
 
         if debug:
-            click.secho(result.stdout)
-        click.secho(f"+ {cli_name} bundled", fg="green")
+            out(result.stdout)
+        out(f"+ {cli_name} bundled 📦", fg="green")
 
 
 @cli.command()
@@ -168,16 +172,17 @@ def build(manifests: list[TextIO], debug: bool, output_dir: str) -> None:
             result = build_cli(T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir)
 
         if result.exit_code != 0:
-            click.secho(result.stdout)
-            click.secho(f"~ {T.cli.name} build failed", fg="red", error=True)
+            out(result.stdout)
+            out_err(f"~ {T.cli.name} build failed")
             continue
 
         if debug:
-            click.secho(result.stdout)
-        click.secho(f"+ {T.cli.name} built", fg="green")
+            out(result.stdout)
+        out(f"+ {T.cli.name} built 📦", fg="green")
 
 
 ALIASES = {
+    "add": load,
     "rm": remove,
     "ls": cliffy_list,
 }

@@ -7,6 +7,9 @@ from .manifests import Manifest
 
 
 class Parser:
+
+    __slots__ = ('manifest',)
+
     def __init__(self, manifest: Manifest) -> None:
         self.manifest = manifest
 
@@ -34,10 +37,9 @@ class Parser:
 
     def parse_command_block(self, script: str):
         ## Bash commands start with $
-        if script.startswith('$'):
-            script = script.replace('$ ', '$', 1)
-            script = f'>{script[1:]}'
-            return " " * 4 + transform_bash(script)
+        if script.strip().startswith('$'):
+            pybash_script = f'>{script[1:].strip()}'
+            return " " * 4 + transform_bash(pybash_script)
 
         return "".join(" " * 4 + line + "\n" for line in script.split('\n'))
 

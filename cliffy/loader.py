@@ -6,6 +6,8 @@ from .helper import CLIFFY_CLI_DIR, PYTHON_BIN, PYTHON_EXECUTABLE, write_to_file
 
 
 class Loader:
+    __slots__ = ('cli',)
+
     def __init__(self, cli: CLI) -> None:
         self.cli = cli
 

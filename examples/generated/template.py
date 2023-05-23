@@ -1,13 +1,13 @@
-## Generated hello on 2023-05-22 18:03:15.024488
+## Generated template on 2023-05-22 18:03:15.250627
 import typer
 import subprocess
 from typing import Optional
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="Hello world!")
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
 __version__ = '0.1.0'
-__cli_name__ = 'hello'
+__cli_name__ = 'template'
 
 def version_callback(value: bool):
     if value:
@@ -20,15 +20,9 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 
 
 
-@cli.command("bash")
-def bash():
-    subprocess.run(["echo","hello from bash"])
-
-
-
-@cli.command("python")
-def python():
-    print("hello from python")
+@cli.command("hello")
+def hello(local_arg: str = typer.Argument(...), local_arg_2: str = typer.Option("")):
+    subprocess.run(["hello","" + f"""{local_arg}""" + "","--" + f"""{local_arg_2}""" + ""])
 
 
 

@@ -67,7 +67,7 @@ class Commander:
     def add_functions(self) -> None:
         self.cli += "\n"
         for func in self.manifest.functions:
-            self.cli += f"{func}"
+            self.cli += f"{func}\n"
         self.cli += "\n"
 
     def add_greedy_commands(self) -> None:
