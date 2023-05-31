@@ -3,9 +3,13 @@ description: Read environment variables
 version: 0.1.0
 help: Environment variable reader
 
+imports:
+  - import os
 
 vars:
-  env_var: "{{ env['TEST'] or 'hello' }}"
+  # var setup on load time
+  env_var: "{{ env['ENVIRON_LOAD_VAR'] or 'hello' }}"
 
 commands:
-  test: $ echo {{ env_var }}
+  hello: $ echo {{ env_var }}
+  bye: $ echo f{os.environ['ENVIRON_BYE_TEXT']} # on run time

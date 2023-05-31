@@ -1,4 +1,7 @@
 import contextlib
+import os
+import shlex
+import subprocess
 from shutil import rmtree
 
 import pytest
@@ -14,17 +17,33 @@ with contextlib.suppress(ImportError):
     if rich:
         RICH_INSTALLED = True
 
-CLI_LOADS = ["hello", "db", "pydev", "template", "town", "environ"]
-CLI_BUNDLES = ["hello", "db", "pydev", "template", "town", "environ"]
-CLI_BUILDS = ["hello", "db", "pydev", "template", "town", "requires", "environ"]
-CLI_LOAD_FAILS = ["requires"]
-CLI_BUNDLE_FAILS = ["requires"]
+CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "venv"}
+CLI_BUNDLES = {"hello", "db", "pydev", "template", "town", "environ", "venv"}
+CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "venv"}
+CLI_LOAD_FAILS = {"requires"}
+CLI_BUNDLE_FAILS = {"requires"}
+CLI_TESTS = {
+    "hello": [{"args": "bash", "resp": "hello from bash"}, {"args": "python", "resp": "hello from python"}],
+    "town": [
+        {"args": "land build test123 202str", "resp": "building land"},
+        {"args": "land sell test123 --money 50", "resp": "selling"},
+        {"args": "land list", "resp": "listing land"},
+    ],
+    "template": [
+        {"args": "hello bash", "resp": "hello from bash"},
+        {"args": "hello python", "resp": "hello from python"},
+    ],
+    "environ": [
+        {"args": "hello", "resp": "hello"},
+        {"args": "bye", "env": {"ENVIRON_BYE_TEXT": "goodbye"}, "resp": "goodbye"},
+    ],
+}
 
 if not RICH_INSTALLED:
-    CLI_LOADS = ["hello", "pydev", "template", "town", "environ"]
-    CLI_BUNDLES = ["hello", "pydev", "template", "town", "environ"]
-    CLI_LOAD_FAILS = ["requires", "db"]
-    CLI_BUNDLE_FAILS = ["requires", "db"]
+    CLI_LOADS.remove("db")
+    CLI_BUNDLES.remove("db")
+    CLI_LOAD_FAILS.add("db")
+    CLI_BUNDLE_FAILS.add("db")
 
 
 def setup_module():
@@ -40,14 +59,14 @@ def teardown_module(cls):
     for cli in clis:
         assert cli is None
 
-    rmtree('test-builds')
-    rmtree('test-bundles')
+    rmtree("test-builds")
+    rmtree("test-bundles")
 
 
 @pytest.mark.parametrize("cli_name", CLI_LOADS)
 def test_cli_loads(cli_name):
     runner = CliRunner()
-    result = runner.invoke(load, [f'examples/{cli_name}.yaml'])
+    result = runner.invoke(load, [f"examples/{cli_name}.yaml"])
     assert result.exit_code == 0
     assert get_metadata(cli_name) is not None
     pytest.installed_clis.append(cli_name)  # type: ignore
@@ -56,7 +75,8 @@ def test_cli_loads(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_LOAD_FAILS)
 def test_cli_load_fails(cli_name):
     runner = CliRunner()
-    result = runner.invoke(load, [f'examples/{cli_name}.yaml'])
+    result = runner.invoke(load, [f"examples/{cli_name}.yaml"])
+    print(result.stdout)
     assert result.exit_code == 1
     assert get_metadata(cli_name) is None
 
@@ -64,21 +84,38 @@ def test_cli_load_fails(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_BUILDS)
 def test_cli_builds(cli_name):
     runner = CliRunner()
-    result = runner.invoke(build, [f'examples/{cli_name}.yaml', '-o', 'test-builds'])
+    result = runner.invoke(build, [f"examples/{cli_name}.yaml", "-o", "test-builds"])
     assert result.exit_code == 0
 
 
 @pytest.mark.parametrize("cli_name", CLI_BUNDLES)
 def test_cli_bundles(cli_name):
     runner = CliRunner()
-    result = runner.invoke(bundle, [f'{cli_name}', '-o', 'test-bundles'])
+    result = runner.invoke(bundle, [f"{cli_name}", "-o", "test-bundles"])
     assert result.exit_code == 0
-    assert f'+ {cli_name} bundled' in result.stdout
+    assert f"+ {cli_name} bundled" in result.stdout
 
 
 @pytest.mark.parametrize("cli_name", CLI_BUNDLE_FAILS)
 def test_cli_bundle_fails(cli_name):
     runner = CliRunner()
-    result = runner.invoke(bundle, [f'{cli_name}', '-o', 'test-bundles'])
+    result = runner.invoke(bundle, [f"{cli_name}", "-o", "test-bundles"])
     assert result.exit_code == 0
-    assert f'~ {cli_name} not loaded' in result.stdout
+    assert f"~ {cli_name} not loaded" in result.stdout
+
+
+@pytest.mark.parametrize("cli_name", CLI_TESTS.keys())
+def test_cli_response(cli_name):
+    for command in CLI_TESTS[cli_name]:
+        environment = command.get("env")
+        if environment:
+            environment = {**os.environ, **environment}
+
+        result = subprocess.run(
+            [cli_name] + shlex.split(command["args"]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+            env=environment,
+        )
+        assert command["resp"] in result.stdout

@@ -8,48 +8,44 @@ from .manifests import Manifest
 
 class Parser:
 
-    __slots__ = ('manifest',)
+    __slots__ = ("manifest",)
 
     def __init__(self, manifest: Manifest) -> None:
         self.manifest = manifest
 
     def is_param_required(self, param_type: str) -> bool:
         return (
-            param_type.strip().endswith('!')
-            if '=' not in param_type
-            else param_type.split('=')[0].strip().endswith('!')
+            param_type.strip().endswith("!")
+            if "=" not in param_type
+            else param_type.split("=")[0].strip().endswith("!")
         )
 
     def is_param_option(self, param_name: str) -> bool:
-        return '-' in param_name
+        return "-" in param_name
 
     def get_default_param_val(self, param_type: str) -> str:
-        return param_type.split('=')[1].strip() if '=' in param_type else ""
+        return param_type.split("=")[1].strip() if "=" in param_type else ""
 
     def capture_param_aliases(self, param_name: str) -> Tuple[str, list[str]]:
-        if '|' not in param_name:
-            return param_name.replace('-', ''), []
+        if "|" not in param_name:
+            return param_name.replace("-", ""), []
 
-        base_param_name = param_name.split('|')[0].replace('-', '')
-        aliases = param_name.split('|')[1:]
+        base_param_name = param_name.split("|")[0].replace("-", "").strip()
+        aliases = param_name.split("|")[1:]
 
         return base_param_name, aliases
 
-    def parse_command_block(self, script: str):
-        ## Bash commands start with $
-        if script.strip().startswith('$'):
-            pybash_script = f'>{script[1:].strip()}'
-            return " " * 4 + transform_bash(pybash_script)
+    def parse_command_block(self, script: str) -> str:
+        script = transform_bash(script)
+        return "".join(" " * 4 + line + "\n" for line in script.split("\n"))
 
-        return "".join(" " * 4 + line + "\n" for line in script.split('\n'))
-
-    def parse_command(self, block: Union[str, list[Union[str, dict[Literal['help'], str]]]]) -> str:
+    def parse_command(self, block: Union[str, list[Union[str, dict[Literal["help"], str]]]]) -> str:
         if isinstance(block, list):
             script_block = []
             help_text = ""
             for block_elem in block:
                 if isinstance(block_elem, dict):
-                    help_text = block_elem.get('help', '')
+                    help_text = block_elem.get("help", "")
                 else:
                     script_block.append(block_elem)
 
@@ -75,25 +71,25 @@ class Parser:
             # Required param needs ...
             parsed_arg_type += "(..." if is_required else "(None"
         else:
-            parsed_arg_type += f"({default_val}"
+            parsed_arg_type += f"({default_val.strip()}"
 
         if aliases:
             parsed_arg_type += f', "--{arg_name}"'
             for alias in aliases:
-                parsed_arg_type += f', "{alias}"'
+                parsed_arg_type += f', "{alias.strip()}"'
 
-        parsed_arg_type += '),'
+        parsed_arg_type += "),"
         return parsed_arg_type
 
     def parse_arg(self, arg_name: str, arg_type: str) -> str:
         is_required = self.is_param_required(arg_type)
         default_val = self.get_default_param_val(arg_type)
-        param_type = 'Option' if self.is_param_option(arg_name) else 'Argument'
+        param_type = "Option" if self.is_param_option(arg_name) else "Argument"
         arg_aliases: list[str] = []
 
         # extract default val before parsing it
-        if '=' in arg_type:
-            arg_type = arg_type.split('=')[0].strip()
+        if "=" in arg_type:
+            arg_type = arg_type.split("=")[0].strip()
 
         # strip - before parsing it
         if self.is_param_option(arg_name):
@@ -127,22 +123,18 @@ class Parser:
         parsed_command_args = ""
         for arg in command_args:
             arg_name, arg_type = next(iter(arg.items()))
-            parsed_command_args += f'{self.parse_arg(arg_name.strip(), arg_type.strip())} '
+            parsed_command_args += f"{self.parse_arg(arg_name.strip(), arg_type.strip())} "
 
         # strip the extra ", "
         return parsed_command_args[:-2]
 
     def get_command_func_name(self, command) -> str:
-        """land.build -> land_build or sell -> sell"""
-        return command.name.replace('.', '_')
+        """a.b -> a_b, c -> c"""
+        return command.name.replace(".", "_")
 
     def get_parsed_command_name(self, command) -> str:
-        """land.build -> build or sell -> sell"""
-        return command.name.split('.')[-1] if '.' in command.name else command.name
-
-    def indent_block(self, block: str) -> str:
-        blocklines = block.splitlines()
-        return "\n".join([" " * 4 + line for line in blocklines])
+        """a.b -> b or a -> a"""
+        return command.name.split(".")[-1] if "." in command.name else command.name
 
     def to_args(self, d: dict) -> str:
         s = "".join(f" {k}={v}," for k, v in d.items())

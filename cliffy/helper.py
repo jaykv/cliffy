@@ -3,9 +3,10 @@ import os
 import platform
 import subprocess
 import sys
+from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, NoReturn, Optional
 
 from click import secho
 from packaging import version
@@ -20,15 +21,15 @@ except ImportError:
 HOME_PATH = str(Path.home())
 PYTHON_BIN = f"{sys.exec_prefix}/Scripts" if platform.system() == "Windows" else f"{sys.exec_prefix}/bin"
 PYTHON_EXECUTABLE = sys.executable
-CLIFFY_CLI_DIR = files('cliffy.clis')
+CLIFFY_CLI_DIR = files("cliffy.clis")
 CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
 OPERATOR_MAP = {
-    '==': operator.eq,
-    '!=': operator.ne,
-    '>=': operator.ge,
-    '<=': operator.le,
-    '<': operator.lt,
-    '>': operator.gt,
+    "==": operator.eq,
+    "!=": operator.ne,
+    ">=": operator.ge,
+    "<=": operator.le,
+    "<": operator.lt,
+    ">": operator.gt,
 }
 
 
@@ -53,6 +54,11 @@ def make_executable(path: str) -> None:
     os.chmod(path, mode)
 
 
+def indent_block(block: str, spaces=4) -> str:
+    blocklines = block.splitlines()
+    return "\n".join([" " * spaces + line for line in blocklines])
+
+
 def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
     if split_on:
         joiner = "\n# "
@@ -62,7 +68,7 @@ def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
 
 
 def wrap_as_var(text: str) -> str:
-    return '{{' + text + '}}'
+    return "{{" + text + "}}"
 
 
 def print_rich_table(cols: list[str], rows: list[list[str]], styles: list[str]) -> None:
@@ -77,10 +83,10 @@ def print_rich_table(cols: list[str], rows: list[list[str]], styles: list[str]) 
 
 
 def get_installed_pip_packages() -> dict[str, str]:
-    reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
+    reqs = subprocess.check_output([sys.executable, "-m", "pip", "freeze"])
     installed_packages = {}
     for r in reqs.split():
-        r_spec = r.decode().split('==')
+        r_spec = r.decode().split("==")
         if len(r_spec) > 1:
             installed_packages[r_spec[0]] = r_spec[1]
     return installed_packages
@@ -89,7 +95,7 @@ def get_installed_pip_packages() -> dict[str, str]:
 def parse_requirement(requirement: str) -> RequirementSpec:
     for op in OPERATOR_MAP:
         if op in requirement:
-            parts = requirement.replace(' ', '').split(op)
+            parts = requirement.replace(" ", "").split(op)
             return RequirementSpec(name=parts[0], operator=op, version=parts[1])
 
     return RequirementSpec(name=requirement.strip(), operator=None, version=None)
@@ -106,4 +112,20 @@ def out(text: str, **echo_kwargs: Any) -> None:
 
 
 def out_err(text: str) -> None:
-    secho(f"{text} 💔", fg='red', err=True)
+    secho(f"{text} 💔", fg="red", err=True)
+
+
+def exit_err(text: str) -> NoReturn:
+    secho(f"{text} 💔", fg="red", err=True)
+    raise SystemExit(1)
+
+
+def age_datetime(date: datetime) -> str:
+    delta = datetime.now() - date
+    if delta.seconds > 86400:
+        return f"{delta.days}d"
+    elif delta.seconds > 3600:
+        return f"{delta.seconds // 3600}h"
+    elif delta.seconds > 60:
+        return f"{delta.seconds // 60}m"
+    return f"{delta.seconds}s"

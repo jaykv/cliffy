@@ -1,6 +1,6 @@
 import datetime
 
-from ..commander import Command, Commander
+from ..commander import Command, Commander, Group
 
 
 class TyperCommander(Commander):
@@ -11,17 +11,17 @@ class TyperCommander(Commander):
 import typer
 import subprocess
 from typing import Optional
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 """
 
     def add_base_cli(self) -> None:
         self.cli += """
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS"""
 
         if self.manifest.cli_options:
             self.cli += f",{self.parser.to_args(self.manifest.cli_options)}"
         if self.manifest.help:
-            self.cli += f', help="{self.manifest.help}"'
+            self.cli += f', help="""{self.manifest.help}"""'
 
         self.cli += f""")
 __version__ = '{self.manifest.version}'
@@ -35,12 +35,10 @@ def version_callback(value: bool):
 @cli.callback()
 def main(version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)):
     pass
+
 """
 
-    def add_group(self, group: str, command: Command) -> None:
-        self.cli += f"""{group}_app = typer.Typer(); cli.add_typer({group}_app, name="{group}");"""
-
-    def add_group_command(self, command: Command) -> None:
+    def add_root_command(self, command: Command) -> None:
         self.cli += f"""
 @cli.command("{self.parser.get_parsed_command_name(command)}")
 def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command)}):
@@ -48,9 +46,14 @@ def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command
 
 """
 
-    def add_sub_command(self, command: Command, group: str) -> None:
+    def add_group(self, group: Group) -> None:
+        self.cli += f"""{group.name}_app = typer.Typer()
+cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
+"""
+
+    def add_sub_command(self, command: Command, group: Group) -> None:
         self.cli += f"""
-@{group}_app.command("{self.parser.get_parsed_command_name(command)}")
+@{group.name}_app.command("{self.parser.get_parsed_command_name(command)}")
 def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command)}):
 {self.parser.parse_command(command.script)}
 

@@ -19,7 +19,7 @@ def save_metadata(manifest_path: str, cli: CLI) -> None:
         cli (CLI): CLI
     """
     abs_manifest_path = os.path.realpath(manifest_path)
-    encoded_runnerpath = b32encode(cli.name.encode('ascii')).decode('utf-8')
+    encoded_runnerpath = b32encode(cli.name.encode("ascii")).decode("utf-8")
     save_metadata_path = f"{CLIFFY_HOME_PATH}/{encoded_runnerpath}/{cli.name}.json"
     with open(manifest_path, "r") as manifest:
         write_to_file(
@@ -32,7 +32,7 @@ def save_metadata(manifest_path: str, cli: CLI) -> None:
                     loaded=datetime.now(),
                     manifest=manifest.read(),
                     requires=cli.requires,
-                ).dict(),
+                ).model_dump(),
                 default=str,
             ),
         )
@@ -110,6 +110,6 @@ def get_clis() -> Iterator[CLIMetadata]:
     Yields:
         Iterator[CLIMetadata]: CLI metadata
     """
-    metadata_paths = Path(CLIFFY_HOME_PATH).glob('*/*')
+    metadata_paths = Path(CLIFFY_HOME_PATH).glob("*/*")
     for metadata_path in metadata_paths:
         yield get_metadata_bypath(metadata_path)

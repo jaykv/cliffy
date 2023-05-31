@@ -22,29 +22,29 @@ def build_cli(
 
     with TemporaryDirectory() as tdist:
         copy(script_path, os.path.join(tdist, f"{cli_name}.py"))
-        pip_deps = ['typer'] + deps
+        pip_deps = ["typer"] + deps
 
         pip.install(["--target", tdist] + pip_deps)
 
         runner = CliRunner()
-        output_file = os.path.join(output_dir, f'{cli_name}') if output_dir else cli_name
+        output_file = os.path.join(output_dir, f"{cli_name}") if output_dir else cli_name
 
         return runner.invoke(
             shiv_cli.main,
             [
-                '--site-packages',
+                "--site-packages",
                 tdist,
-                '--compressed',
-                '-e',
-                f'{cli_name}.cli',
-                '-o',
+                "--compressed",
+                "-e",
+                f"{cli_name}.cli",
+                "-o",
                 output_file,
             ],
         )
 
 
 def run_cli(cli_name: str, script_code: str, args: tuple) -> None:
-    with NamedTemporaryFile(mode='w', prefix=f'{cli_name}_', suffix='.py', delete=True) as runner_file:
+    with NamedTemporaryFile(mode="w", prefix=f"{cli_name}_", suffix=".py", delete=True) as runner_file:
         runner_file.write(script_code)
         runner_file.flush()
         module_path, module_filename = os.path.split(runner_file.name)
