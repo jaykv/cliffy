@@ -100,8 +100,8 @@ class Commander:
 
     def add_vars(self) -> None:
         if not self.manifest.vars:
-            return 
-        
+            return
+
         for var, val in self.manifest.vars.items():
             if isinstance(val, dict):
                 self.cli += f"{var} = {next(iter(val))}\n"
@@ -111,8 +111,8 @@ class Commander:
 
     def add_functions(self) -> None:
         if not self.manifest.functions:
-            return 
-        
+            return
+
         for func in self.manifest.functions:
             self.cli += f"{transform_bash(func)}\n"
         self.cli += "\n"
