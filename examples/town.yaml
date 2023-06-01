@@ -12,6 +12,12 @@ functions:
         return "${:.2f}".format(money)
 
 commands:
+  people:
+    - help: Manage people
+  shops:
+    - help: Manage shops
+  home:
+    - help: Manage homes
   land.build: |
     """Build land"""
     print(f"building land {name}")

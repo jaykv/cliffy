@@ -1,9 +1,11 @@
 from datetime import datetime
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field
 
 from ..helper import wrap_as_comment, wrap_as_var
+
+COMMAND_BLOCK = Union[str, list[Union[str, dict[Literal["help"], str]]]]
 
 
 class CLIManifest(BaseModel):
@@ -30,14 +32,14 @@ class CLIManifest(BaseModel):
         "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest. "
         "and finally, deep merges the merged manifest with the main manifest.",
     )
-    vars: dict[str, str] = Field(
+    vars: dict[str, Union[str, dict[str, None]]] = Field(
         {},
         description="A mapping defining manifest variables that can be referenced in any other blocks. "
         "Environments variables can be used in this section with ${some_env_var} for dynamic parsing. "
         "Supports jinja2 formatted expressions as values. "
         "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
     )
-    commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = Field(
+    commands: dict[str, COMMAND_BLOCK] = Field(
         {},
         description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "
@@ -69,18 +71,18 @@ class CLIManifest(BaseModel):
         "These types can be referenced by name in the args section to provide type annotations "
         "for params and options defined in the args section.",
     )
-    cli_options: dict[str, str] = Field(
+    cli_options: dict[str, Any] = Field(
         {},
-        Description="A mapping for any additional options that can be used to customize the behavior of the CLI.",
+        description="A mapping for any additional options that can be used to customize the behavior of the CLI.",
     )
 
     @classmethod
-    def get_field_description(cls, field_name: str, as_comment: bool = False) -> str:
-        field = cls.__fields__.get(field_name)
-        if field and field.field_info.description:
+    def get_field_description(cls, field_name: str, as_comment: bool = True) -> str:
+        field = cls.model_fields.get(field_name)
+        if field and field.description:
             if as_comment:
-                return wrap_as_comment(field.field_info.description, split_on=". ")
-            return field.field_info.description
+                return wrap_as_comment(field.description, split_on=". ")
+            return field.description
         return ""
 
     @classmethod
@@ -88,40 +90,44 @@ class CLIManifest(BaseModel):
         return f"""# cliffy v1 template
 manifestVersion: v1
 
-{cls.get_field_description('name', as_comment=True)}
+{cls.get_field_description('name')}
 name: {name} 
 
-{cls.get_field_description('version', as_comment=True)}
+{cls.get_field_description('version')}
 version: 0.1.0
 
-{cls.get_field_description('includes', as_comment=True)}
+{cls.get_field_description('help')}
+help: hello world
+
+{cls.get_field_description('includes')}
 includes: []
 
-{cls.get_field_description('requires', as_comment=True)}
+{cls.get_field_description('requires')}
 requires: []
 
-{cls.get_field_description('vars', as_comment=True)}
+{cls.get_field_description('vars')}
 vars:
     default_mood: happy
+    debug_mode: "{{ env['DEBUG'] or 'False' }}"
 
-{cls.get_field_description('imports', as_comment=True)}
+{cls.get_field_description('imports')}
 imports:
     - import os
     - |
         from collections import defaultdict
         import re
 
-{cls.get_field_description('functions', as_comment=True)}
+{cls.get_field_description('functions')}
 functions:
     - |
         def greet_name(name: str):
             print("hello " + name)
 
-{cls.get_field_description('types', as_comment=True)}
+{cls.get_field_description('types')}
 types:
     Language: str = typer.Option("english", "-l", help="Language to greet in", prompt=True)
 
-{cls.get_field_description('args', as_comment=True)}
+{cls.get_field_description('args')}
 args:
     world: [--name|-n: str!]                      # a REQUIRED option
     greet.all: 
@@ -129,7 +135,7 @@ args:
         - mood: str = "{wrap_as_var("default_mood")}"          # an OPTIONAL param that uses a manifest var as default
         - --language: Language                    # an option with a default that uses Language type as arg definition
 
-{cls.get_field_description('commands', as_comment=True)}
+{cls.get_field_description('commands')}
 commands:
     # this is a parent command that will get invoked with: hello world
     world: 
@@ -155,31 +161,34 @@ commands:
 
 manifestVersion: v1
 
-{cls.get_field_description('name', as_comment=True)}
+{cls.get_field_description('name')}
 name: {name} 
 
-{cls.get_field_description('version', as_comment=True)}
+{cls.get_field_description('version')}
 version: 0.1.0
 
-{cls.get_field_description('includes', as_comment=True)}
+{cls.get_field_description('help')}
+help: 
+
+{cls.get_field_description('includes')}
 includes: []
 
-{cls.get_field_description('vars', as_comment=True)}
+{cls.get_field_description('vars')}
 vars: {{}}
 
-{cls.get_field_description('imports', as_comment=True)}
+{cls.get_field_description('imports')}
 imports: []
 
-{cls.get_field_description('functions', as_comment=True)}
+{cls.get_field_description('functions')}
 functions: []
 
-{cls.get_field_description('types', as_comment=True)}
+{cls.get_field_description('types')}
 types: {{}}
 
-{cls.get_field_description('args', as_comment=True)}
+{cls.get_field_description('args')}
 args: {{}}
 
-{cls.get_field_description('commands', as_comment=True)}
+{cls.get_field_description('commands')}
 commands: {{}}
 
 """
@@ -188,7 +197,7 @@ commands: {{}}
 class IncludeManifest(BaseModel):
     """Special manifest specifically to define the allowed named objects that can be included"""
 
-    commands: dict[str, Union[str, list[Union[str, dict[Literal['help'], str]]]]] = {}
+    commands: dict[str, Union[str, list[Union[str, dict[Literal["help"], str]]]]] = {}
     imports: Union[str, list[str]] = []
     functions: list[str] = []
     args: dict[str, list[dict[str, str]]] = {}

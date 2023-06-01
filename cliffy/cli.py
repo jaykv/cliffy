@@ -13,13 +13,13 @@ except ImportError:
     from click import Group as AliasGroup
 
 from .builder import build_cli, run_cli
-from .helper import CLIFFY_CLI_DIR, out, out_err, print_rich_table, write_to_file
+from .helper import CLIFFY_CLI_DIR, age_datetime, exit_err, indent_block, out, out_err, print_rich_table, write_to_file
 from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from .loader import Loader
 from .manifests import Manifest, set_manifest_version
 from .transformer import Transformer
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 class AliasedGroup(AliasGroup):  # type: ignore
@@ -36,7 +36,7 @@ def cli() -> None:
 
 
 @cli.command()
-@click.argument('manifests', type=click.File('rb'), nargs=-1)
+@click.argument("manifests", type=click.File("rb"), nargs=-1)
 def load(manifests: list[TextIO]) -> None:
     """Load CLI for given manifest(s)"""
     for manifest in manifests:
@@ -49,7 +49,7 @@ def load(manifests: list[TextIO]) -> None:
 
 
 @cli.command()
-@click.argument('cli_names', type=str, nargs=-1)
+@click.argument("cli_names", type=str, nargs=-1)
 def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
     for cli_name in cli_names:
@@ -65,7 +65,7 @@ def update(cli_names: list[str]) -> None:
 
 
 @cli.command()
-@click.argument('manifest', type=click.File('rb'))
+@click.argument("manifest", type=click.File("rb"))
 def render(manifest: TextIO) -> None:
     """Render the CLI manifest generation as code"""
     T = Transformer(manifest)
@@ -75,8 +75,8 @@ def render(manifest: TextIO) -> None:
 
 
 @cli.command("run")
-@click.argument('manifest', type=click.File('rb'))
-@click.argument('cli_args', type=str, nargs=-1)
+@click.argument("manifest", type=click.File("rb"))
+@click.argument("cli_args", type=str, nargs=-1)
 def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
     """Run CLI for a manifest"""
     T = Transformer(manifest)
@@ -84,11 +84,11 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
 
 
 @cli.command()
-@click.argument('cli_name', type=str, default="cliffy")
-@click.option('--version', '-v', type=str, show_default=True, default="v1", help="Manifest version")
-@click.option('--render', is_flag=True, show_default=True, default=False, help="Render template to terminal directly")
+@click.argument("cli_name", type=str, default="cliffy")
+@click.option("--version", "-v", type=str, show_default=True, default="v1", help="Manifest version")
+@click.option("--render", is_flag=True, show_default=True, default=False, help="Render template to terminal directly")
 @click.option(
-    '--raw',
+    "--raw",
     type=bool,
     is_flag=True,
     show_default=True,
@@ -105,23 +105,25 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
         console.print(template, overflow="fold", emoji=False, markup=False)
     else:
         try:
-            write_to_file(f'{cli_name}.yaml', text=template)
+            write_to_file(f"{cli_name}.yaml", text=template)
         except Exception as e:
-            out_err(f"~ error writing to file: {e}")
-            raise SystemExit(1)
+            exit_err(f"~ error writing to file: {e}")
         out(f"+ {cli_name}.yaml", fg="green")
 
 
 @cli.command("list")
 def cliffy_list() -> None:
     "List all CLIs loaded"
-    cols = ["Name", "Version", "Manifest"]
-    rows = [[metadata.cli_name, metadata.version, metadata.runner_path] for metadata in get_clis()]
-    print_rich_table(cols, rows, styles=["cyan", "magenta", "green"])
+    cols = ["Name", "Version", "Age", "Manifest"]
+    rows = [
+        [metadata.cli_name, metadata.version, age_datetime(metadata.loaded), metadata.runner_path]
+        for metadata in get_clis()
+    ]
+    print_rich_table(cols, rows, styles=["cyan", "magenta", "green", "blue"])
 
 
 @cli.command()
-@click.argument('cli_names', type=str, nargs=-1)
+@click.argument("cli_names", type=str, nargs=-1)
 def remove(cli_names: list[str]) -> None:
     "Remove a loaded CLI by name"
     for cli_name in cli_names:
@@ -134,9 +136,9 @@ def remove(cli_names: list[str]) -> None:
 
 
 @cli.command()
-@click.argument('cli_names', type=str, nargs=-1)
-@click.option('--debug', is_flag=True, show_default=True, default=False, help="Display build output")
-@click.option('--output-dir', '-o', type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
+@click.argument("cli_names", type=str, nargs=-1)
+@click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
+@click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
 def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
     "Bundle a loaded CLI into a zipapp"
     for cli_name in cli_names:
@@ -145,7 +147,7 @@ def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
             continue
 
         result = build_cli(
-            cli_name, script_path=f'{CLIFFY_CLI_DIR}/{cli_name}.py', deps=metadata.requires, output_dir=output_dir
+            cli_name, script_path=f"{CLIFFY_CLI_DIR}/{cli_name}.py", deps=metadata.requires, output_dir=output_dir
         )
 
         if result.exit_code != 0:
@@ -159,14 +161,14 @@ def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
 
 
 @cli.command()
-@click.argument('manifests', type=click.File('rb'), nargs=-1)
-@click.option('--debug', is_flag=True, show_default=True, default=False, help="Display build output")
-@click.option('--output-dir', '-o', type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
+@click.argument("manifests", type=click.File("rb"), nargs=-1)
+@click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
+@click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
 def build(manifests: list[TextIO], debug: bool, output_dir: str) -> None:
     "Build a CLI manifest into a zipapp"
     for manifest in manifests:
         T = Transformer(manifest, validate_requires=False)
-        with NamedTemporaryFile(mode='w', prefix=f'{T.cli.name}_', suffix='.py', delete=True) as script:
+        with NamedTemporaryFile(mode="w", prefix=f"{T.cli.name}_", suffix=".py", delete=True) as script:
             script.write(T.cli.code)
             script.flush()
             result = build_cli(T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir)
@@ -179,6 +181,18 @@ def build(manifests: list[TextIO], debug: bool, output_dir: str) -> None:
         if debug:
             out(result.stdout)
         out(f"+ {T.cli.name} built 📦", fg="green")
+
+
+@cli.command()
+@click.argument("cli_name", type=str)
+def info(cli_name: str):
+    "Display CLI info"
+    metadata = get_metadata(cli_name) or exit_err(f"~ {cli_name} not loaded")
+    out(f"{click.style('name:', fg='blue')} {metadata.cli_name}")
+    out(f"{click.style('version:', fg='blue')} {metadata.version}")
+    out(f"{click.style('requires:', fg='blue')} {metadata.requires}")
+    out(f"{click.style('age:', fg='blue')} {age_datetime(metadata.loaded)} ({metadata.loaded.ctime()})")
+    out(f"{click.style('manifest:', fg='blue')}\n{indent_block(metadata.manifest, spaces=2)}")
 
 
 ALIASES = {
