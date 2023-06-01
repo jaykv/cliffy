@@ -2,14 +2,14 @@
 
 [[package]]
 name = "annotated-types"
-version = "0.4.0"
+version = "0.5.0"
 description = "Reusable constraint types to use with typing.Annotated"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "annotated_types-0.4.0-py3-none-any.whl", hash = "sha256:ac27bcccc7a1447efe9a9bd1145766cc14a841b107a6040a799c260e83adf67d"},
-    {file = "annotated_types-0.4.0.tar.gz", hash = "sha256:fae0ca44ad43b7e54dbb02b22137885b1cb1cb7a312fe9fe7a6d77a0e5b0443a"},
+    {file = "annotated_types-0.5.0-py3-none-any.whl", hash = "sha256:58da39888f92c276ad970249761ebea80ba544b77acddaa1a4d6cf78287d45fd"},
+    {file = "annotated_types-0.5.0.tar.gz", hash = "sha256:47cdc3490d9ac1506ce92c7aaa76c579dc3509ff11e098fc867e5130ab7be802"},
 ]
 
 [[package]]
@@ -665,14 +665,14 @@ files = [
 
 [[package]]
 name = "rich"
-version = "13.3.5"
+version = "13.4.1"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
 category = "main"
 optional = true
 python-versions = ">=3.7.0"
 files = [
-    {file = "rich-13.3.5-py3-none-any.whl", hash = "sha256:69cdf53799e63f38b95b9bf9c875f8c90e78dd62b2f00c13a911c7a3b9fa4704"},
-    {file = "rich-13.3.5.tar.gz", hash = "sha256:2d11b9b8dd03868f09b4fffadc84a6a8cda574e40dc90821bd845720ebb8e89c"},
+    {file = "rich-13.4.1-py3-none-any.whl", hash = "sha256:d204aadb50b936bf6b1a695385429d192bc1fdaf3e8b907e8e26f4c4e4b5bf75"},
+    {file = "rich-13.4.1.tar.gz", hash = "sha256:76f6b65ea7e5c5d924ba80e322231d7cb5b5981aa60bfc1e694f1bc097fe6fe1"},
 ]
 
 [package.dependencies]
@@ -838,4 +838,4 @@ rich = ["rich-click", "shellingham"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "312a48aeb8cdde498509cbdcbf32e2974195a0724af60c7d2b2f0ac893753522"
+content-hash = "a878e93bb53a460b97383db890ca38f81b944c7f2b64a1a57157a671f75a85a8"

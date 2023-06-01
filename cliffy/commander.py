@@ -88,6 +88,9 @@ class Commander:
                 self.add_sub_command(subcommand, group)
 
     def add_imports(self) -> None:
+        if not self.manifest.imports:
+            return
+
         if isinstance(self.manifest.imports, str):
             self.cli += self.manifest.imports + "\n"
         elif isinstance(self.manifest.imports, list):
@@ -96,6 +99,9 @@ class Commander:
         self.cli += "\n"
 
     def add_vars(self) -> None:
+        if not self.manifest.vars:
+            return 
+        
         for var, val in self.manifest.vars.items():
             if isinstance(val, dict):
                 self.cli += f"{var} = {next(iter(val))}\n"
@@ -104,6 +110,9 @@ class Commander:
         self.cli += "\n"
 
     def add_functions(self) -> None:
+        if not self.manifest.functions:
+            return 
+        
         for func in self.manifest.functions:
             self.cli += f"{transform_bash(func)}\n"
         self.cli += "\n"

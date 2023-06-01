@@ -27,10 +27,12 @@ cli = typer.Typer(context_settings=CONTEXT_SETTINGS"""
 __version__ = '{self.manifest.version}'
 __cli_name__ = '{self.manifest.name}'
 
+
 def version_callback(value: bool):
     if value:
         print(f"{{__cli_name__}}, {{__version__}}")
         raise typer.Exit()
+
 
 @cli.callback()
 def main(version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)):
@@ -43,7 +45,6 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 @cli.command("{self.parser.get_parsed_command_name(command)}")
 def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command)}):
 {self.parser.parse_command(command.script)}
-
 """
 
     def add_group(self, group: Group) -> None:
@@ -56,7 +57,6 @@ cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
 @{group.name}_app.command("{self.parser.get_parsed_command_name(command)}")
 def {self.parser.get_command_func_name(command)}({self.parser.parse_args(command)}):
 {self.parser.parse_command(command.script)}
-
 """
 
     def add_main_block(self) -> None:

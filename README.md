@@ -23,8 +23,9 @@ or
 1. Define CLI manifests in YAML files
 2. Run `cli` commands to load, list, update, and remove CLIs
 3. When loaded, cliffy parses the manifest and generates a [Typer](https://github.com/tiangolo/typer) CLI that is deployed directly as a script
-4. Run loaded CLIs straight from the terminal
-5. When ready to share, run `build` or `bundle` to generate portable zipapps built with [Shiv](https://github.com/linkedin/shiv)
+4. Any code starting with `$` will translate to subprocess calls via [PyBash](https://github.com/cliffy-sh/pybash)
+5. Run loaded CLIs straight from the terminal
+6. When ready to share, run `build` or `bundle` to generate portable zipapps built with [Shiv](https://github.com/linkedin/shiv)
 
 ## Usage
 `cli <command>`

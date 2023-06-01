@@ -2,7 +2,7 @@ name: venv
 version: 0.1.0
 help: |
   ~ Virtualenv store ~
-  Simplify your virtualenv 
+  Simplify virtualenvs
 
 imports: |
   import os
