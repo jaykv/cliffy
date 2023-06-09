@@ -15,6 +15,9 @@ jobs:
         extras: [true, false]
         python-version: [ "3.10", "3.11" ]
         os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
@@ -41,7 +44,15 @@ jobs:
       if: ${{ steps.cache.outputs.cache-hit != 'true' && matrix.extras }}
     - name: Install library
       run: poetry install --no-interaction
+      if: ${{ matrix.extras == false }}
+    - name: Install library
+      run: poetry install --no-interaction --all-extras
+      if: ${{ matrix.extras }}
     - name: Code quality
-      run: poetry run make lint
+      run: |
+        source $VENV
+        poetry run make lint
     - name: Test with pytest
-      run: poetry run make test
+      run: |
+        source $VENV
+        poetry run make test
