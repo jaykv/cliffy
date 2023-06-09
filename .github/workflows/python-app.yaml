@@ -10,12 +10,11 @@ permissions:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
     strategy:
       matrix:
         extras: [true, false]
-
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
@@ -29,7 +28,7 @@ jobs:
       id: cache
       with:
         path: ~/.virtualenvs
-        key: poetry-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
+        key: poetry-${{ hashFiles('**/poetry.lock') }}-{{ matrix.os }}-${{ matrix.extras }}
         restore-keys: |
           poetry-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
     - name: Set Poetry config
