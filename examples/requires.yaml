@@ -3,7 +3,7 @@ version: 0.1.0
 
 requires:
   - requests >= 2.30.0
-  - six
+  - six < 1.0.0
 
 imports:
   - import six
