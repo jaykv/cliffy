@@ -1,4 +1,4 @@
-## Generated db on 2023-06-01 00:21:03.266082
+## Generated db on 2023-06-08 22:05:51.135912
 import typer
 import subprocess
 from typing import Optional
@@ -28,7 +28,6 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 def create(name: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)):
     """Create a new database"""
     console.print(f"Creating database {name}", style="green")
-    
 
 
 @cli.command("delete")
@@ -39,21 +38,18 @@ def delete(name: str = typer.Option(..., prompt="What is the name of the databas
         console.print(f"Deleting database {name}", style="red")
     else:
         console.print(f"Back to safety!", style="green")
-    
 
 
 @cli.command("list")
 def list():
     """List databases"""
     print("Listing all databases")
-    
 
 
 @cli.command("view")
 def view(name: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True), table: str = typer.Option(..., prompt="What is the name of the table?")):
     """View database table"""
     console.print(f"Viewing {table} table for {name} DB")
-    
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-## Generated town on 2023-06-01 00:21:03.536307
+## Generated town on 2023-06-08 22:05:51.389002
 import typer
 import subprocess
 from typing import Optional
@@ -55,21 +55,18 @@ cli.add_typer(land_app, name="land", help="")
 def land_build(name: str = typer.Argument(..., help="Name"), address: str = typer.Argument(...), value: int = typer.Option(100, "--value", "-v")):
     """Build land"""
     print(f"building land {name}")
-    
 
 
 @land_app.command("sell")
 def land_sell(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Sell land"""
     print(f"selling land {name}")
-    
 
 
 @land_app.command("buy")
 def land_buy(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Buy land"""
     print(f"buying land {name} for {format_money(money)}")
-    
 
 people_app = typer.Typer()
 cli.add_typer(people_app, name="people", help="Manage people")
@@ -78,14 +75,12 @@ cli.add_typer(people_app, name="people", help="Manage people")
 def people_add(fullname: str = typer.Argument(...), age: int = typer.Argument(...), home: str = typer.Option(None, "--home", "-h")):
     """Add a person to town"""
     print(f"adding person {fullname}, {age}, {home}")
-    
 
 
 @people_app.command("remove")
 def people_remove(fullname: str = typer.Argument(...)):
     """Remove person from town"""
     print(f"removing person {fullname}")
-    
 
 shops_app = typer.Typer()
 cli.add_typer(shops_app, name="shops", help="Manage shops")
@@ -94,21 +89,18 @@ cli.add_typer(shops_app, name="shops", help="Manage shops")
 def shops_build(name: str = typer.Argument(..., help="Name"), land: str = typer.Argument(...), type: str = typer.Option(None, "--type", "-t")):
     """Build a shop"""
     print(f"building shop {name} ({type}) on land {land}")
-    
 
 
 @shops_app.command("sell")
 def shops_sell(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Sell a shop"""
     print(f"selling shop {name} for ${money}")
-    
 
 
 @shops_app.command("buy")
 def shops_buy(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Buy a shop"""
     print(f"buying shop {name} for ${money}")
-    
 
 home_app = typer.Typer()
 cli.add_typer(home_app, name="home", help="Manage homes")
@@ -117,14 +109,12 @@ cli.add_typer(home_app, name="home", help="Manage homes")
 def home_build(address: str = typer.Argument(...), land: str = typer.Argument(None), owner: str = typer.Argument(None)):
     """Build a home"""
     print(f"building home at {address} for {owner} on land {land}")
-    
 
 
 @home_app.command("sell")
 def home_sell(address: str = typer.Argument(...), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Sell a home"""
     print(f"selling home {address} for {format_money(money)}")
-    
 
 
 @home_app.command("buy")
@@ -132,35 +122,30 @@ def home_buy(address: str = typer.Argument(...), money: float = typer.Option(...
     """Buy a home"""
     print(f"buying home {address} for {money}")
     print("test123")
-    
 
 
 @land_app.command("list")
 def land_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of land"""
     print(f"listing land")
-    
 
 
 @people_app.command("list")
 def people_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of people"""
     print(f"listing people")
-    
 
 
 @shops_app.command("list")
 def shops_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of shops"""
     print(f"listing shops")
-    
 
 
 @home_app.command("list")
 def home_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of home"""
     print(f"listing home")
-    
 
 
 if __name__ == "__main__":

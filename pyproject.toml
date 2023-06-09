@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cliffy"
-version = "0.3.0"
+version = "0.3.1"
 description = "$ cli load from.yaml"
 authors = ["Jay <jay.github0@gmail.com>"]
 repository = "https://github.com/jaykv/cliffy"
@@ -9,7 +9,7 @@ packages = [{include = "cliffy"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-pybash = "^0.3.0"
+pybash = "^0.3.3"
 pyyaml = "^6.0"
 typer = "^0.9.0"
 pydantic = ">=2.0a4"
@@ -31,6 +31,9 @@ flake8 = "^6.0.0"
 autoflake = "^2.0.0"
 ruff = "^0.0.254"
 mypy = "^1.3.0"
+
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = "^9.1.15"
 
 [tool.poetry.scripts]
 cli = "cliffy.run:run"

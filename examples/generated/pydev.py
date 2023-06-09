@@ -1,4 +1,4 @@
-## Generated pydev on 2023-06-01 00:21:03.282830
+## Generated pydev on 2023-06-08 22:05:51.153712
 import typer
 import subprocess
 from typing import Optional
@@ -53,11 +53,8 @@ def clean():
     Clean pycache artifacts
     """
     subprocess.run(["find",".","-type","f","-name","*.pyc","-delete"])
-    
     subprocess.run(["find",".","-type","d","-name","__pycache__","-delete"])
-    
     subprocess.run(["echo","Cleaned!"])
-    
 
 
 @cli.command("format")
@@ -66,9 +63,7 @@ def format():
     Format code with black
     """
     subprocess.run(["black","."])
-    
     subprocess.run(["echo","Formatted!"])
-    
 
 
 @cli.command("lint")
@@ -77,11 +72,8 @@ def lint():
     Run linters on the code
     """
     subprocess.run(["flake8","."])
-    
     subprocess.run(["black","--check","."])
-    
     subprocess.run(["mypy","."])
-    
     print("Linting successful!")
 
 
@@ -91,7 +83,6 @@ def test():
     Run tests
     """
     subprocess.run(["pytest"])
-    
     print("Tests passed!")
 
 
@@ -109,7 +100,6 @@ def bump(major: int = typer.Option(..., help="Version part", min=0), minor: int 
     contents = contents.replace(current_version, new_version)
     write_to_file("setup.py", contents)
     print(f"Bumped version from {current_version} to {new_version}.")
-    
 
 
 if __name__ == "__main__":

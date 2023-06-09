@@ -122,7 +122,7 @@ def exit_err(text: str) -> NoReturn:
 
 def age_datetime(date: datetime) -> str:
     delta = datetime.now() - date
-    if delta.seconds > 86400:
+    if delta.days > 0:
         return f"{delta.days}d"
     elif delta.seconds > 3600:
         return f"{delta.seconds // 3600}h"

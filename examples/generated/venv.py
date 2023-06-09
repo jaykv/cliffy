@@ -1,4 +1,4 @@
-## Generated venv on 2023-06-01 00:21:03.541859
+## Generated venv on 2023-06-08 22:05:51.394505
 import typer
 import subprocess
 from typing import Optional
@@ -42,8 +42,7 @@ def ls():
     """
     List venvs in the store
     """
-    subprocess.run(["ls","" + f"""{DEFAULT_VENV_STORE}""" + ""])
-    
+    subprocess.run(["ls",f"""{DEFAULT_VENV_STORE}"""])
 
 
 @cli.command("rm")
@@ -63,7 +62,7 @@ def go(name: str = typer.Argument(...), interpreter: str = typer.Option("python"
         print(f"~ sourcing {name}")
     else:
         print(f"~ creating {name}")
-        subprocess.run(["" + f"""{interpreter}""" + "","-m","venv","" + f"""{os.path.join(DEFAULT_VENV_STORE, name)}""" + ""])
+        subprocess.run([f"""{interpreter}""","-m","venv",f"""{os.path.join(DEFAULT_VENV_STORE, name)}"""])
     
     os.system(f'/bin/bash --rcfile {get_venv_path(name)}/bin/activate')
 

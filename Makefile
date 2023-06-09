@@ -33,4 +33,12 @@ lint:
 shell:
 	source .venv/bin/activate
 
+generate-all:
+	pip install requests six rich
+	cli load examples/*.yaml
+
+generate-cleanup:
+	pip uninstall -y requests six rich
+	cli rm db environ hello pydev requires template town venv
+
 .PHONY: test clean
