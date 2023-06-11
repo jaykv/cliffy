@@ -80,7 +80,6 @@ def test_cli_loads(cli_name):
 def test_cli_load_fails(cli_name):
     runner = CliRunner()
     result = runner.invoke(load, [f"examples/{cli_name}.yaml"])
-    print(result.stdout)
     assert result.exit_code == 1
     assert get_metadata(cli_name) is None
 
