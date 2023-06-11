@@ -2,7 +2,6 @@ import contextlib
 import os
 import shlex
 import subprocess
-import sys
 from shutil import rmtree
 
 import pytest
@@ -110,11 +109,13 @@ def test_cli_bundle_fails(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_TESTS.keys())
 def test_cli_response(cli_name):
     for command in CLI_TESTS[cli_name]:
-        environment = command.get("env")
-        if environment:
-            environment = {**os.environ, **environment}
-        print(PYTHON_BIN)
-        print(sys.path)
+        patched_path = os.environ.pop("PATH") + PYTHON_BIN
+        os.environ["PATH"] = patched_path
+        environment = os.environ
+        if cli_env_vars := command.get("env"):
+            environment = {**os.environ, **cli_env_vars}
+
+        print(environment["PATH"])
         loaded_cli_result = subprocess.run(
             [cli_name] + shlex.split(command["args"]),
             stdout=subprocess.PIPE,
