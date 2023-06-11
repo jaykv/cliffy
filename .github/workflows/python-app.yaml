@@ -48,12 +48,6 @@ jobs:
     - name: Install library
       run: poetry install --no-interaction --all-extras
       if: ${{ matrix.extras }}
-    - name: Add venv scripts to path
-      run: |
-        source $VENV
-        echo "$(poetry env info --path)"
-        echo "$(poetry env info --path)\Scripts" >> $GITHUB_PATH
-      if: ${{ matrix.os == 'windows-latest' }}
     - name: Code quality
       run: |
         source $VENV

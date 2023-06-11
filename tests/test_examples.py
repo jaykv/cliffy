@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 import shlex
 import subprocess
 from shutil import rmtree
@@ -116,6 +117,9 @@ def test_cli_response(cli_name):
             environment = {**os.environ, **cli_env_vars}
 
         print(environment["PATH"])
+        if platform.system() == "Windows":
+            cli_name += ".exe"
+
         loaded_cli_result = subprocess.run(
             [cli_name] + shlex.split(command["args"]),
             stdout=subprocess.PIPE,
