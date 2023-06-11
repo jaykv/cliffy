@@ -9,9 +9,8 @@ import pytest
 from click.testing import CliRunner
 
 from cliffy.cli import build, bundle, load, remove
-from cliffy.homer import get_clis, get_metadata
-
 from cliffy.helper import PYTHON_BIN
+from cliffy.homer import get_clis, get_metadata
 
 RICH_INSTALLED = False
 with contextlib.suppress(ImportError):
