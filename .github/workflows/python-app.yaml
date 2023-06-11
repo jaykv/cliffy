@@ -61,4 +61,5 @@ jobs:
     - name: Test with pytest
       run: |
         source $VENV
+        echo $GITHUB_PATH
         poetry run make test
