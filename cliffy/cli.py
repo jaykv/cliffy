@@ -15,7 +15,7 @@ except ImportError:
 from .builder import build_cli, run_cli
 from .helper import (
     CLIFFY_CLI_DIR,
-    TEMP_FILES_TO_DELETE,
+    TEMP_FILES,
     age_datetime,
     delete_temp_files,
     exit_err,
@@ -205,7 +205,7 @@ def build(manifests: list[TextIO], debug: bool, output_dir: str, python: str) ->
             result = build_cli(
                 T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir, interpreter=python
             )
-            TEMP_FILES_TO_DELETE.append(script)
+            TEMP_FILES.append(script)
 
         delete_temp_files()
 

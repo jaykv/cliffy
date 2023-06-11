@@ -6,7 +6,7 @@ install:
 	pip install -e .
 
 test:
-	pytest -vv -rs
+	pytest -vv --capture=tee-sys
 
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache
@@ -39,6 +39,6 @@ generate-all:
 
 generate-cleanup:
 	pip uninstall -y requests six rich
-	cli rm db environ hello pydev requires template town venv
+	cli rm db environ hello pydev requires template town penv
 
 .PHONY: test clean

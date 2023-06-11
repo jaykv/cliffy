@@ -2,6 +2,7 @@ import contextlib
 import os
 import shlex
 import subprocess
+import sys
 from shutil import rmtree
 
 import pytest
@@ -9,6 +10,8 @@ from click.testing import CliRunner
 
 from cliffy.cli import build, bundle, load, remove
 from cliffy.homer import get_clis, get_metadata
+
+from cliffy.helper import PYTHON_BIN
 
 RICH_INSTALLED = False
 with contextlib.suppress(ImportError):
@@ -112,7 +115,8 @@ def test_cli_response(cli_name):
         environment = command.get("env")
         if environment:
             environment = {**os.environ, **environment}
-
+        print(PYTHON_BIN)
+        print(sys.path)
         loaded_cli_result = subprocess.run(
             [cli_name] + shlex.split(command["args"]),
             stdout=subprocess.PIPE,

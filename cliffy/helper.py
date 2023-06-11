@@ -32,7 +32,7 @@ OPERATOR_MAP = {
     "<": operator.lt,
     ">": operator.gt,
 }
-TEMP_FILES_TO_DELETE = []
+TEMP_FILES = []
 
 
 class RequirementSpec(BaseModel):
@@ -57,7 +57,7 @@ def make_executable(path: str) -> None:
 
 
 def delete_temp_files() -> None:
-    for file in TEMP_FILES_TO_DELETE:
+    for file in TEMP_FILES:
         with contextlib.suppress(Exception):
             file.close()
             os.unlink(file.name)
