@@ -139,7 +139,15 @@ def remove(cli_names: list[str]) -> None:
 @click.argument("cli_names", type=str, nargs=-1)
 @click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
-def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
+@click.option(
+    "--python",
+    "-p",
+    type=str,
+    help="Python interpreter to set as the zipapp shebang. This gets added after the #! ",
+    default="/usr/bin/env python3 -sE",
+    show_default=True,
+)
+def bundle(cli_names: list[str], debug: bool, output_dir: str, python: str) -> None:
     "Bundle a loaded CLI into a zipapp"
     for cli_name in cli_names:
         if not (metadata := get_metadata(cli_name)):
@@ -147,7 +155,11 @@ def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
             continue
 
         result = build_cli(
-            cli_name, script_path=f"{CLIFFY_CLI_DIR}/{cli_name}.py", deps=metadata.requires, output_dir=output_dir
+            cli_name,
+            script_path=f"{CLIFFY_CLI_DIR}/{cli_name}.py",
+            deps=metadata.requires,
+            output_dir=output_dir,
+            interpreter=python,
         )
 
         if result.exit_code != 0:
@@ -164,14 +176,24 @@ def bundle(cli_names: list[str], debug: bool, output_dir: str) -> None:
 @click.argument("manifests", type=click.File("rb"), nargs=-1)
 @click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
-def build(manifests: list[TextIO], debug: bool, output_dir: str) -> None:
+@click.option(
+    "--python",
+    "-p",
+    type=str,
+    help="Python interpreter to set as the zipapp shebang. This gets added after the #! ",
+    default="/usr/bin/env python3 -sE",
+    show_default=True,
+)
+def build(manifests: list[TextIO], debug: bool, output_dir: str, python: str) -> None:
     "Build a CLI manifest into a zipapp"
     for manifest in manifests:
         T = Transformer(manifest, validate_requires=False)
         with NamedTemporaryFile(mode="w", prefix=f"{T.cli.name}_", suffix=".py", delete=True) as script:
             script.write(T.cli.code)
             script.flush()
-            result = build_cli(T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir)
+            result = build_cli(
+                T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir, interpreter=python
+            )
 
         if result.exit_code != 0:
             out(result.stdout)

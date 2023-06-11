@@ -12,7 +12,11 @@ from shiv import pip
 
 
 def build_cli(
-    cli_name: str, script_path: str, deps: Optional[list[str]] = None, output_dir: Optional[str] = None
+    cli_name: str,
+    script_path: str,
+    deps: Optional[list[str]] = None,
+    output_dir: Optional[str] = None,
+    interpreter: str = "/usr/bin/env python3 -sE",
 ) -> Result:
     if deps is None:
         deps = []
@@ -28,18 +32,10 @@ def build_cli(
 
         runner = CliRunner()
         output_file = os.path.join(output_dir, f"{cli_name}") if output_dir else cli_name
-
+        print(output_file)
         return runner.invoke(
             shiv_cli.main,
-            [
-                "--site-packages",
-                tdist,
-                "--compressed",
-                "-e",
-                f"{cli_name}.cli",
-                "-o",
-                output_file,
-            ],
+            ["--site-packages", tdist, "--compressed", "-e", f"{cli_name}.cli", "-o", output_file, "-p", interpreter],
         )
 
 

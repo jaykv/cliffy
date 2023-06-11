@@ -17,9 +17,9 @@ with contextlib.suppress(ImportError):
     if rich:
         RICH_INSTALLED = True
 
-CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "venv"}
-CLI_BUNDLES = {"hello", "db", "pydev", "template", "town", "environ", "venv"}
-CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "venv"}
+CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
+CLI_BUNDLES = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
+CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "penv"}
 CLI_LOAD_FAILS = {"requires"}
 CLI_BUNDLE_FAILS = {"requires"}
 CLI_TESTS = {
@@ -48,6 +48,8 @@ if not RICH_INSTALLED:
 
 def setup_module():
     pytest.installed_clis = []  # type: ignore
+    os.mkdir("test-builds")
+    os.mkdir("test-bundles")
 
 
 def teardown_module(cls):
@@ -111,11 +113,29 @@ def test_cli_response(cli_name):
         if environment:
             environment = {**os.environ, **environment}
 
-        result = subprocess.run(
+        loaded_cli_result = subprocess.run(
             [cli_name] + shlex.split(command["args"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
             env=environment,
         )
-        assert command["resp"] in result.stdout
+        assert command["resp"] in loaded_cli_result.stdout
+
+        built_cli_result = subprocess.run(
+            [f"./test-builds/{cli_name}"] + shlex.split(command["args"]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+            env=environment,
+        )
+        assert command["resp"] in built_cli_result.stdout
+
+        bundled_cli_result = subprocess.run(
+            [f"./test-bundles/{cli_name}"] + shlex.split(command["args"]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+            env=environment,
+        )
+        assert command["resp"] in bundled_cli_result.stdout
