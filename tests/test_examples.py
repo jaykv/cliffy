@@ -1,7 +1,5 @@
 import contextlib
-import glob
 import os
-import shlex
 import subprocess
 from shutil import rmtree
 
@@ -9,7 +7,6 @@ import pytest
 from click.testing import CliRunner
 
 from cliffy.cli import build, bundle, load, remove
-from cliffy.helper import PYTHON_BIN
 from cliffy.homer import get_clis, get_metadata
 
 RICH_INSTALLED = False
@@ -55,8 +52,6 @@ def setup_module():
 
 
 def teardown_module(cls):
-    print(glob.glob(f"{PYTHON_BIN}/*"))
-    print(os.environ["PATH"])
     runner = CliRunner()
     for cli in pytest.installed_clis:  # type: ignore
         runner.invoke(remove, cli)
@@ -117,28 +112,31 @@ def test_cli_response(cli_name):
             environment = {**os.environ, **cli_env_vars}
 
         loaded_cli_result = subprocess.run(
-            [cli_name] + shlex.split(command["args"]),
+            f"{cli_name} {command['args']}",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
             env=environment,
+            shell=True,
         )
         assert command["resp"] in loaded_cli_result.stdout
 
         built_cli_result = subprocess.run(
-            [f"./test-builds/{cli_name}"] + shlex.split(command["args"]),
+            f"./test-builds/{cli_name} {command['args']}",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
             env=environment,
+            shell=True,
         )
         assert command["resp"] in built_cli_result.stdout
 
         bundled_cli_result = subprocess.run(
-            [f"./test-bundles/{cli_name}"] + shlex.split(command["args"]),
+            f"./test-bundles/{cli_name} {command['args']}",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
             env=environment,
+            shell=True,
         )
         assert command["resp"] in bundled_cli_result.stdout
