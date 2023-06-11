@@ -10,6 +10,8 @@ from click.testing import CliRunner, Result
 from shiv import cli as shiv_cli
 from shiv import pip
 
+from cliffy.helper import TEMP_FILES_TO_DELETE, delete_temp_files
+
 
 def build_cli(
     cli_name: str,
@@ -40,13 +42,15 @@ def build_cli(
 
 
 def run_cli(cli_name: str, script_code: str, args: tuple) -> None:
-    with NamedTemporaryFile(mode="w", prefix=f"{cli_name}_", suffix=".py", delete=True) as runner_file:
+    with NamedTemporaryFile(mode="w", prefix=f"{cli_name}_", suffix=".py", delete=False) as runner_file:
         runner_file.write(script_code)
         runner_file.flush()
         module_path, module_filename = os.path.split(runner_file.name)
         sys.path.append(module_path)
         module = import_module(module_filename[:-3])
+        TEMP_FILES_TO_DELETE.append(runner_file)
 
+    delete_temp_files()
     runner_argvs = [runner_file.name] + list(args)
     sys.argv = runner_argvs
     module.cli()

@@ -1,3 +1,4 @@
+import contextlib
 import operator
 import os
 import platform
@@ -31,6 +32,7 @@ OPERATOR_MAP = {
     "<": operator.lt,
     ">": operator.gt,
 }
+TEMP_FILES_TO_DELETE = []
 
 
 class RequirementSpec(BaseModel):
@@ -52,6 +54,13 @@ def make_executable(path: str) -> None:
     mode = os.stat(path).st_mode
     mode |= (mode & 0o444) >> 2
     os.chmod(path, mode)
+
+
+def delete_temp_files() -> None:
+    for file in TEMP_FILES_TO_DELETE:
+        with contextlib.suppress(Exception):
+            file.close()
+            os.unlink(file.name)
 
 
 def indent_block(block: str, spaces=4) -> str:
