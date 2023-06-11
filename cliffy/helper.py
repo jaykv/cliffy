@@ -20,7 +20,11 @@ except ImportError:
     from .rich import Console, Table
 
 HOME_PATH = str(Path.home())
-PYTHON_BIN = f"{sys.exec_prefix}/Scripts" if platform.system() == "Windows" else f"{sys.exec_prefix}/bin"
+PYTHON_BIN = (
+    f"{os.path.join(sys.exec_prefix, 'Scripts')}"
+    if platform.system() == "Windows"
+    else f"{os.path.join(sys.exec_prefix, 'bin')}"
+)
 PYTHON_EXECUTABLE = sys.executable
 CLIFFY_CLI_DIR = files("cliffy.clis")
 CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
