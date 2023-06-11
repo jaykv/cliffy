@@ -56,7 +56,7 @@ def setup_module():
 
 def teardown_module(cls):
     print(glob.glob(f"{PYTHON_BIN}/*"))
-
+    print(os.environ["PATH"])
     runner = CliRunner()
     for cli in pytest.installed_clis:  # type: ignore
         runner.invoke(remove, cli)
@@ -111,21 +111,17 @@ def test_cli_bundle_fails(cli_name):
 
 @pytest.mark.parametrize("cli_name", CLI_TESTS.keys())
 def test_cli_response(cli_name):
-    environment = os.environ
-    environment["PATH"] += f";{PYTHON_BIN}"
-    print(environment["PATH"])
-
     for command in CLI_TESTS[cli_name]:
-        command_environment = environment
+        environment = None
         if cli_env_vars := command.get("env"):
-            command_environment = {**command_environment, **cli_env_vars}
+            environment = {**os.environ, **cli_env_vars}
 
         loaded_cli_result = subprocess.run(
             [cli_name] + shlex.split(command["args"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
-            env=command_environment,
+            env=environment,
         )
         assert command["resp"] in loaded_cli_result.stdout
 
