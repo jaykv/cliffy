@@ -1,6 +1,7 @@
 import contextlib
 import os
 import subprocess
+import sys
 from shutil import rmtree
 
 import pytest
@@ -111,20 +112,17 @@ def test_cli_response(cli_name):
         if cli_env_vars := command.get("env"):
             environment = {**os.environ, **cli_env_vars}
 
-        # loaded_cli_result = subprocess.run(
-        #     f"{cli_name} {command['args']}",
-        #     stdout=subprocess.PIPE,
-        #     stderr=subprocess.PIPE,
-        #     encoding="utf-8",
-        #     env=environment,
-        #     shell=True,
-        # )
-        # assert command["resp"] in loaded_cli_result.stdout
+        loaded_cli_result = subprocess.check_output(
+            args=f"{cli_name} {command['args']}",
+            env=environment,
+            shell=True,
+        )
+        assert command["resp"] in loaded_cli_result.decode()
 
         executable_path = os.path.join(os.getcwd(), "test-builds", cli_name)
 
         built_cli_result = subprocess.run(
-            [executable_path] + command["args"].split(),
+            [sys.executable, executable_path] + command["args"].split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
@@ -135,7 +133,7 @@ def test_cli_response(cli_name):
         executable_path = os.path.join(os.getcwd(), "test-bundles", cli_name)
 
         bundled_cli_result = subprocess.run(
-            [executable_path] + command["args"].split(),
+            [sys.executable, executable_path] + command["args"].split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
