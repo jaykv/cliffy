@@ -117,12 +117,14 @@ def test_cli_response(cli_name):
             environment = {**os.environ, **cli_env_vars}
 
         if platform.system() != "Windows":
-            loaded_cli_result = subprocess.check_output(
-                args=f"{cli_name} {command['args']}",
+            loaded_cli_result = subprocess.run(
+                [cli_name] + command["args"].split(),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                encoding="utf-8",
                 env=environment,
-                shell=True,
             )
-            assert command["resp"] in loaded_cli_result.decode()
+            assert command["resp"] in loaded_cli_result.stdout
 
         executable_path = os.path.join(os.getcwd(), "test-builds", cli_name)
 

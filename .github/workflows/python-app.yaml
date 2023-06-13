@@ -13,8 +13,8 @@ jobs:
     strategy:
       matrix:
         extras: [true, false]
-        python-version: [ "3.11" ] # "3.10",
-        os: [windows-latest] #ubuntu-latest, windows-latest, macos-latest]
+        python-version: [ "3.11", "3.10", "3.9" ]
+        os: [ubuntu-latest, windows-latest] # macos-latest
     defaults:
       run:
         shell: bash
