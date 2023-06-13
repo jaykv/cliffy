@@ -3,7 +3,13 @@
 
 name: Python library with poetry
 
-on: [push]
+on:
+  push:
+    paths:
+      - 'cliffy/**'
+      - 'tests/**'
+      - 'examples/**'
+      - '!examples/generated/**'
 
 permissions:
   contents: read
