@@ -121,22 +121,24 @@ def test_cli_response(cli_name):
         # )
         # assert command["resp"] in loaded_cli_result.stdout
 
+        executable_path = os.path.join(os.getcwd(), "test-builds", cli_name)
+
         built_cli_result = subprocess.run(
-            f"{os.path.join('test-builds', cli_name)} {command['args']}",
+            [executable_path] + command["args"].split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
             env=environment,
-            shell=True,
         )
         assert command["resp"] in built_cli_result.stdout
 
+        executable_path = os.path.join(os.getcwd(), "test-bundles", cli_name)
+
         bundled_cli_result = subprocess.run(
-            f"{os.path.join('test-bundles', cli_name)} {command['args']}",
+            [executable_path] + command["args"].split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
             env=environment,
-            shell=True,
         )
         assert command["resp"] in bundled_cli_result.stdout
