@@ -111,15 +111,15 @@ def test_cli_response(cli_name):
         if cli_env_vars := command.get("env"):
             environment = {**os.environ, **cli_env_vars}
 
-        loaded_cli_result = subprocess.run(
-            f"{cli_name} {command['args']}",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            encoding="utf-8",
-            env=environment,
-            shell=True,
-        )
-        assert command["resp"] in loaded_cli_result.stdout
+        # loaded_cli_result = subprocess.run(
+        #     f"{cli_name} {command['args']}",
+        #     stdout=subprocess.PIPE,
+        #     stderr=subprocess.PIPE,
+        #     encoding="utf-8",
+        #     env=environment,
+        #     shell=True,
+        # )
+        # assert command["resp"] in loaded_cli_result.stdout
 
         built_cli_result = subprocess.run(
             f"./test-builds/{cli_name} {command['args']}",

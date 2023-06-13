@@ -34,7 +34,6 @@ def build_cli(
 
         runner = CliRunner()
         output_file = os.path.join(output_dir, f"{cli_name}") if output_dir else cli_name
-        print(output_file)
         return runner.invoke(
             shiv_cli.main,
             ["--site-packages", tdist, "--compressed", "-e", f"{cli_name}.cli", "-o", output_file, "-p", interpreter],
