@@ -1,5 +1,6 @@
 import contextlib
 import os
+import platform
 import subprocess
 import sys
 from shutil import rmtree
@@ -112,7 +113,7 @@ def test_cli_response(cli_name):
         if cli_env_vars := command.get("env"):
             environment = {**os.environ, **cli_env_vars}
 
-        if os.system != "nt":
+        if platform.system() != "Windows":
             loaded_cli_result = subprocess.check_output(
                 args=f"{cli_name} {command['args']}",
                 env=environment,
