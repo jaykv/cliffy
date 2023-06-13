@@ -44,5 +44,5 @@ def test_cli_run():
     runner = CliRunner()
     result = runner.invoke(cliffy_run, ["examples/hello.yaml", "--", "-h"])
     assert result.exit_code == 0
-    assert "Usage: hello_" in escape_ansi(result.output)
+    assert "Hello world!" in escape_ansi(result.output)
     assert get_metadata("hello") is None

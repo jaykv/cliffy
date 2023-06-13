@@ -1,4 +1,4 @@
-## Generated hello on 2023-06-01 00:21:03.275683
+## Generated hello on 2023-06-08 22:05:51.146878
 import typer
 import subprocess
 from typing import Optional
@@ -23,7 +23,6 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 @cli.command("bash")
 def bash():
     subprocess.run(["echo","hello from bash"])
-    
 
 
 @cli.command("python")

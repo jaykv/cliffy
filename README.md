@@ -13,15 +13,15 @@ cliffy is a YAML-defined CLI generator, manager, and bundler for python. It offe
 * Build and bundle CLIs into self-contained, portable zipapps
 
 ## Install
+* `pip install "cliffy[rich]"` to include [rich-click](https://github.com/ewels/rich-click) for colorful CLI help output formatted with [rich](https://github.com/Textualize/rich).
+
+or 
+
 * `pip install cliffy`
-
-or
-
-* `pip install "cliffy[rich]"` to include [Rich](https://github.com/Textualize/rich) for beautiful text and formatting
 
 ## How it works
 1. Define CLI manifests in YAML files
-2. Run `cli` commands to load, list, update, and remove CLIs
+2. Run `cli` commands to load, build, and manage CLIs
 3. When loaded, cliffy parses the manifest and generates a [Typer](https://github.com/tiangolo/typer) CLI that is deployed directly as a script
 4. Any code starting with `$` will translate to subprocess calls via [PyBash](https://github.com/cliffy-sh/pybash)
 5. Run loaded CLIs straight from the terminal

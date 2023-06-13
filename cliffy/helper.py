@@ -1,3 +1,4 @@
+import contextlib
 import operator
 import os
 import platform
@@ -19,7 +20,11 @@ except ImportError:
     from .rich import Console, Table
 
 HOME_PATH = str(Path.home())
-PYTHON_BIN = f"{sys.exec_prefix}/Scripts" if platform.system() == "Windows" else f"{sys.exec_prefix}/bin"
+PYTHON_BIN = (
+    f"{os.path.join(sys.exec_prefix, 'Scripts')}"
+    if platform.system() == "Windows"
+    else f"{os.path.join(sys.exec_prefix, 'bin')}"
+)
 PYTHON_EXECUTABLE = sys.executable
 CLIFFY_CLI_DIR = files("cliffy.clis")
 CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
@@ -31,6 +36,7 @@ OPERATOR_MAP = {
     "<": operator.lt,
     ">": operator.gt,
 }
+TEMP_FILES = []
 
 
 class RequirementSpec(BaseModel):
@@ -52,6 +58,13 @@ def make_executable(path: str) -> None:
     mode = os.stat(path).st_mode
     mode |= (mode & 0o444) >> 2
     os.chmod(path, mode)
+
+
+def delete_temp_files() -> None:
+    for file in TEMP_FILES:
+        with contextlib.suppress(Exception):
+            file.close()
+            os.unlink(file.name)
 
 
 def indent_block(block: str, spaces=4) -> str:
@@ -122,7 +135,7 @@ def exit_err(text: str) -> NoReturn:
 
 def age_datetime(date: datetime) -> str:
     delta = datetime.now() - date
-    if delta.seconds > 86400:
+    if delta.days > 0:
         return f"{delta.days}d"
     elif delta.seconds > 3600:
         return f"{delta.seconds // 3600}h"

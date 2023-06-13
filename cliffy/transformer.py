@@ -6,7 +6,7 @@ from jinja2 import BaseLoader, Environment, FileSystemLoader
 from pydantic import ValidationError
 from typing_extensions import Self
 
-from .commander import build_cli
+from .commander import generate_cli
 from .commanders.typer import TyperCommander
 from .helper import compare_versions, exit_err, get_installed_pip_packages, out, parse_requirement
 from .manifests import IncludeManifest, Manifest, set_manifest_version
@@ -42,7 +42,7 @@ class Transformer:
 
             if validate_requires:
                 self.validate_cli_requires()
-            self.cli = build_cli(self.manifest, commander_cls=TyperCommander)
+            self.cli = generate_cli(self.manifest, commander_cls=TyperCommander)
 
     def validate_cli_requires(self) -> None:
         if not self.manifest.requires:

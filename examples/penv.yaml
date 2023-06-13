@@ -1,4 +1,4 @@
-name: venv
+name: penv
 version: 0.1.0
 help: |
   ~ Virtualenv store ~

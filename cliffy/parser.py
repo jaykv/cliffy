@@ -36,7 +36,7 @@ class Parser:
         return base_param_name, aliases
 
     def parse_command_block(self, script: str) -> str:
-        script = transform_bash(script)
+        script = transform_bash(script).strip()
         return "".join(" " * 4 + line + "\n" for line in script.split("\n"))
 
     def parse_command(self, block: Union[str, list[Union[str, dict[Literal["help"], str]]]]) -> str:

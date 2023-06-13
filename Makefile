@@ -6,7 +6,7 @@ install:
 	pip install -e .
 
 test:
-	pytest -vv -rs
+	pytest -vv --capture=tee-sys
 
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache
@@ -20,17 +20,22 @@ publish: package
 	twine upload dist/*
 
 format:
-	autoflake --in-place --recursive --remove-all-unused-imports --ignore-init-module-imports ${SOURCE_FILES} --exclude=cliffy/clis
-	isort --project=cliffy ${SOURCE_FILES} --skip=cliffy/clis
 	black ${SOURCE_FILES} --exclude=cliffy/clis
 	ruff ${SOURCE_FILES} --fix
 
 lint:
-	isort --check --diff --project=cliffy ${SOURCE_FILES} --skip=cliffy/clis
 	black --check --diff ${SOURCE_FILES} --exclude=cliffy/clis
 	ruff $(SOURCE_FILES)
 
 shell:
 	source .venv/bin/activate
+
+generate-all:
+	pip install requests six rich
+	cli load examples/*.yaml
+
+generate-cleanup:
+	pip uninstall -y requests six rich
+	cli rm db environ hello pydev requires template town penv
 
 .PHONY: test clean

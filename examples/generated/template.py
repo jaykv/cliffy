@@ -1,4 +1,4 @@
-## Generated template on 2023-06-01 00:21:03.527002
+## Generated template on 2023-06-08 22:05:51.380201
 import typer
 import subprocess
 from typing import Optional
@@ -24,8 +24,7 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
 
 @cli.command("hello")
 def hello(local_arg: str = typer.Argument(...), local_arg_2: str = typer.Option("")):
-    subprocess.run(["hello","" + f"""{local_arg}""" + "","--" + f"""{local_arg_2}""" + ""])
-    
+    subprocess.run(["hello",f"""{local_arg}""","--" + f"""{local_arg_2}"""])
 
 
 if __name__ == "__main__":
