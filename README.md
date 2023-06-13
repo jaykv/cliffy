@@ -21,7 +21,7 @@ or
 
 ## How it works
 1. Define CLI manifests in YAML files
-2. Run `cli` commands to manage CLIs
+2. Run `cli` commands to load, build, and manage CLIs
 3. When loaded, cliffy parses the manifest and generates a [Typer](https://github.com/tiangolo/typer) CLI that is deployed directly as a script
 4. Any code starting with `$` will translate to subprocess calls via [PyBash](https://github.com/cliffy-sh/pybash)
 5. Run loaded CLIs straight from the terminal

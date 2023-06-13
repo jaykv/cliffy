@@ -1,6 +1,7 @@
 import contextlib
 import os
 import platform
+import shlex
 import subprocess
 import sys
 from shutil import rmtree
@@ -129,7 +130,7 @@ def test_cli_response(cli_name):
         executable_path = os.path.join(os.getcwd(), "test-builds", cli_name)
 
         built_cli_result = subprocess.run(
-            [sys.executable, executable_path] + command["args"].split(),
+            [sys.executable, executable_path] + shlex.split(command["args"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",
@@ -140,7 +141,7 @@ def test_cli_response(cli_name):
         executable_path = os.path.join(os.getcwd(), "test-bundles", cli_name)
 
         bundled_cli_result = subprocess.run(
-            [sys.executable, executable_path] + command["args"].split(),
+            [sys.executable, executable_path] + shlex.split(command["args"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             encoding="utf-8",

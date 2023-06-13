@@ -66,7 +66,7 @@ class Commander:
                 name=group_name, commands=commands, help=group_help_dict.get(group_name, "")
             )
 
-    def build_cli(self) -> None:
+    def generate_cli(self) -> None:
         self.add_base_imports()
         self.add_imports()
         self.add_vars()
@@ -174,7 +174,7 @@ class Commander:
         raise NotImplementedError
 
 
-def build_cli(manifest: Manifest, commander_cls=Commander) -> CLI:
+def generate_cli(manifest: Manifest, commander_cls=Commander) -> CLI:
     commander = commander_cls(manifest)
-    commander.build_cli()
+    commander.generate_cli()
     return CLI(name=manifest.name, version=manifest.version, code=commander.cli, requires=manifest.requires)
