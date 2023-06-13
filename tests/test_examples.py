@@ -46,6 +46,9 @@ if not RICH_INSTALLED:
     CLI_LOAD_FAILS.add("db")
     CLI_BUNDLE_FAILS.add("db")
 
+if platform.system() == "Windows":
+    del CLI_TESTS["template"]
+
 
 def setup_module():
     pytest.installed_clis = []  # type: ignore
