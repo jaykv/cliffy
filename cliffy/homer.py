@@ -83,11 +83,7 @@ def get_metadata(cli_name: str) -> Optional[CLIMetadata]:
         Optional[CLIMetadata]: CLI metadata
     """
     cli_path = get_metadata_path(cli_name)
-    if not cli_path:
-        return None
-
-    path = Path(cli_path)
-    return get_metadata_bypath(path)
+    return get_metadata_bypath(Path(cli_path)) if cli_path else None
 
 
 def get_metadata_path(cli_name: str) -> Optional[str]:

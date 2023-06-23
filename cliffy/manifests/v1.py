@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Any, Literal, Union
-
 from pydantic import BaseModel, Field
 
 from ..helper import wrap_as_comment, wrap_as_var
@@ -79,11 +78,12 @@ class CLIManifest(BaseModel):
     @classmethod
     def get_field_description(cls, field_name: str, as_comment: bool = True) -> str:
         field = cls.model_fields.get(field_name)
-        if field and field.description:
-            if as_comment:
-                return wrap_as_comment(field.description, split_on=". ")
-            return field.description
-        return ""
+        if not field or not field.description:
+            return ""
+
+        if as_comment:
+            return wrap_as_comment(field.description, split_on=". ")
+        return field.description
 
     @classmethod
     def get_template(cls, name: str) -> str:

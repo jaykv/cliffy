@@ -39,6 +39,9 @@ CLI_TESTS = {
         {"args": "hello", "resp": "hello"},
         {"args": "bye", "env": {"ENVIRON_BYE_TEXT": "goodbye"}, "resp": "goodbye"},
     ],
+    "db": [
+        {"args": "list", "resp": "Listing all databases"},
+    ],
 }
 
 if not RICH_INSTALLED:
@@ -46,6 +49,7 @@ if not RICH_INSTALLED:
     CLI_BUNDLES.remove("db")
     CLI_LOAD_FAILS.add("db")
     CLI_BUNDLE_FAILS.add("db")
+    del CLI_TESTS["db"]
 
 if platform.system() == "Windows":
     del CLI_TESTS["template"]
