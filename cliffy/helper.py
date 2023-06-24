@@ -95,7 +95,7 @@ def print_rich_table(cols: list[str], rows: list[list[str]], styles: list[str]) 
     console.print(table)
 
 
-def get_installed_pip_packages() -> dict[str, str]:
+def get_installed_package_versions() -> dict[str, str]:
     reqs = subprocess.check_output([sys.executable, "-m", "pip", "freeze"])
     installed_packages = {}
     for r in reqs.split():
@@ -114,10 +114,11 @@ def parse_requirement(requirement: str) -> RequirementSpec:
     return RequirementSpec(name=requirement.strip(), operator=None, version=None)
 
 
-def compare_versions(version1: str, version2: str, op: str) -> bool:
+def compare_versions(version1: str, version2: str, op: Optional[str] = "=") -> bool:
     v1 = version.parse(version1)
     v2 = version.parse(version2)
-    return OPERATOR_MAP[op](v1, v2)
+
+    return OPERATOR_MAP[op](v1, v2) if op else v1 == v2
 
 
 def out(text: str, **echo_kwargs: Any) -> None:

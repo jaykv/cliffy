@@ -122,31 +122,34 @@ class Commander:
             group = command.name.split(".")[:-1][-1]
             self.add_sub_command(command, self.groups[group])
 
+    def add_lazy_command(self, greedy_command: Command, group: str):
+        # make it lazy and interpolate
+        lazy_command_name = greedy_command.name.replace("(*)", group)
+        lazy_command_script = ""
+        if isinstance(greedy_command.script, str):
+            lazy_command_script = greedy_command.script.replace("{(*)}", group)
+        elif isinstance(greedy_command.script, list):
+            lazy_command_script = []
+            for script_block in greedy_command.script:
+                if isinstance(script_block, dict):
+                    lazy_command_script.append(script_block["help"].replace("{(*)}", group))
+                else:
+                    lazy_command_script.append(script_block.replace("{(*)}", group))
+
+        if greedy_command_args := self.manifest.args.get(greedy_command.name):
+            self.manifest.args[lazy_command_name] = greedy_command_args
+
+        # lazy load
+        lazy_command = Command(name=lazy_command_name, script=lazy_command_script)
+        self.commands.append(lazy_command)
+        self.add_command(lazy_command)
+
     def add_greedy_commands(self) -> None:
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""
         for greedy_command in self.greedy:
             if greedy_command.name.startswith("(*)"):
                 for group in self.groups:
-                    # make it lazy and interpolate
-                    lazy_command_name = greedy_command.name.replace("(*)", group)
-                    lazy_command_script = ""
-                    if isinstance(greedy_command.script, str):
-                        lazy_command_script = greedy_command.script.replace("{(*)}", group)
-                    elif isinstance(greedy_command.script, list):
-                        lazy_command_script = []
-                        for script_block in greedy_command.script:
-                            if isinstance(script_block, dict):
-                                lazy_command_script.append(script_block["help"].replace("{(*)}", group))
-                            else:
-                                lazy_command_script.append(script_block.replace("{(*)}", group))
-
-                    if greedy_command_args := self.manifest.args.get(greedy_command.name):
-                        self.manifest.args[lazy_command_name] = greedy_command_args
-
-                    # lazy load
-                    lazy_command = Command(name=lazy_command_name, script=lazy_command_script)
-                    self.commands.append(lazy_command)
-                    self.add_command(lazy_command)
+                    self.add_lazy_command(greedy_command, group)
 
     def is_greedy(self, val: str) -> bool:
         """Greedy strings must contain (*)- marked to be evaluated lazily."""

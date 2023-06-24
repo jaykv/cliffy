@@ -8,7 +8,7 @@ from typing_extensions import Self
 
 from .commander import generate_cli
 from .commanders.typer import TyperCommander
-from .helper import compare_versions, exit_err, get_installed_pip_packages, out, parse_requirement
+from .helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
 from .manifests import IncludeManifest, Manifest, set_manifest_version
 from .merger import cliffy_merger
 
@@ -27,45 +27,36 @@ class Transformer:
             cliffy_merger.merge(self.command_config, self.includes_config)
 
         set_manifest_version(self.manifest_version)
-        if as_include:
-            try:
-                self.manifest = IncludeManifest(**self.command_config)
-            except ValidationError as e:
-                out(f"{e}")
-                exit_err(f"~ error validating {manifest_io.name}")
-        else:
-            try:
-                self.manifest = Manifest(**self.command_config)
-            except ValidationError as e:
-                out(f"{e}")
-                exit_err(f"~ error validating {manifest_io.name}")
 
-            if validate_requires:
-                self.validate_cli_requires()
+        manifest_cls = IncludeManifest if as_include else Manifest
+        try:
+            self.manifest = manifest_cls(**self.command_config)
+        except ValidationError as e:
+            out(f"{e}")
+            exit_err(f"~ error validating {manifest_io.name}")
+
+        if validate_requires:
+            self.validate_cli_requires()
+
+        if isinstance(self.manifest, Manifest):
             self.cli = generate_cli(self.manifest, commander_cls=TyperCommander)
 
     def validate_cli_requires(self) -> None:
         if not self.manifest.requires:
             return
 
-        installed_pip_packages = get_installed_pip_packages()
+        installed_package_versions = get_installed_package_versions()
         for dep in self.manifest.requires:
             dep_spec = parse_requirement(dep)
-            if dep_spec.name not in installed_pip_packages:
+            if dep_spec.name not in installed_package_versions:
                 exit_err(f"~ missing requirement: `{self.manifest_io.name}` requires `{dep}` to be installed")
 
-            if (
-                dep_spec.version
-                and dep_spec.operator
-                and not compare_versions(
-                    installed_pip_packages[dep_spec.name],
-                    dep_spec.version,
-                    dep_spec.operator,
-                )
+            if dep_spec.version and not compare_versions(
+                installed_package_versions[dep_spec.name], dep_spec.version, dep_spec.operator
             ):
                 exit_err(
                     f"~ missing requirement: `{self.manifest_io.name}` requires `{dep}` to be installed"
-                    f"    found version `{installed_pip_packages[dep_spec.name]}`"
+                    f"    found version `{installed_package_versions[dep_spec.name]}`"
                 )
 
     def resolve_includes(self) -> dict:
