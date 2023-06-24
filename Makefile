@@ -38,6 +38,4 @@ generate-cleanup:
 	pip uninstall -y requests six rich
 	cli rm db environ hello pydev requires template town penv
 
-render-examples:
-	cli render $1 > examples/generated/$1.py
 .PHONY: test clean
