@@ -2,14 +2,14 @@ from . import v1
 
 Manifest = v1.CLIManifest
 IncludeManifest = v1.IncludeManifest
-COMMAND_BLOCK = v1.COMMAND_BLOCK
+CommandBlock = v1.CommandBlock
 
 
 def set_manifest_version(manifestVersion: str) -> None:
     global Manifest
     global IncludeManifest
-    global COMMAND_BLOCK
+    global CommandBlock
     if manifestVersion == "v1":
         Manifest = v1.CLIManifest
         IncludeManifest = v1.IncludeManifest
-        COMMAND_BLOCK = v1.COMMAND_BLOCK
+        CommandBlock = v1.CommandBlock

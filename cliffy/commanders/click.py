@@ -1,6 +1,6 @@
 import datetime
 
-from ..commander import Command, Commander
+from ..commander import Command, Commander, Group
 
 
 class ClickCommander(Commander):
@@ -29,7 +29,7 @@ def {command.name}():
     {self.parser.parse_command(command.script)}
 """
 
-    def add_sub_command(self, command: Command, group: str):
+    def add_sub_command(self, command: Command, group: Group):
         self.cli += f"""
 @{group}.command()
 def {command.name}():

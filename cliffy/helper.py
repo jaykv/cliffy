@@ -7,17 +7,14 @@ import sys
 from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
+from tempfile import _TemporaryFileWrapper
 from typing import Any, NoReturn, Optional
 
 from click import secho
 from packaging import version
 from pydantic import BaseModel
 
-try:
-    from rich.console import Console  # type: ignore
-    from rich.table import Table  # type: ignore
-except ImportError:
-    from .rich import Console, Table
+from .rich import Console, Table
 
 HOME_PATH = str(Path.home())
 PYTHON_BIN = (
@@ -36,7 +33,7 @@ OPERATOR_MAP = {
     "<": operator.lt,
     ">": operator.gt,
 }
-TEMP_FILES = []
+TEMP_FILES: list[_TemporaryFileWrapper] = []
 
 
 class RequirementSpec(BaseModel):

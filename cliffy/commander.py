@@ -1,16 +1,34 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import DefaultDict
 
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
-from .manifests import COMMAND_BLOCK, Manifest
+from .manifests import CommandBlock, Manifest
 from .parser import Parser
 
 
 class Command(BaseModel):
     name: str
-    script: COMMAND_BLOCK
+    script: CommandBlock
+
+    @classmethod
+    def from_greedy_make_lazy(cls, greedy_command: Command, group: str) -> Command:
+        lazy_command_name = greedy_command.name.replace("(*)", group)
+        lazy_command_script: CommandBlock = ""
+        if isinstance(greedy_command.script, str):
+            lazy_command_script = greedy_command.script.replace("{(*)}", group)
+        elif isinstance(greedy_command.script, list):
+            lazy_command_script = []
+            for script_block in greedy_command.script:
+                if isinstance(script_block, dict):
+                    lazy_command_script.append(script_block["help"].replace("{(*)}", group))
+                else:
+                    lazy_command_script.append(script_block.replace("{(*)}", group))
+
+        return cls(name=lazy_command_name, script=lazy_command_script)
 
 
 class CLI(BaseModel):
@@ -56,10 +74,11 @@ class Commander:
                 group_name = command.name.split(".")[:-1][-1]
                 groups[group_name].append(command)
             else:
-                for script_block in command.script:
-                    if isinstance(script_block, dict) and script_block.get("help"):
-                        group_help = script_block["help"]
-                        group_help_dict[command.name] = group_help
+                group_help_dict = {
+                    command.name: script_block["help"]
+                    for script_block in command.script
+                    if isinstance(script_block, dict) and script_block.get("help")
+                }
 
         for group_name, commands in groups.items():
             self.groups[group_name] = Group(
@@ -124,23 +143,12 @@ class Commander:
 
     def add_lazy_command(self, greedy_command: Command, group: str):
         # make it lazy and interpolate
-        lazy_command_name = greedy_command.name.replace("(*)", group)
-        lazy_command_script = ""
-        if isinstance(greedy_command.script, str):
-            lazy_command_script = greedy_command.script.replace("{(*)}", group)
-        elif isinstance(greedy_command.script, list):
-            lazy_command_script = []
-            for script_block in greedy_command.script:
-                if isinstance(script_block, dict):
-                    lazy_command_script.append(script_block["help"].replace("{(*)}", group))
-                else:
-                    lazy_command_script.append(script_block.replace("{(*)}", group))
+        lazy_command = Command.from_greedy_make_lazy(greedy_command=greedy_command, group=group)
 
         if greedy_command_args := self.manifest.args.get(greedy_command.name):
-            self.manifest.args[lazy_command_name] = greedy_command_args
+            self.manifest.args[lazy_command.name] = greedy_command_args
 
         # lazy load
-        lazy_command = Command(name=lazy_command_name, script=lazy_command_script)
         self.commands.append(lazy_command)
         self.add_command(lazy_command)
 

@@ -45,4 +45,4 @@ commands:
           print(f"~ creating {name}")
           $ f{interpreter} -m venv f{os.path.join(DEFAULT_VENV_STORE, name)}
       
-      os.system(f'/bin/bash --rcfile {get_venv_path(name)}/bin/activate')
+      os.system(f"""bash -c ". {get_venv_path(name)}/bin/activate; env PS1='\[\e[38;5;211m\]({name})\[\e[\033[00m\] \w $ ' bash --norc\"""")
