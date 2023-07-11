@@ -1,10 +1,12 @@
 ## CLI to generate CLIs
 import contextlib
 from tempfile import NamedTemporaryFile
-from typing import TextIO
+from typing import Optional, TextIO
+
+from click import Command
 
 from .rich import click, Console
-from .rich import Group as AliasGroup  # type: ignore
+from .rich import ClickGroup  # type: ignore
 
 from .builder import build_cli, run_cli
 from .helper import (
@@ -27,20 +29,20 @@ from .transformer import Transformer
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
-class AliasedGroup(AliasGroup):  # type: ignore
-    def get_command(self, ctx, cmd_name):
+class AliasedGroup(ClickGroup):
+    def get_command(self, ctx: click.Context, cmd_name: Optional[str]) -> Command | None:
         with contextlib.suppress(KeyError):
-            cmd_name = ALIASES[cmd_name].name
+            cmd_name = ALIASES[cmd_name].name  # type: ignore
         return super().get_command(ctx, cmd_name or "")
 
 
-@click.group(context_settings=CONTEXT_SETTINGS, cls=AliasedGroup)
+@click.group(context_settings=CONTEXT_SETTINGS, cls=AliasedGroup)  # type: ignore[arg-type]
 @click.version_option()
 def cli() -> None:
     pass
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("manifests", type=click.File("rb"), nargs=-1)
 def load(manifests: list[TextIO]) -> None:
     """Load CLI for given manifest(s)"""
@@ -53,7 +55,7 @@ def load(manifests: list[TextIO]) -> None:
         out(f" {T.cli.name} -h")
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_names", type=str, nargs=-1)
 def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
@@ -69,7 +71,7 @@ def update(cli_names: list[str]) -> None:
             out_err(f"~ {cli_name} not found")
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("manifest", type=click.File("rb"))
 def render(manifest: TextIO) -> None:
     """Render the CLI manifest generation as code"""
@@ -79,7 +81,7 @@ def render(manifest: TextIO) -> None:
     out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
 
 
-@cli.command("run")
+@cli.command("run")  # type: ignore[arg-type]
 @click.argument("manifest", type=click.File("rb"))
 @click.argument("cli_args", type=str, nargs=-1)
 def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
@@ -88,7 +90,7 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
     run_cli(T.cli.name, T.cli.code, cli_args)
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_name", type=str, default="cliffy")
 @click.option("--version", "-v", type=str, show_default=True, default="v1", help="Manifest version")
 @click.option("--render", is_flag=True, show_default=True, default=False, help="Render template to terminal directly")
@@ -116,7 +118,7 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
         out(f"+ {cli_name}.yaml", fg="green")
 
 
-@cli.command("list")
+@cli.command("list")  # type: ignore[arg-type]
 def cliffy_list() -> None:
     "List all CLIs loaded"
     cols = ["Name", "Version", "Age", "Manifest"]
@@ -127,7 +129,7 @@ def cliffy_list() -> None:
     print_rich_table(cols, rows, styles=["cyan", "magenta", "green", "blue"])
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_names", type=str, nargs=-1)
 def remove(cli_names: list[str]) -> None:
     "Remove a loaded CLI by name"
@@ -140,7 +142,7 @@ def remove(cli_names: list[str]) -> None:
             out_err(f"~ {cli_name} not loaded")
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_names", type=str, nargs=-1)
 @click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
@@ -177,7 +179,7 @@ def bundle(cli_names: list[str], debug: bool, output_dir: str, python: str) -> N
         out(f"+ {cli_name} bundled 📦", fg="green")
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("manifests", type=click.File("rb"), nargs=-1)
 @click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
@@ -213,7 +215,7 @@ def build(manifests: list[TextIO], debug: bool, output_dir: str, python: str) ->
         out(f"+ {T.cli.name} built 📦", fg="green")
 
 
-@cli.command()
+@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_name", type=str)
 def info(cli_name: str):
     "Display CLI info"

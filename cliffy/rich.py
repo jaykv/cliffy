@@ -1,17 +1,21 @@
 ## Mimic rich API methods for rich-less support
-from typing import Any
+from typing import Any, Type
+from click import Group
 
-__all__ = ["click", "Console", "Group", "Table"]
+__all__ = ["click", "Console", "ClickGroup", "Table"]
 
 try:
     import rich_click as click  # type: ignore
     from rich.console import Console  # type: ignore
-    from rich_click.rich_group import RichGroup as Group  # type: ignore
     from rich.table import Table  # type: ignore
 
+    from rich_click.rich_group import RichGroup  # type: ignore
+
+    ClickGroup = RichGroup  # type: ignore[no-redef]
 except ImportError:
-    import click
-    from click import Group
+    import click  # type: ignore[no-redef]
+
+    ClickGroup: Type[Group] = Group  # type: ignore[no-redef]
 
     class Console:  # type: ignore[no-redef]
         def __init__(self) -> None:
