@@ -47,16 +47,7 @@ plugins = ["pydantic.mypy"]
 follow_imports = "silent"
 ignore_missing_imports = true
 show_error_codes = true
-warn_unused_ignores = false
-warn_redundant_casts = true
-no_implicit_reexport = true
 
 [[tool.mypy.overrides]]
 module = "yaml"
 ignore_missing_imports = true
-
-[tool.pydantic-mypy]
-init_typed = true
-init_forbid_extra = true
-warn_required_dynamic_aliases = true
-warn_untyped_fields = true
