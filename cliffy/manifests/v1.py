@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from ..helper import wrap_as_comment, wrap_as_var
 
-COMMAND_BLOCK = Union[str, list[Union[str, dict[Literal["help"], str]]]]
+CommandBlock = Union[str, list[Union[str, dict[Literal["help"], str]]]]
 
 
 class CLIManifest(BaseModel):
@@ -38,7 +38,7 @@ class CLIManifest(BaseModel):
         "Supports jinja2 formatted expressions as values. "
         "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
     )
-    commands: dict[str, COMMAND_BLOCK] = Field(
+    commands: dict[str, CommandBlock] = Field(
         {},
         description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "

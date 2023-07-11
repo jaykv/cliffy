@@ -19,7 +19,7 @@ def build_cli(
     script_path: str,
     deps: Optional[list[str]] = None,
     output_dir: Optional[str] = None,
-    interpreter: str = "/usr/bin/env python3 -sE",
+    interpreter: str = "/usr/bin/env python3",
 ) -> Result:
     if deps is None:
         deps = []
@@ -36,7 +36,7 @@ def build_cli(
         runner = CliRunner()
         output_file = os.path.join(output_dir, f"{cli_name}") if output_dir else cli_name
         return runner.invoke(
-            shiv_cli.main,
+            shiv_cli.main,  # type: ignore
             ["--site-packages", tdist, "--compressed", "-e", f"{cli_name}.cli", "-o", output_file, "-p", interpreter],
         )
 

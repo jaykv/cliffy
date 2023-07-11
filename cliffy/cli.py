@@ -3,14 +3,8 @@ import contextlib
 from tempfile import NamedTemporaryFile
 from typing import TextIO
 
-try:
-    import rich_click as click  # type: ignore
-    from rich.console import Console  # type: ignore
-    from rich_click.rich_group import RichGroup as AliasGroup  # type: ignore
-except ImportError:
-    import click
-    from .rich import Console
-    from click import Group as AliasGroup
+from .rich import click, Console
+from .rich import Group as AliasGroup  # type: ignore
 
 from .builder import build_cli, run_cli
 from .helper import (

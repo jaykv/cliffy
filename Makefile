@@ -25,7 +25,8 @@ format:
 
 lint:
 	black --check --diff ${SOURCE_FILES} --exclude=cliffy/clis
-	ruff $(SOURCE_FILES)
+	ruff ${SOURCE_FILES}
+	mypy ${SOURCE_FILES}
 
 shell:
 	source .venv/bin/activate
