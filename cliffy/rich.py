@@ -1,6 +1,5 @@
-## Mimic rich API methods for rich-less support
+## rich-click compat for rich-less support
 from typing import Any, Type
-from click import Group
 
 __all__ = ["click", "Console", "ClickGroup", "Table"]
 
@@ -14,6 +13,7 @@ try:
     ClickGroup = RichGroup  # type: ignore[no-redef]
 except ImportError:
     import click  # type: ignore[no-redef]
+    from click import Group
 
     ClickGroup: Type[Group] = Group  # type: ignore[no-redef]
 
