@@ -51,6 +51,10 @@ warn_unused_ignores = false
 warn_redundant_casts = true
 no_implicit_reexport = true
 
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_typed = true
 init_forbid_extra = true
