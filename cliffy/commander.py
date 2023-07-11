@@ -74,10 +74,11 @@ class Commander:
                 group_name = command.name.split(".")[:-1][-1]
                 groups[group_name].append(command)
             else:
-                for script_block in command.script:
-                    if isinstance(script_block, dict) and script_block.get("help"):
-                        group_help = script_block["help"]
-                        group_help_dict[command.name] = group_help
+                group_help_dict = {
+                    command.name: script_block["help"]
+                    for script_block in command.script
+                    if isinstance(script_block, dict) and script_block.get("help")
+                }
 
         for group_name, commands in groups.items():
             self.groups[group_name] = Group(
