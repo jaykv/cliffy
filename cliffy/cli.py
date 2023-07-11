@@ -30,7 +30,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 class AliasedGroup(ClickGroup):
-    def get_command(self, ctx: click.Context, cmd_name: Optional[str]) -> Command | None:
+    def get_command(self, ctx: click.Context, cmd_name: Optional[str]) -> Optional[Command]:
         with contextlib.suppress(KeyError):
             cmd_name = ALIASES[cmd_name].name  # type: ignore
         return super().get_command(ctx, cmd_name or "")
