@@ -85,8 +85,7 @@ Builds a portable zipapp containing the CLI and its package requirements.
 * `update <cli name>`: Reload a loaded CLI
 * `remove <cli name>` or `rm <cli name>`: Remove a loaded CLI
 * `run <manifest> -- <args>`: Runs a CLI manifest as a one-time operation
-* `build <manifest>`: Build a CLI manifest into a self-contained zipapp
-* `bundle <cli name>`: Bundle a loaded CLI into a self-contained zipapp
+* `build <cli name or manifest>`: Build a CLI manifest or a loaded CLI into a self-contained zipapp
 * `info <cli name>`: Display CLI metadata
 
 ## How it works

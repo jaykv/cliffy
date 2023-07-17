@@ -1,3 +1,4 @@
+from io import TextIOWrapper
 import os
 import sys
 from importlib import import_module
@@ -12,6 +13,26 @@ from shiv import cli as shiv_cli
 from shiv import pip
 
 from cliffy.helper import TEMP_FILES, delete_temp_files
+
+from cliffy.transformer import Transformer
+
+from cliffy.commander import CLI
+
+
+def build_cli_from_manifest(
+    manifestIO: TextIOWrapper, output_dir: Optional[str] = None, interpreter: str = "/usr/bin/env python3"
+) -> tuple[CLI, Result]:
+    T = Transformer(manifestIO, validate_requires=False)
+    with NamedTemporaryFile(mode="w", prefix=f"{T.cli.name}_", suffix=".py", delete=False) as script:
+        script.write(T.cli.code)
+        script.flush()
+        result = build_cli(
+            T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir, interpreter=interpreter
+        )
+        TEMP_FILES.append(script)
+
+    delete_temp_files()
+    return T.cli, result
 
 
 def build_cli(

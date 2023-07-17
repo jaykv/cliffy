@@ -1,4 +1,3 @@
-import contextlib
 import os
 import platform
 import shlex
@@ -9,21 +8,22 @@ from shutil import rmtree
 import pytest
 from click.testing import CliRunner
 
-from cliffy.cli import build, bundle, load, remove
+from cliffy.cli import build, load, remove
 from cliffy.homer import get_clis, get_metadata
 
-RICH_INSTALLED = False
-with contextlib.suppress(ImportError):
+try:
     import rich
 
-    if rich:
-        RICH_INSTALLED = True
+    rich.print("~ rich installed")
+    RICH_INSTALLED = True
+except ImportError:
+    RICH_INSTALLED = False
 
 CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
-CLI_BUNDLES = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
-CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "penv"}
+CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
+CLI_MANIFEST_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "penv"}
 CLI_LOAD_FAILS = {"requires"}
-CLI_BUNDLE_FAILS = {"requires"}
+CLI_BUILD_FAILS = {"requires"}
 CLI_TESTS = {
     "hello": [{"args": "bash", "resp": "hello from bash"}, {"args": "python", "resp": "hello from python"}],
     "town": [
@@ -46,9 +46,9 @@ CLI_TESTS = {
 
 if not RICH_INSTALLED:
     CLI_LOADS.remove("db")
-    CLI_BUNDLES.remove("db")
+    CLI_BUILDS.remove("db")
     CLI_LOAD_FAILS.add("db")
-    CLI_BUNDLE_FAILS.add("db")
+    CLI_BUILD_FAILS.add("db")
     del CLI_TESTS["db"]
 
 if platform.system() == "Windows":
@@ -58,7 +58,7 @@ if platform.system() == "Windows":
 def setup_module():
     pytest.installed_clis = []  # type: ignore
     os.mkdir("test-builds")
-    os.mkdir("test-bundles")
+    os.mkdir("test-manifest-builds")
 
 
 def teardown_module(cls):
@@ -71,7 +71,7 @@ def teardown_module(cls):
         assert cli is None
 
     rmtree("test-builds")
-    rmtree("test-bundles")
+    rmtree("test-manifest-builds")
 
 
 @pytest.mark.parametrize("cli_name", CLI_LOADS)
@@ -94,24 +94,24 @@ def test_cli_load_fails(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_BUILDS)
 def test_cli_builds(cli_name):
     runner = CliRunner()
-    result = runner.invoke(build, [f"examples/{cli_name}.yaml", "-o", "test-builds"])
+    result = runner.invoke(build, [f"{cli_name}", "-o", "test-builds"])
     assert result.exit_code == 0
+    assert f"+ {cli_name} built" in result.stdout
 
 
-@pytest.mark.parametrize("cli_name", CLI_BUNDLES)
-def test_cli_bundles(cli_name):
+@pytest.mark.parametrize("cli_name", CLI_BUILD_FAILS)
+def test_cli_build_fails(cli_name):
     runner = CliRunner()
-    result = runner.invoke(bundle, [f"{cli_name}", "-o", "test-bundles"])
-    assert result.exit_code == 0
-    assert f"+ {cli_name} bundled" in result.stdout
-
-
-@pytest.mark.parametrize("cli_name", CLI_BUNDLE_FAILS)
-def test_cli_bundle_fails(cli_name):
-    runner = CliRunner()
-    result = runner.invoke(bundle, [f"{cli_name}", "-o", "test-bundles"])
+    result = runner.invoke(build, [f"{cli_name}", "-o", "test-builds"])
     assert result.exit_code == 0
     assert f"~ {cli_name} not loaded" in result.stdout
+
+
+@pytest.mark.parametrize("cli_name", CLI_MANIFEST_BUILDS)
+def test_cli_builds_from_manifests(cli_name):
+    runner = CliRunner()
+    result = runner.invoke(build, [f"examples/{cli_name}.yaml", "-o", "test-manifest-builds"])
+    assert result.exit_code == 0
 
 
 @pytest.mark.parametrize("cli_name", CLI_TESTS.keys())
@@ -131,6 +131,17 @@ def test_cli_response(cli_name):
             )
             assert command["resp"] in loaded_cli_result.stdout
 
+        executable_path = os.path.join(os.getcwd(), "test-manifest-builds", cli_name)
+
+        built_manifest_result = subprocess.run(
+            [sys.executable, executable_path] + shlex.split(command["args"]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+            env=environment,
+        )
+        assert command["resp"] in built_manifest_result.stdout
+
         executable_path = os.path.join(os.getcwd(), "test-builds", cli_name)
 
         built_cli_result = subprocess.run(
@@ -141,14 +152,3 @@ def test_cli_response(cli_name):
             env=environment,
         )
         assert command["resp"] in built_cli_result.stdout
-
-        executable_path = os.path.join(os.getcwd(), "test-bundles", cli_name)
-
-        bundled_cli_result = subprocess.run(
-            [sys.executable, executable_path] + shlex.split(command["args"]),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            encoding="utf-8",
-            env=environment,
-        )
-        assert command["resp"] in bundled_cli_result.stdout

@@ -48,7 +48,7 @@ class Transformer:
         installed_package_versions = get_installed_package_versions()
         for dep in self.manifest.requires:
             dep_spec = parse_requirement(dep)
-            if dep_spec.name not in installed_package_versions:
+            if dep_spec.name.lower() not in installed_package_versions:
                 exit_err(f"~ missing requirement: `{self.manifest_io.name}` requires `{dep}` to be installed")
 
             if dep_spec.version and not compare_versions(
