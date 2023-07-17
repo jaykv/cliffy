@@ -96,7 +96,7 @@ def get_installed_package_versions() -> dict[str, str]:
     reqs = subprocess.check_output([sys.executable, "-m", "pip", "freeze"])
     installed_packages = {}
     for r in reqs.split():
-        r_spec = r.decode().split("==")
+        r_spec = r.decode().lower().split("==")
         if len(r_spec) > 1:
             installed_packages[r_spec[0]] = r_spec[1]
     return installed_packages

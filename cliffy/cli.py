@@ -1,19 +1,19 @@
 ## CLI to generate CLIs
 import contextlib
-from tempfile import NamedTemporaryFile
-from typing import Optional, TextIO
+from io import TextIOWrapper
+import os
+from typing import IO, Any, Optional, TextIO, Union, cast
 
-from click import Command
+from click.core import Context, Parameter
+from click.types import _is_file_like
 
 from .rich import click, Console
 from .rich import ClickGroup  # type: ignore
 
-from .builder import build_cli, run_cli
+from .builder import build_cli, build_cli_from_manifest, run_cli
 from .helper import (
     CLIFFY_CLI_DIR,
-    TEMP_FILES,
     age_datetime,
-    delete_temp_files,
     exit_err,
     indent_block,
     out,
@@ -30,10 +30,25 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 class AliasedGroup(ClickGroup):
-    def get_command(self, ctx: click.Context, cmd_name: Optional[str]) -> Optional[Command]:
+    def get_command(self, ctx: click.Context, cmd_name: Optional[str]) -> Optional[click.Command]:
         with contextlib.suppress(KeyError):
             cmd_name = ALIASES[cmd_name].name  # type: ignore
         return super().get_command(ctx, cmd_name or "")
+
+
+class ManifestOrCLI(click.File):
+    def convert(  # type: ignore[override]
+        self, value: Union[str, "os.PathLike[str]", IO[Any]], param: Optional[Parameter], ctx: Optional[Context]
+    ) -> Union[str, IO[Any]]:
+        if _is_file_like(value):
+            return value
+
+        value = cast("Union[str, os.PathLike[str]]", value)
+
+        if isinstance(value, os.PathLike) or value.endswith("yaml"):
+            return super().convert(value, param, ctx)
+
+        return value
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, cls=AliasedGroup)  # type: ignore[arg-type]
@@ -143,76 +158,43 @@ def remove(cli_names: list[str]) -> None:
 
 
 @cli.command()  # type: ignore[arg-type]
-@click.argument("cli_names", type=str, nargs=-1)
-@click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
+@click.argument("cli_or_manifests", type=ManifestOrCLI(), nargs=-1)
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
 @click.option(
     "--python",
     "-p",
     type=str,
     help="Python interpreter to set as the zipapp shebang. This gets added after the #! ",
-    default="/usr/bin/env python3 -sE",
+    default="/usr/bin/env python3",
     show_default=True,
 )
-def bundle(cli_names: list[str], debug: bool, output_dir: str, python: str) -> None:
-    "Bundle a loaded CLI into a zipapp"
-    for cli_name in cli_names:
-        if not (metadata := get_metadata(cli_name)):
-            out_err(f"~ {cli_name} not loaded")
-            continue
+def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, python: str) -> None:
+    "Build a CLI manifest or a loaded CLI into a zipapp"
+    print(output_dir)
+    for cli_or_manifest in cli_or_manifests:
+        if isinstance(cli_or_manifest, TextIOWrapper):
+            cli, result = build_cli_from_manifest(cli_or_manifest, output_dir=output_dir, interpreter=python)
+            cli_name = cli.name
+        else:
+            cli_name = cast("str", cli_or_manifest)
+            if not (metadata := get_metadata(cli_name)):
+                out_err(f"~ {cli_name} not loaded")
+                continue
 
-        result = build_cli(
-            cli_name,
-            script_path=f"{CLIFFY_CLI_DIR}/{cli_name}.py",
-            deps=metadata.requires,
-            output_dir=output_dir,
-            interpreter=python,
-        )
-
-        if result.exit_code != 0:
-            out(result.stdout)
-            out_err(f"~ {cli_name} bundle failed")
-            continue
-
-        if debug:
-            out(result.stdout)
-        out(f"+ {cli_name} bundled 📦", fg="green")
-
-
-@cli.command()  # type: ignore[arg-type]
-@click.argument("manifests", type=click.File("rb"), nargs=-1)
-@click.option("--debug", is_flag=True, show_default=True, default=False, help="Display build output")
-@click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
-@click.option(
-    "--python",
-    "-p",
-    type=str,
-    help="Python interpreter to set as the zipapp shebang. This gets added after the #! ",
-    default="/usr/bin/env python3 -sE",
-    show_default=True,
-)
-def build(manifests: list[TextIO], debug: bool, output_dir: str, python: str) -> None:
-    "Build a CLI manifest into a zipapp"
-    for manifest in manifests:
-        T = Transformer(manifest, validate_requires=False)
-        with NamedTemporaryFile(mode="w", prefix=f"{T.cli.name}_", suffix=".py", delete=False) as script:
-            script.write(T.cli.code)
-            script.flush()
             result = build_cli(
-                T.cli.name, script_path=script.name, deps=T.cli.requires, output_dir=output_dir, interpreter=python
+                cli_name,
+                script_path=f"{CLIFFY_CLI_DIR}/{cli_name}.py",
+                deps=metadata.requires,
+                output_dir=output_dir,
+                interpreter=python,
             )
-            TEMP_FILES.append(script)
-
-        delete_temp_files()
 
         if result.exit_code != 0:
             out(result.stdout)
-            out_err(f"~ {T.cli.name} build failed")
+            out_err(f"~ {cli_name} build failed")
             continue
 
-        if debug:
-            out(result.stdout)
-        out(f"+ {T.cli.name} built 📦", fg="green")
+        out(f"+ {cli_name} built 📦", fg="green")
 
 
 @cli.command()  # type: ignore[arg-type]
@@ -227,8 +209,4 @@ def info(cli_name: str):
     out(f"{click.style('manifest:', fg='blue')}\n{indent_block(metadata.manifest, spaces=2)}")
 
 
-ALIASES = {
-    "add": load,
-    "rm": remove,
-    "ls": cliffy_list,
-}
+ALIASES = {"add": load, "rm": remove, "ls": cliffy_list, "reload": update}

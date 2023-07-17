@@ -80,13 +80,12 @@ Builds a portable zipapp containing the CLI and its package requirements.
 `cli <command>`
 * `init <cli name> --raw`: Generate a template CLI manifest for a new CLI
 * `load <manifest>`: Add a new CLI based on the manifest
-* `render <manifest>`: View generated CLI script for a manifest
+* `render <cli name or manifest>`: View generated CLI script for a manifest or a loaded CLI
 * `list` or `ls`: Output a list of loaded CLIs 
 * `update <cli name>`: Reload a loaded CLI
 * `remove <cli name>` or `rm <cli name>`: Remove a loaded CLI
 * `run <manifest> -- <args>`: Runs a CLI manifest as a one-time operation
-* `build <manifest>`: Build a CLI manifest into a self-contained zipapp
-* `bundle <cli name>`: Bundle a loaded CLI into a self-contained zipapp
+* `build <cli name or manifest>`: Build a CLI manifest or a loaded CLI into a self-contained zipapp
 * `info <cli name>`: Display CLI metadata
 
 ## How it works
