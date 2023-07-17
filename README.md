@@ -80,7 +80,7 @@ Builds a portable zipapp containing the CLI and its package requirements.
 `cli <command>`
 * `init <cli name> --raw`: Generate a template CLI manifest for a new CLI
 * `load <manifest>`: Add a new CLI based on the manifest
-* `render <cli name or manifest>`: View generated CLI script for a manifest or a loaded CLI
+* `render <manifest>`: View generated CLI script for a manifest
 * `list` or `ls`: Output a list of loaded CLIs 
 * `update <cli name>`: Reload a loaded CLI
 * `remove <cli name>` or `rm <cli name>`: Remove a loaded CLI
