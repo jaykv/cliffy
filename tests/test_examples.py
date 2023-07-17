@@ -1,4 +1,3 @@
-import contextlib
 import os
 import platform
 import shlex
@@ -12,12 +11,13 @@ from click.testing import CliRunner
 from cliffy.cli import build, load, remove
 from cliffy.homer import get_clis, get_metadata
 
-RICH_INSTALLED = False
-with contextlib.suppress(ImportError):
+try:
     import rich
 
-    if rich:
-        RICH_INSTALLED = True
+    rich.print("~ rich installed")
+    RICH_INSTALLED = True
+except ImportError:
+    RICH_INSTALLED = False
 
 CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
 CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
