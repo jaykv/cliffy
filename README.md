@@ -3,14 +3,14 @@
 ![GitHub](https://img.shields.io/github/license/jaykv/cliffy)
 
 # cliffy :mountain:
-cliffy is a YAML-defined CLI generator, manager, and bundler for python. It offers dynamic abstractions to rapidly build, test, and deploy CLIs.
+cliffy is a YAML-defined CLI generator, manager, and builder for python. It offers dynamic abstractions to rapidly build, test, and deploy CLIs.
 
 ## Features
 * Rapidly build CLIs with YAML-defined manifests
 * Manage CLIs- load, list, update, and remove
 * Built-in shell and Python scripting support
-* Supports Jinja2-templating
-* Build and bundle CLIs into self-contained, portable zipapps
+* Supports Jinja2 templating
+* Build CLIs into self-contained, portable zipapps
 
 ### Load
 
@@ -94,7 +94,7 @@ Builds a portable zipapp containing the CLI and its package requirements.
 3. When loaded, cliffy parses the manifest and generates a [Typer](https://github.com/tiangolo/typer) CLI that is deployed directly as a script
 4. Any code starting with `$` will translate to subprocess calls via [PyBash](https://github.com/cliffy-sh/pybash)
 5. Run loaded CLIs straight from the terminal
-6. When ready to share, run `build` or `bundle` to generate portable zipapps built with [Shiv](https://github.com/linkedin/shiv)
+6. When ready to share, run `build` to generate portable zipapps built with [Shiv](https://github.com/linkedin/shiv)
 
 ## Install
 * `pip install "cliffy[rich]"` to include [rich-click](https://github.com/ewels/rich-click) for colorful CLI help output formatted with [rich](https://github.com/Textualize/rich).

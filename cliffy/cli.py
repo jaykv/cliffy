@@ -135,7 +135,7 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
 
 @cli.command("list")  # type: ignore[arg-type]
 def cliffy_list() -> None:
-    "List all CLIs loaded"
+    """List all CLIs loaded"""
     cols = ["Name", "Version", "Age", "Manifest"]
     rows = [
         [metadata.cli_name, metadata.version, age_datetime(metadata.loaded), metadata.runner_path]
@@ -147,7 +147,7 @@ def cliffy_list() -> None:
 @cli.command()  # type: ignore[arg-type]
 @click.argument("cli_names", type=str, nargs=-1)
 def remove(cli_names: list[str]) -> None:
-    "Remove a loaded CLI by name"
+    """Remove a loaded CLI by name"""
     for cli_name in cli_names:
         if get_metadata_path(cli_name):
             remove_metadata(cli_name)
@@ -169,8 +169,7 @@ def remove(cli_names: list[str]) -> None:
     show_default=True,
 )
 def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, python: str) -> None:
-    "Build a CLI manifest or a loaded CLI into a zipapp"
-    print(output_dir)
+    """Build a CLI manifest or a loaded CLI into a zipapp"""
     for cli_or_manifest in cli_or_manifests:
         if isinstance(cli_or_manifest, TextIOWrapper):
             cli, result = build_cli_from_manifest(cli_or_manifest, output_dir=output_dir, interpreter=python)
@@ -200,7 +199,7 @@ def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, py
 @cli.command()  # type: ignore[arg-type]
 @click.argument("cli_name", type=str)
 def info(cli_name: str):
-    "Display CLI info"
+    """Display CLI info"""
     metadata = get_metadata(cli_name) or exit_err(f"~ {cli_name} not loaded")
     out(f"{click.style('name:', fg='blue')} {metadata.cli_name}")
     out(f"{click.style('version:', fg='blue')} {metadata.version}")

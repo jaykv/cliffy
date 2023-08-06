@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 from ..helper import wrap_as_comment, wrap_as_var
 
 CommandBlock = Union[str, list[Union[str, dict[Literal["help"], str]]]]
+ArgBlock = list[dict[str, str]]
+VarBlock = Union[str, dict[str, None]]
 
 
 class CLIManifest(BaseModel):
@@ -31,7 +33,7 @@ class CLIManifest(BaseModel):
         "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest. "
         "and finally, deep merges the merged manifest with the main manifest.",
     )
-    vars: dict[str, Union[str, dict[str, None]]] = Field(
+    vars: dict[str, VarBlock] = Field(
         {},
         description="A mapping defining manifest variables that can be referenced in any other blocks. "
         "Environments variables can be used in this section with ${some_env_var} for dynamic parsing. "
@@ -58,7 +60,7 @@ class CLIManifest(BaseModel):
         "Each element of the list can be a separate function. "
         "These functions should be defined as strings that can be executed by the Python interpreter.",
     )
-    args: dict[str, list[dict[str, str]]] = Field(
+    args: dict[str, ArgBlock] = Field(
         {},
         description="A mapping containing the arguments and options for each command. "
         "Each key in the mapping should correspond to a command in the commands section. "
@@ -197,13 +199,14 @@ commands: {{}}
 class IncludeManifest(BaseModel):
     """Special manifest specifically to define the allowed named objects that can be included"""
 
-    commands: dict[str, Union[str, list[Union[str, dict[Literal["help"], str]]]]] = {}
+    requires: list[str]
+    commands: dict[str, CommandBlock] = {}
+    args: dict[str, ArgBlock] = {}
+    vars: dict[str, VarBlock] = {}
     imports: Union[str, list[str]] = []
     functions: list[str] = []
-    args: dict[str, list[dict[str, str]]] = {}
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
-    requires: list[str]
 
 
 class CLIMetadata(BaseModel):

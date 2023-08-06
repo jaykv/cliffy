@@ -16,15 +16,14 @@ from pydantic import BaseModel
 
 from .rich import Console, Table
 
-HOME_PATH = str(Path.home())
+CLIFFY_CLI_DIR = files("cliffy").joinpath("clis")
+CLIFFY_METADATA_DIR = files("cliffy").joinpath("metadata")
 PYTHON_BIN = (
     f"{os.path.join(sys.exec_prefix, 'Scripts')}"
     if platform.system() == "Windows"
     else f"{os.path.join(sys.exec_prefix, 'bin')}"
 )
 PYTHON_EXECUTABLE = sys.executable
-CLIFFY_CLI_DIR = files("cliffy.clis")
-CLIFFY_HOME_PATH = f"{HOME_PATH}/.cliffy"
 OPERATOR_MAP = {
     "==": operator.eq,
     "!=": operator.ne,
