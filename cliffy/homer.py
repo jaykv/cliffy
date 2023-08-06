@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from .commander import CLI
-from .helper import CLIFFY_HOME_PATH, write_to_file
+from .helper import CLIFFY_METADATA_DIR, write_to_file
 from .manifests.v1 import CLIMetadata
 
 
@@ -20,7 +20,7 @@ def save_metadata(manifest_path: str, cli: CLI) -> None:
     """
     abs_manifest_path = os.path.realpath(manifest_path)
     encoded_runnerpath = b32encode(cli.name.encode("ascii")).decode("utf-8")
-    save_metadata_path = f"{CLIFFY_HOME_PATH}/{encoded_runnerpath}/{cli.name}.json"
+    save_metadata_path = f"{CLIFFY_METADATA_DIR}/{encoded_runnerpath}/{cli.name}.json"
     with open(manifest_path, "r") as manifest:
         write_to_file(
             save_metadata_path,
@@ -44,7 +44,7 @@ def remove_metadata(cli_name: str) -> None:
     Args:
         cli_name (str): CLI name
     """
-    metadata_paths = glob.glob(f"{CLIFFY_HOME_PATH}/*/{cli_name}.*")
+    metadata_paths = glob.glob(f"{CLIFFY_METADATA_DIR}/*/{cli_name}.*")
     for path in metadata_paths:
         parent_path = Path(path).parent.resolve()
         os.remove(path)
@@ -95,7 +95,7 @@ def get_metadata_path(cli_name: str) -> Optional[str]:
     Returns:
         Optional[str]: CLI metadata path
     """
-    if cli_metadata_path := glob.glob(f"{CLIFFY_HOME_PATH}/*/{cli_name}.json"):
+    if cli_metadata_path := glob.glob(f"{CLIFFY_METADATA_DIR}/*/{cli_name}.json"):
         return cli_metadata_path[0]
     return None
 
@@ -106,6 +106,6 @@ def get_clis() -> Iterator[CLIMetadata]:
     Yields:
         Iterator[CLIMetadata]: CLI metadata
     """
-    metadata_paths = Path(CLIFFY_HOME_PATH).glob("*/*")
+    metadata_paths = Path(str(CLIFFY_METADATA_DIR)).glob("*/*.json")
     for metadata_path in metadata_paths:
         yield get_metadata_bypath(metadata_path)
