@@ -7,7 +7,7 @@ from typing import IO, Any, Optional, TextIO, Union, cast
 from click.core import Context, Parameter
 from click.types import _is_file_like
 
-from .rich import click, Console
+from .rich import click, Console, print_rich_table
 from .rich import ClickGroup  # type: ignore
 
 from .builder import build_cli, build_cli_from_manifest, run_cli
@@ -18,7 +18,6 @@ from .helper import (
     indent_block,
     out,
     out_err,
-    print_rich_table,
     write_to_file,
 )
 from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata

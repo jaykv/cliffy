@@ -49,3 +49,13 @@ except ImportError:
                     text += f"{col:10}"
                 text += "\n"
             return text
+
+
+def print_rich_table(cols: list[str], rows: list[list[str]], styles: list[str]) -> None:
+    table = Table()
+    for style, col in zip(styles, cols):
+        table.add_column(col, style=style)
+    for row in rows:
+        table.add_row(*row)
+
+    Console().print(table)
