@@ -14,7 +14,6 @@ from click import secho
 from packaging import version
 from pydantic import BaseModel
 
-from .rich import Console, Table
 
 CLIFFY_CLI_DIR = files("cliffy").joinpath("clis")
 CLIFFY_METADATA_DIR = files("cliffy").joinpath("metadata")
@@ -64,8 +63,7 @@ def delete_temp_files() -> None:
 
 
 def indent_block(block: str, spaces=4) -> str:
-    blocklines = block.splitlines()
-    return "\n".join([" " * spaces + line for line in blocklines])
+    return "\n".join([" " * spaces + line for line in block.splitlines()])
 
 
 def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
@@ -78,17 +76,6 @@ def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
 
 def wrap_as_var(text: str) -> str:
     return "{{" + text + "}}"
-
-
-def print_rich_table(cols: list[str], rows: list[list[str]], styles: list[str]) -> None:
-    table = Table()
-    for style, col in zip(styles, cols):
-        table.add_column(col, style=style)
-    for row in rows:
-        table.add_row(*row)
-
-    console = Console()
-    console.print(table)
 
 
 def get_installed_package_versions() -> dict[str, str]:
