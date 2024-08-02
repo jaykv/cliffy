@@ -65,7 +65,6 @@ class Parser:
         is_required: bool = False,
     ) -> str:
         parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}"
-        print(arg_name)
         if not default_val:
             # Required param needs ...
             parsed_arg_type += "(..." if is_required else "(None"

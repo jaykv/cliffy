@@ -1,4 +1,4 @@
-## Generated template on 2024-08-02 13:49:31.026267
+## Generated template on 2024-08-02 14:08:54.276078
 import typer
 import subprocess
 from typing import Optional

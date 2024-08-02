@@ -15,9 +15,8 @@ args:
   - env-var: str!
 
 commands:
-  read: $ echo {{ env_var }}
+  read: $ echo f{os.environ[env_var]}
   hello: $ echo {{ default_env_var }}
   bye: $ echo f{os.environ['ENVIRON_BYE_TEXT']} # on run time
   hello-bye: |
-    $ echo {{ default_env_var }}
-    $ echo "bye": f{os.environ['ENVIRON_BYE_TEXT']}
+    $ echo {{ default_env_var }} bye
