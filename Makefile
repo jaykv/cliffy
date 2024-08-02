@@ -32,11 +32,12 @@ shell:
 	source .venv/bin/activate
 
 generate-all:
-	pip install requests six rich
+	pip install requests "six<1.0.0" rich
 	cli load examples/*.yaml
+	cp cliffy/clis/*.py examples/generated/
 
 generate-cleanup:
 	pip uninstall -y requests six rich
-	cli rm db environ hello pydev requires template town penv
+	cli rm-all
 
 .PHONY: test clean

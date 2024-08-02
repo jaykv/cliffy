@@ -1,4 +1,4 @@
-## Generated db on 2023-06-08 22:05:51.135912
+## Generated db on 2024-08-02 13:49:30.825011
 import typer
 import subprocess
 from typing import Optional

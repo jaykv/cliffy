@@ -1,10 +1,10 @@
-## Generated environ on 2023-06-08 22:05:51.144432
+## Generated environ on 2024-08-02 13:49:30.829970
 import typer
 import subprocess
 from typing import Optional
 import os
 
-env_var = 'hello'
+default_env_var = 'hello'
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -24,6 +24,11 @@ def main(version: Optional[bool] = typer.Option(None, '--version', callback=vers
     pass
 
 
+@cli.command("read")
+def read(env_var: str = typer.Argument(...)):
+    subprocess.run(["echo"])
+
+
 @cli.command("hello")
 def hello():
     subprocess.run(["echo","hello"])
@@ -32,6 +37,12 @@ def hello():
 @cli.command("bye")
 def bye():
     subprocess.run(["echo",f"""{os.environ['ENVIRON_BYE_TEXT']}"""])
+
+
+@cli.command("hello-bye")
+def hello_bye():
+    subprocess.run(["echo","hello"])
+    subprocess.run(["echo","bye:",f"""{os.environ['ENVIRON_BYE_TEXT']}"""])
 
 
 if __name__ == "__main__":

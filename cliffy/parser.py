@@ -20,16 +20,16 @@ class Parser:
         )
 
     def is_param_option(self, param_name: str) -> bool:
-        return "-" in param_name
+        return param_name.startswith("-")
 
     def get_default_param_val(self, param_type: str) -> str:
         return param_type.split("=")[1].strip() if "=" in param_type else ""
 
     def capture_param_aliases(self, param_name: str) -> Tuple[str, list[str]]:
         if "|" not in param_name:
-            return param_name.replace("-", ""), []
+            return param_name.lstrip("-"), []
 
-        base_param_name = param_name.split("|")[0].replace("-", "").strip()
+        base_param_name = param_name.split("|")[0].lstrip("-").strip()
         aliases = param_name.split("|")[1:]
 
         return base_param_name, aliases
@@ -65,7 +65,7 @@ class Parser:
         is_required: bool = False,
     ) -> str:
         parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}"
-
+        print(arg_name)
         if not default_val:
             # Required param needs ...
             parsed_arg_type += "(..." if is_required else "(None"
@@ -90,13 +90,16 @@ class Parser:
         if "=" in arg_type:
             arg_type = arg_type.split("=")[0].strip()
 
-        # strip - before parsing it
+        # lstrip - before parsing it
         if self.is_param_option(arg_name):
             arg_name, arg_aliases = self.capture_param_aliases(arg_name)
 
-        # strip ! before parsing it
+        # rstrip ! before parsing it
         if is_required:
             arg_type = arg_type[:-1]
+
+        # replace - with _ for arg name
+        arg_name = arg_name.replace("-", "_")
 
         # check for a type def that matches arg_type
         if arg_type in self.manifest.types:
@@ -128,11 +131,11 @@ class Parser:
         return parsed_command_args[:-2]
 
     def get_command_func_name(self, command) -> str:
-        """a.b -> a_b, c -> c"""
-        return command.name.replace(".", "_")
+        """a -> a, a.b -> a_b, a-b -> a_b"""
+        return command.name.replace(".", "_").replace("-", "_")
 
     def get_parsed_command_name(self, command) -> str:
-        """a.b -> b or a -> a"""
+        """a -> a, a.b -> b"""
         return command.name.split(".")[-1] if "." in command.name else command.name
 
     def to_args(self, d: dict) -> str:

@@ -1,4 +1,4 @@
-## Generated town on 2023-06-08 22:05:51.389002
+## Generated town on 2024-08-02 13:49:31.032749
 import typer
 import subprocess
 from typing import Optional
@@ -69,7 +69,7 @@ def land_buy(name: str = typer.Argument(..., help="Name"), money: float = typer.
     print(f"buying land {name} for {format_money(money)}")
 
 people_app = typer.Typer()
-cli.add_typer(people_app, name="people", help="Manage people")
+cli.add_typer(people_app, name="people", help="")
 
 @people_app.command("add")
 def people_add(fullname: str = typer.Argument(...), age: int = typer.Argument(...), home: str = typer.Option(None, "--home", "-h")):
@@ -83,7 +83,7 @@ def people_remove(fullname: str = typer.Argument(...)):
     print(f"removing person {fullname}")
 
 shops_app = typer.Typer()
-cli.add_typer(shops_app, name="shops", help="Manage shops")
+cli.add_typer(shops_app, name="shops", help="")
 
 @shops_app.command("build")
 def shops_build(name: str = typer.Argument(..., help="Name"), land: str = typer.Argument(...), type: str = typer.Option(None, "--type", "-t")):
