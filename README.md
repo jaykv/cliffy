@@ -3,14 +3,15 @@
 ![GitHub](https://img.shields.io/github/license/jaykv/cliffy)
 
 # cliffy :mountain:
-cliffy is a YAML-defined CLI generator, manager, and builder for python. It offers dynamic abstractions to rapidly build, test, and deploy CLIs.
+cliffy is a YAML-defined CLI generator, manager, and builder for Python. It offers features to rapidly build, test, and deploy CLIs.
 
 ## Features
-* Rapidly build CLIs with YAML-defined manifests
+* Write CLIs with YAML manifests
 * Manage CLIs- load, list, update, and remove
 * Built-in shell and Python scripting support
 * Supports Jinja2 templating
-* Build CLIs into self-contained, portable zipapps
+* Hot-reload CLIs on manifest changes for easier development
+* Build CLIs into self-contained, single-file portable zipapps for sharing
 
 ### Load
 
@@ -87,6 +88,7 @@ Builds a portable zipapp containing the CLI and its package requirements.
 * `run <manifest> -- <args>`: Runs a CLI manifest as a one-time operation
 * `build <cli name or manifest>`: Build a CLI manifest or a loaded CLI into a self-contained zipapp
 * `info <cli name>`: Display CLI metadata
+* `dev <manifest>`: Start hot-reloader for a manifest for active development
 
 ## How it works
 1. Define CLI manifests in YAML files
