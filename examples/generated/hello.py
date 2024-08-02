@@ -1,4 +1,4 @@
-## Generated hello on 2023-06-08 22:05:51.146878
+## Generated hello on 2024-08-02 14:08:54.027610
 import typer
 import subprocess
 from typing import Optional

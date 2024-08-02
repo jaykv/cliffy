@@ -38,6 +38,8 @@ CLI_TESTS = {
     "environ": [
         {"args": "hello", "resp": "hello"},
         {"args": "bye", "env": {"ENVIRON_BYE_TEXT": "goodbye"}, "resp": "goodbye"},
+        {"args": "read TESTVAR", "env": {"TESTVAR": "hello"}, "resp": "hello"},
+        {"args": "hello-bye", "resp": "hello bye"},
     ],
     "db": [
         {"args": "list", "resp": "Listing all databases"},

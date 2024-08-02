@@ -24,6 +24,7 @@ from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, s
 from .loader import Loader
 from .manifests import Manifest, set_manifest_version
 from .transformer import Transformer
+from .reloader import CLIManifestReloader
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -157,6 +158,15 @@ def remove(cli_names: list[str]) -> None:
 
 
 @cli.command()  # type: ignore[arg-type]
+def remove_all() -> None:
+    """Remove all loaded CLIs"""
+    for metadata in get_clis():
+        remove_metadata(metadata.cli_name)
+        Loader.unload_cli(metadata.cli_name)
+        out(f"~ {metadata.cli_name} removed 💥", fg="green")
+
+
+@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_or_manifests", type=ManifestOrCLI(), nargs=-1)
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
 @click.option(
@@ -207,4 +217,29 @@ def info(cli_name: str):
     out(f"{click.style('manifest:', fg='blue')}\n{indent_block(metadata.manifest, spaces=2)}")
 
 
-ALIASES = {"add": load, "rm": remove, "ls": cliffy_list, "reload": update}
+@cli.command()  # type: ignore[arg-type]
+@click.argument("manifest", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
+@click.option(
+    "--run-cli",
+    type=str,
+    default=False,
+    help="If passed, runs CLI on each reload. Useful for syntax checks or testing command execution on each reload",
+    is_flag=True,
+)
+@click.argument("run-cli-args", type=str, nargs=-1)
+def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
+    """Start hot-reloader for a manifest for active development.
+
+    Examples:
+
+    - cli dev examples/hello.yaml
+
+    - cli dev examples/hello.yaml --run-cli  -- -h
+
+    - cli dev examples/hello.yaml --run-cli hello
+    """
+    out(f"Watching {manifest} for changes\n", fg="magenta")
+    CLIManifestReloader.watch(manifest, run_cli, run_cli_args)
+
+
+ALIASES = {"add": load, "rm": remove, "rm-all": remove_all, "ls": cliffy_list, "reload": update}

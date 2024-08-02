@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cliffy"
-version = "0.3.5"
+version = "0.3.6"
 description = "$ cli load from.yaml"
 authors = ["Jay <jay.github0@gmail.com>"]
 repository = "https://github.com/jaykv/cliffy"
@@ -12,14 +12,15 @@ python = "^3.9"
 click = "^8.1.0"
 pybash = "^0.3.4"
 pyyaml = "^6.0"
-typer = "^0.9.0"
 jinja2 = "^3.1.2"
-pydantic = "^2.0"
 deepmerge = "^1.1.0"
 packaging = "^23.1"
 shiv = "^1.0.3"
 rich-click = { version = "^1.6.1", optional = true }
 shellingham = { version = "^1.5.0.post1", optional = true }
+pydantic = "^2.6.1"
+typer-slim = "^0.12.3"
+watchdog = "^4.0.1"
 
 [tool.poetry.extras]
 rich = ["rich-click", "shellingham"]
