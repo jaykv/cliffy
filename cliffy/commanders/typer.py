@@ -45,7 +45,7 @@ def aliases_callback(value: bool):
     if value:
         print(\"\"\""""
             max_command_length = max(len(x) for x in self.aliases_by_commands.keys())
-            self.cli +=  f"""
+            self.cli += f"""
 {"Command".ljust(max_command_length + 7)}Aliases
 {"--------".ljust(max_command_length + 7)}--------
 """

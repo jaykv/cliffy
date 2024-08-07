@@ -25,7 +25,14 @@ from .transformer import Transformer
 from .reloader import CLIManifestReloader
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
-ALIASES = {"ls": "list", "add": "load", "reload": "update", "rm": "remove", "rm-all": "remove-all"}
+ALIASES = {
+    "ls": "list",
+    "add": "load",
+    "reload": "update",
+    "rm": "remove",
+    "rm-all": "remove-all",
+    "rmall": "remove-all",
+}
 
 
 class ManifestOrCLI(click.File):
@@ -250,4 +257,5 @@ cli.command("add", hidden=True, epilog="Alias for load")(load)
 cli.command("ls", hidden=True, epilog="Alias for list")(cliffy_list)
 cli.command("rm", hidden=True, epilog="Alias for remove")(remove)
 cli.command("rm-all", hidden=True, epilog="Alias for remove-all")(remove_all)
+cli.command("rmall", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("reload", hidden=True, epilog="Alias for update")(update)
