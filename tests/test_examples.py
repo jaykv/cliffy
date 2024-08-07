@@ -47,6 +47,8 @@ CLI_TESTS = {
     "db": [
         {"args": "list", "resp": "Listing all databases"},
         {"args": "ls", "resp": "Listing all databases"},
+        {"args": "mk", "resp": "Creating database"},
+        {"args": "rm", "resp": "Deleting database"},
     ],
 }
 
