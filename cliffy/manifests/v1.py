@@ -111,7 +111,7 @@ requires: []
 {cls.get_field_description('vars')}
 vars:
     default_mood: happy
-    debug_mode: "{{ env['DEBUG'] or 'False' }}"
+    debug_mode: "{{{{ env['DEBUG'] or 'False' }}}}"
 
 {cls.get_field_description('imports')}
 imports:
