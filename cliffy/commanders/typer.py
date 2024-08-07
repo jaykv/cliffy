@@ -43,10 +43,14 @@ def version_callback(value: bool):
             self.cli += """
 def aliases_callback(value: bool):
     if value:
-        print(\"\"\"
+        print(\"\"\""""
+            max_command_length = max(len(x) for x in self.aliases_by_commands.keys())
+            self.cli +=  f"""
+{"Command".ljust(max_command_length + 7)}Aliases
+{"--------".ljust(max_command_length + 7)}--------
 """
             for command, alias_list in self.aliases_by_commands.items():
-                self.cli += f"{command}: "
+                self.cli += f"{command.ljust(max_command_length + 7)}"
                 self.cli += ", ".join(alias_list)
                 self.cli += "\n"
             self.cli += """\"\"\")
