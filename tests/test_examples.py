@@ -30,6 +30,8 @@ CLI_TESTS = {
         {"args": "land build test123 202str", "resp": "building land"},
         {"args": "land sell test123 --money 50", "resp": "selling"},
         {"args": "land list", "resp": "listing land"},
+        {"args": "home build test123 202str", "resp": "building home"},
+        {"args": "home bu test123 202str", "resp": "building home"},
     ],
     "template": [
         {"args": "hello bash", "resp": "hello from bash"},
@@ -43,6 +45,7 @@ CLI_TESTS = {
     ],
     "db": [
         {"args": "list", "resp": "Listing all databases"},
+        {"args": "ls", "resp": "Listing all databases"},
     ],
 }
 

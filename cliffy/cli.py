@@ -1,5 +1,4 @@
 ## CLI to generate CLIs
-import contextlib
 from io import TextIOWrapper
 import os
 from typing import IO, Any, Optional, TextIO, Union, cast
@@ -27,12 +26,14 @@ from .transformer import Transformer
 from .reloader import CLIManifestReloader
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+ALIASES = {"ls": "list", "add": "load", "reload": "update", "rm": "remove", "rm-all": "remove-all"}
 
 
 class AliasedGroup(ClickGroup):
     def get_command(self, ctx: click.Context, cmd_name: Optional[str]) -> Optional[click.Command]:
-        with contextlib.suppress(KeyError):
-            cmd_name = ALIASES[cmd_name].name  # type: ignore
+        if cmd_name in ALIASES:
+            return super().get_command(ctx, ALIASES[cmd_name])
+
         return super().get_command(ctx, cmd_name or "")
 
 
@@ -51,9 +52,18 @@ class ManifestOrCLI(click.File):
         return value
 
 
+def aliases_callback(ctx: Any, param: Any, val: bool):
+    if val:
+        out("")
+        for alias, command in ALIASES.items():
+            out(f"{command}: {alias}")
+        ctx.exit()
+
+
 @click.group(context_settings=CONTEXT_SETTINGS, cls=AliasedGroup)  # type: ignore[arg-type]
 @click.version_option()
-def cli() -> None:
+@click.option("--aliases", type=bool, is_flag=True, is_eager=True, callback=aliases_callback)
+def cli(aliases: bool) -> None:
     pass
 
 
@@ -240,6 +250,3 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
     """
     out(f"Watching {manifest} for changes\n", fg="magenta")
     CLIManifestReloader.watch(manifest, run_cli, run_cli_args)
-
-
-ALIASES = {"add": load, "rm": remove, "rm-all": remove_all, "ls": cliffy_list, "reload": update}
