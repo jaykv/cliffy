@@ -1,7 +1,7 @@
-## Generated template on 2024-08-02 14:08:54.276078
+## Generated template on 2024-08-06 21:09:20.460271
+from typing import Optional, Any
 import typer
 import subprocess
-from typing import Optional
 GLOBAL_VAR = 'hello'
 
 
@@ -16,9 +16,10 @@ def version_callback(value: bool):
         print(f"{__cli_name__}, {__version__}")
         raise typer.Exit()
 
-
 @cli.callback()
-def main(version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)):
+def main(
+    version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)
+):
     pass
 
 

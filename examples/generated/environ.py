@@ -1,7 +1,7 @@
-## Generated environ on 2024-08-02 14:08:54.024887
+## Generated environ on 2024-08-06 21:09:20.234970
+from typing import Optional, Any
 import typer
 import subprocess
-from typing import Optional
 import os
 
 default_env_var = 'hello'
@@ -18,9 +18,10 @@ def version_callback(value: bool):
         print(f"{__cli_name__}, {__version__}")
         raise typer.Exit()
 
-
 @cli.callback()
-def main(version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)):
+def main(
+    version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)
+):
     pass
 
 

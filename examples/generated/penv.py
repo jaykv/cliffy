@@ -1,7 +1,7 @@
-## Generated penv on 2024-08-02 14:08:54.032251
+## Generated penv on 2024-08-06 21:09:20.243667
+from typing import Optional, Any
 import typer
 import subprocess
-from typing import Optional
 import os
 from pathlib import Path
 from shutil import rmtree
@@ -24,9 +24,10 @@ def version_callback(value: bool):
         print(f"{__cli_name__}, {__version__}")
         raise typer.Exit()
 
-
 @cli.callback()
-def main(version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)):
+def main(
+    version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)
+):
     pass
 
 def get_venv_path(name: str) -> str:
