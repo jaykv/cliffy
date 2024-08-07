@@ -1,7 +1,7 @@
-## Generated pydev on 2024-08-06 21:09:20.248496
-from typing import Optional, Any
+## Generated pydev on 2024-08-07 10:34:35.574671
 import typer
 import subprocess
+from typing import Optional, Any
 import sys
 
 
@@ -48,7 +48,6 @@ def write_to_file(file_name: str, contents: str):
 
 
 
-@cli.command("clean")
 def clean():
     """
     Clean pycache artifacts
@@ -58,7 +57,8 @@ def clean():
     subprocess.run(["echo","Cleaned!"])
 
 
-@cli.command("format")
+cli.command("clean")(clean)
+
 def format():
     """
     Format code with black
@@ -67,7 +67,8 @@ def format():
     subprocess.run(["echo","Formatted!"])
 
 
-@cli.command("lint")
+cli.command("format")(format)
+
 def lint():
     """
     Run linters on the code
@@ -78,7 +79,8 @@ def lint():
     print("Linting successful!")
 
 
-@cli.command("test")
+cli.command("lint")(lint)
+
 def test():
     """
     Run tests
@@ -87,7 +89,8 @@ def test():
     print("Tests passed!")
 
 
-@cli.command("bump")
+cli.command("test")(test)
+
 def bump(major: int = typer.Option(..., help="Version part", min=0), minor: int = typer.Option(..., help="Version part", min=0), patch: int = typer.Option(..., help="Version part", min=0)):
     """
     Bump the package version
@@ -102,6 +105,8 @@ def bump(major: int = typer.Option(..., help="Version part", min=0), minor: int 
     write_to_file("setup.py", contents)
     print(f"Bumped version from {current_version} to {new_version}.")
 
+
+cli.command("bump")(bump)
 
 if __name__ == "__main__":
     cli()

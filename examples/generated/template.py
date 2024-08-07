@@ -1,7 +1,7 @@
-## Generated template on 2024-08-06 21:09:20.460271
-from typing import Optional, Any
+## Generated template on 2024-08-07 10:34:35.766497
 import typer
 import subprocess
+from typing import Optional, Any
 GLOBAL_VAR = 'hello'
 
 
@@ -23,10 +23,11 @@ def main(
     pass
 
 
-@cli.command("hello")
 def hello(local_arg: str = typer.Argument(...), local_arg_2: str = typer.Option("")):
     subprocess.run(["hello",f"""{local_arg}""","--" + f"""{local_arg_2}"""])
 
+
+cli.command("hello")(hello)
 
 if __name__ == "__main__":
     cli()
