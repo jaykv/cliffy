@@ -32,6 +32,7 @@ CLI_TESTS = {
         {"args": "land list", "resp": "listing land"},
         {"args": "home build test123 202str", "resp": "building home"},
         {"args": "home bu test123 202str", "resp": "building home"},
+        {"args": "home s test123", "resp": "selling home"},
     ],
     "template": [
         {"args": "hello bash", "resp": "hello from bash"},
