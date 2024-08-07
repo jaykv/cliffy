@@ -42,13 +42,13 @@ commands:
   shops.buy: |
     """Buy a shop"""
     print(f"buying shop {name} for ${money}")
-  home.build: |
+  home.build|bu: |
     """Build a home"""
     print(f"building home at {address} for {owner} on land {land}")
-  home.sell: |
+  home.sell|s: |
     """Sell a home"""
     print(f"selling home {address} for {format_money(money)}")
-  home.buy: |
+  home.buy|b: |
     """Buy a home"""
     print(f"buying home {address} for {money}")
     print("test123")

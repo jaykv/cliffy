@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict
+from typing import DefaultDict, Optional
 
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
@@ -42,12 +42,24 @@ class Group(BaseModel):
     name: str
     commands: list[Command]
     help: str = ""
+    command_aliases: Optional[dict[str, str]]
 
 
 class Commander:
     """Generates commands based on the command config"""
 
-    __slots__ = ("manifest", "parser", "cli", "groups", "greedy", "commands", "root_commands")
+    __slots__ = (
+        "manifest",
+        "parser",
+        "cli",
+        "groups",
+        "greedy",
+        "commands",
+        "root_commands",
+        "command_aliases",
+        "base_imports",
+        "aliases_by_commands",
+    )
 
     def __init__(self, manifest: Manifest) -> None:
         self.manifest = manifest
@@ -59,11 +71,32 @@ class Commander:
             Command(name=name, script=script) for name, script in self.manifest.commands.items()
         ]
         self.root_commands: list[Command] = [command for command in self.commands if "." not in command.name]
+        self.command_aliases: dict[str, str] = {}
+        self.base_imports: set[str] = {"import typer", "import subprocess", "from typing import Optional, Any"}
+        self.aliases_by_commands: dict[str, list[str]] = defaultdict(list)
         self.build_groups()
+        self.setup_command_aliases()
+
+    def setup_command_aliases(self) -> None:
+        for command in self.commands:
+            if "|" in command.name:
+                self.base_imports.add("from typer.core import TyperGroup")
+                aliases = command.name.split("|")
+
+                # skip group command aliases
+                if "." in aliases[0]:
+                    continue
+
+                command.name = aliases[0]  # update command.name without the alias part
+                for alias in aliases[1:]:
+                    self.command_aliases[alias] = aliases[0]
+                    self.aliases_by_commands[command.name].append(alias)
 
     def build_groups(self) -> None:
         groups: DefaultDict[str, list[Command]] = defaultdict(list)
         group_help_dict: dict[str, str] = {}
+        group_command_aliases: DefaultDict[str, dict[str, str]] = defaultdict(dict)
+
         for command in self.commands:
             # Check for greedy commands- evaluate them at the end
             if self.is_greedy(command.name):
@@ -72,9 +105,21 @@ class Commander:
 
             if "." in command.name:
                 group_name = command.name.split(".")[:-1][-1]
+
+                if "|" in command.name:
+                    self.base_imports.add("from typer.core import TyperGroup")
+                    command_aliases = command.name.rsplit(".", 1)[1].split("|")
+                    root_alias = command_aliases[0]
+                    command_name_sub_alias = command.name.split("|", 1)[0]
+                    for alias in command_aliases[1:]:
+                        group_command_aliases[group_name][alias] = root_alias
+                        self.aliases_by_commands[command_name_sub_alias].append(alias)
+
+                    command.name = command_name_sub_alias
+
                 groups[group_name].append(command)
             else:
-                group_help_dict = {
+                group_help_dict |= {
                     command.name: script_block["help"]
                     for script_block in command.script
                     if isinstance(script_block, dict) and script_block.get("help")
@@ -82,7 +127,10 @@ class Commander:
 
         for group_name, commands in groups.items():
             self.groups[group_name] = Group(
-                name=group_name, commands=commands, help=group_help_dict.get(group_name, "")
+                name=group_name,
+                commands=commands,
+                help=group_help_dict.get(group_name, ""),
+                command_aliases=group_command_aliases.get(group_name),
             )
 
     def generate_cli(self) -> None:
