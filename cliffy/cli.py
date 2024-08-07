@@ -1,5 +1,4 @@
 ## CLI to generate CLIs
-import contextlib
 from io import TextIOWrapper
 import os
 from typing import IO, Any, Optional, TextIO, Union, cast
@@ -8,7 +7,6 @@ from click.core import Context, Parameter
 from click.types import _is_file_like
 
 from .rich import click, Console, print_rich_table
-from .rich import ClickGroup  # type: ignore
 
 from .builder import build_cli, build_cli_from_manifest, run_cli
 from .helper import (
@@ -27,13 +25,14 @@ from .transformer import Transformer
 from .reloader import CLIManifestReloader
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
-
-
-class AliasedGroup(ClickGroup):
-    def get_command(self, ctx: click.Context, cmd_name: Optional[str]) -> Optional[click.Command]:
-        with contextlib.suppress(KeyError):
-            cmd_name = ALIASES[cmd_name].name  # type: ignore
-        return super().get_command(ctx, cmd_name or "")
+ALIASES = {
+    "ls": "list",
+    "add": "load",
+    "reload": "update",
+    "rm": "remove",
+    "rm-all": "remove-all",
+    "rmall": "remove-all",
+}
 
 
 class ManifestOrCLI(click.File):
@@ -51,13 +50,21 @@ class ManifestOrCLI(click.File):
         return value
 
 
-@click.group(context_settings=CONTEXT_SETTINGS, cls=AliasedGroup)  # type: ignore[arg-type]
+def show_aliases_callback(ctx: Any, param: Any, val: bool):
+    if val:
+        out("Aliases:")
+        for alias, command in ALIASES.items():
+            out(f"  {alias.ljust(10)} Alias for {command}")
+        ctx.exit()
+
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option()
-def cli() -> None:
+@click.option("--aliases", type=bool, is_flag=True, is_eager=True, callback=show_aliases_callback)
+def cli(aliases: bool) -> None:
     pass
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("manifests", type=click.File("rb"), nargs=-1)
 def load(manifests: list[TextIO]) -> None:
     """Load CLI for given manifest(s)"""
@@ -70,7 +77,6 @@ def load(manifests: list[TextIO]) -> None:
         out(f" {T.cli.name} -h")
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_names", type=str, nargs=-1)
 def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
@@ -86,7 +92,6 @@ def update(cli_names: list[str]) -> None:
             out_err(f"~ {cli_name} not found")
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("manifest", type=click.File("rb"))
 def render(manifest: TextIO) -> None:
     """Render the CLI manifest generation as code"""
@@ -96,7 +101,6 @@ def render(manifest: TextIO) -> None:
     out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
 
 
-@cli.command("run")  # type: ignore[arg-type]
 @click.argument("manifest", type=click.File("rb"))
 @click.argument("cli_args", type=str, nargs=-1)
 def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
@@ -105,7 +109,6 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
     run_cli(T.cli.name, T.cli.code, cli_args)
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_name", type=str, default="cliffy")
 @click.option("--version", "-v", type=str, show_default=True, default="v1", help="Manifest version")
 @click.option("--render", is_flag=True, show_default=True, default=False, help="Render template to terminal directly")
@@ -133,7 +136,6 @@ def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
         out(f"+ {cli_name}.yaml", fg="green")
 
 
-@cli.command("list")  # type: ignore[arg-type]
 def cliffy_list() -> None:
     """List all CLIs loaded"""
     cols = ["Name", "Version", "Age", "Manifest"]
@@ -144,7 +146,6 @@ def cliffy_list() -> None:
     print_rich_table(cols, rows, styles=["cyan", "magenta", "green", "blue"])
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_names", type=str, nargs=-1)
 def remove(cli_names: list[str]) -> None:
     """Remove a loaded CLI by name"""
@@ -157,7 +158,6 @@ def remove(cli_names: list[str]) -> None:
             out_err(f"~ {cli_name} not loaded")
 
 
-@cli.command()  # type: ignore[arg-type]
 def remove_all() -> None:
     """Remove all loaded CLIs"""
     for metadata in get_clis():
@@ -166,7 +166,6 @@ def remove_all() -> None:
         out(f"~ {metadata.cli_name} removed 💥", fg="green")
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_or_manifests", type=ManifestOrCLI(), nargs=-1)
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
 @click.option(
@@ -205,7 +204,6 @@ def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, py
         out(f"+ {cli_name} built 📦", fg="green")
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("cli_name", type=str)
 def info(cli_name: str):
     """Display CLI info"""
@@ -217,7 +215,6 @@ def info(cli_name: str):
     out(f"{click.style('manifest:', fg='blue')}\n{indent_block(metadata.manifest, spaces=2)}")
 
 
-@cli.command()  # type: ignore[arg-type]
 @click.argument("manifest", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.option(
     "--run-cli",
@@ -242,4 +239,23 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
     CLIManifestReloader.watch(manifest, run_cli, run_cli_args)
 
 
-ALIASES = {"add": load, "rm": remove, "rm-all": remove_all, "ls": cliffy_list, "reload": update}
+# register commands
+load_command = cli.command("load")(load)
+build_command = cli.command("build")(build)
+dev_command = cli.command("dev")(dev)
+info_command = cli.command("info")(info)
+init_command = cli.command("init")(init)
+list_command = cli.command("list")(cliffy_list)
+render_command = cli.command("render")(render)
+remove_command = cli.command("remove")(remove)
+remove_all_command = cli.command("remove-all")(remove_all)
+run_command = cli.command("run")(cliffy_run)
+update_command = cli.command("update")(update)
+
+# register aliases
+cli.command("add", hidden=True, epilog="Alias for load")(load)
+cli.command("ls", hidden=True, epilog="Alias for list")(cliffy_list)
+cli.command("rm", hidden=True, epilog="Alias for remove")(remove)
+cli.command("rm-all", hidden=True, epilog="Alias for remove-all")(remove_all)
+cli.command("rmall", hidden=True, epilog="Alias for remove-all")(remove_all)
+cli.command("reload", hidden=True, epilog="Alias for update")(update)

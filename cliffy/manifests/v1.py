@@ -45,6 +45,7 @@ class CLIManifest(BaseModel):
         description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "
         "Nested subcommands are joined by '.' in between each level. "
+        "Aliases for commands can be separated in the key by '|'. "
         "A special (*) wildcard can be used to spread the subcommand to all group-level commands. "
         "The value is the python code to run when the command is called "
         "OR a list of bash commands to run (prefixed with $).",
@@ -110,7 +111,7 @@ requires: []
 {cls.get_field_description('vars')}
 vars:
     default_mood: happy
-    debug_mode: "{{ env['DEBUG'] or 'False' }}"
+    debug_mode: "{{{{ env['DEBUG'] or 'False' }}}}"
 
 {cls.get_field_description('imports')}
 imports:
@@ -139,8 +140,8 @@ args:
 
 {cls.get_field_description('commands')}
 commands:
-    # this is a parent command that will get invoked with: hello world
-    world: 
+    # this is a parent command that will get invoked with: hello world or hello wld
+    world|wld:
         - |
             \"\"\"
             Help text for list

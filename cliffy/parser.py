@@ -130,8 +130,8 @@ class Parser:
         return parsed_command_args[:-2]
 
     def get_command_func_name(self, command) -> str:
-        """a -> a, a.b -> a_b, a-b -> a_b"""
-        return command.name.replace(".", "_").replace("-", "_")
+        """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""
+        return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
 
     def get_parsed_command_name(self, command) -> str:
         """a -> a, a.b -> b"""

@@ -2,7 +2,7 @@ import re
 
 from click.testing import CliRunner
 
-from cliffy.cli import cli, cliffy_run, init, render
+from cliffy.cli import cli, run_command, init_command, render_command
 from cliffy.homer import get_metadata
 
 ANSI_RE = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
@@ -27,14 +27,14 @@ def test_cli_version():
 
 def test_cli_init():
     runner = CliRunner()
-    result = runner.invoke(init, ["hello", "--render"])
+    result = runner.invoke(init_command, ["hello", "--render"])
     assert result.exit_code == 0
     assert "name: hello" in escape_ansi(result.output)
 
 
 def test_cli_render():
     runner = CliRunner()
-    result = runner.invoke(render, ["examples/town.yaml"])
+    result = runner.invoke(render_command, ["examples/town.yaml"])
     assert result.exit_code == 0
     assert "cli = typer.Typer" in escape_ansi(result.output)
     assert get_metadata("town") is None
@@ -42,7 +42,7 @@ def test_cli_render():
 
 def test_cli_run():
     runner = CliRunner()
-    result = runner.invoke(cliffy_run, ["examples/hello.yaml", "--", "-h"])
+    result = runner.invoke(run_command, ["examples/hello.yaml", "--", "-h"])
     assert result.exit_code == 0
     assert "Hello world!" in escape_ansi(result.output)
     assert get_metadata("hello") is None

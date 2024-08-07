@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import DefaultDict
 
 from pybash.transformer import transform as transform_bash
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .manifests import CommandBlock, Manifest
 from .parser import Parser
@@ -13,6 +13,7 @@ from .parser import Parser
 class Command(BaseModel):
     name: str
     script: CommandBlock
+    aliases: list[str] = Field(default_factory=list)
 
     @classmethod
     def from_greedy_make_lazy(cls, greedy_command: Command, group: str) -> Command:
@@ -47,7 +48,18 @@ class Group(BaseModel):
 class Commander:
     """Generates commands based on the command config"""
 
-    __slots__ = ("manifest", "parser", "cli", "groups", "greedy", "commands", "root_commands")
+    __slots__ = (
+        "manifest",
+        "parser",
+        "cli",
+        "groups",
+        "greedy",
+        "commands",
+        "root_commands",
+        "command_aliases",
+        "base_imports",
+        "aliases_by_commands",
+    )
 
     def __init__(self, manifest: Manifest) -> None:
         self.manifest = manifest
@@ -59,11 +71,29 @@ class Commander:
             Command(name=name, script=script) for name, script in self.manifest.commands.items()
         ]
         self.root_commands: list[Command] = [command for command in self.commands if "." not in command.name]
+        self.base_imports: set[str] = set()
+        self.aliases_by_commands: dict[str, list[str]] = defaultdict(list)
         self.build_groups()
+        self.setup_command_aliases()
+
+    def setup_command_aliases(self) -> None:
+        for command in self.commands:
+            if "|" in command.name:
+                aliases = command.name.split("|")
+
+                # skip group command aliases
+                if "." in aliases[0]:
+                    continue
+
+                command.name = aliases[0]  # update command.name without the alias part
+                for alias in aliases[1:]:
+                    command.aliases.append(alias)
+                    self.aliases_by_commands[command.name].append(alias)
 
     def build_groups(self) -> None:
         groups: DefaultDict[str, list[Command]] = defaultdict(list)
         group_help_dict: dict[str, str] = {}
+
         for command in self.commands:
             # Check for greedy commands- evaluate them at the end
             if self.is_greedy(command.name):
@@ -72,9 +102,19 @@ class Commander:
 
             if "." in command.name:
                 group_name = command.name.split(".")[:-1][-1]
+
+                if "|" in command.name:
+                    command_aliases = command.name.rsplit(".", 1)[1].split("|")
+                    command_name_sub_alias = command.name.split("|", 1)[0]
+                    for alias in command_aliases[1:]:
+                        command.aliases.append(alias)
+                        self.aliases_by_commands[command_name_sub_alias].append(alias)
+
+                    command.name = command_name_sub_alias
+
                 groups[group_name].append(command)
             else:
-                group_help_dict = {
+                group_help_dict |= {
                     command.name: script_block["help"]
                     for script_block in command.script
                     if isinstance(script_block, dict) and script_block.get("help")
@@ -82,7 +122,9 @@ class Commander:
 
         for group_name, commands in groups.items():
             self.groups[group_name] = Group(
-                name=group_name, commands=commands, help=group_help_dict.get(group_name, "")
+                name=group_name,
+                commands=commands,
+                help=group_help_dict.get(group_name, ""),
             )
 
     def generate_cli(self) -> None:

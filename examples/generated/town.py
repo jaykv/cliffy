@@ -1,7 +1,8 @@
-## Generated town on 2024-08-02 14:08:54.283122
+## Generated town on 2024-08-06 21:09:20.467366
+from typing import Optional, Any
 import typer
+from typer.core import TyperGroup
 import subprocess
-from typing import Optional
 import re
 import time
 
@@ -18,9 +19,20 @@ def version_callback(value: bool):
         print(f"{__cli_name__}, {__version__}")
         raise typer.Exit()
 
+def aliases_callback(value: bool):
+    if value:
+        print("""
+home.build: bu
+home.sell: s
+home.buy: b
+""")
+        raise typer.Exit()
 
 @cli.callback()
-def main(version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)):
+def main(
+    aliases: Optional[bool] = typer.Option(None, '--aliases', callback=aliases_callback, is_eager=True),
+    version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)
+):
     pass
 
 def format_money(money: float):
@@ -69,7 +81,7 @@ def land_buy(name: str = typer.Argument(..., help="Name"), money: float = typer.
     print(f"buying land {name} for {format_money(money)}")
 
 people_app = typer.Typer()
-cli.add_typer(people_app, name="people", help="")
+cli.add_typer(people_app, name="people", help="Manage people")
 
 @people_app.command("add")
 def people_add(fullname: str = typer.Argument(...), age: int = typer.Argument(...), home: str = typer.Option(None, "--home", "-h")):
@@ -83,7 +95,7 @@ def people_remove(fullname: str = typer.Argument(...)):
     print(f"removing person {fullname}")
 
 shops_app = typer.Typer()
-cli.add_typer(shops_app, name="shops", help="")
+cli.add_typer(shops_app, name="shops", help="Manage shops")
 
 @shops_app.command("build")
 def shops_build(name: str = typer.Argument(..., help="Name"), land: str = typer.Argument(...), type: str = typer.Option(None, "--type", "-t")):
@@ -102,7 +114,16 @@ def shops_buy(name: str = typer.Argument(..., help="Name"), money: float = typer
     """Buy a shop"""
     print(f"buying shop {name} for ${money}")
 
-home_app = typer.Typer()
+
+HOME_ALIASES = {'bu': 'build', 's': 'sell', 'b': 'buy'}
+class HomeAliasGroup(TyperGroup):
+    def get_command(self, ctx: Any, cmd_name: str) -> Optional[Any]:
+        if cmd_name in HOME_ALIASES:
+            return self.commands.get(HOME_ALIASES[cmd_name])
+
+        return super().get_command(ctx, cmd_name)
+
+home_app = typer.Typer(cls=HomeAliasGroup)
 cli.add_typer(home_app, name="home", help="Manage homes")
 
 @home_app.command("build")
