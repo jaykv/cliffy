@@ -31,6 +31,8 @@ CLI_TESTS = {
         {"args": "land sell test123 --money 50", "resp": "selling"},
         {"args": "land list", "resp": "listing land"},
         {"args": "home build test123 202str", "resp": "building home"},
+        {"args": "home build invalidalias 202str", "resp": "Error: Invalid alias"},
+        {"args": "home invalidcommand test123 202str", "resp": "Error: Invalid command"},
         {"args": "home bu test123 202str", "resp": "building home"},
         {"args": "home s test123", "resp": "selling home"},
     ],
