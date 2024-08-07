@@ -8,7 +8,7 @@ from shutil import rmtree
 import pytest
 from click.testing import CliRunner
 
-from cliffy.cli import build, load, remove
+from cliffy.cli import build_command, load_command, remove_command
 from cliffy.homer import get_clis, get_metadata
 
 try:
@@ -30,11 +30,9 @@ CLI_TESTS = {
         {"args": "land build test123 202str", "resp": "building land"},
         {"args": "land sell test123 --money 50", "resp": "selling"},
         {"args": "land list", "resp": "listing land"},
-        {"args": "home build test123 202str", "resp": "building home"},
-        {"args": "home build invalidalias 202str", "resp": "Error: Invalid alias"},
-        {"args": "home invalidcommand test123 202str", "resp": "Error: Invalid command"},
-        {"args": "home bu test123 202str", "resp": "building home"},
-        {"args": "home s test123", "resp": "selling home"},
+        {"args": "home build test123 202str", "resp": "building home at test123 for None on land 202str"},
+        {"args": "home bu test123 202str", "resp": "building home at test123 for None on land 202str"},
+        {"args": "home s test123 --money 123", "resp": "selling home test123 for $123.00"},
     ],
     "template": [
         {"args": "hello bash", "resp": "hello from bash"},
@@ -49,8 +47,8 @@ CLI_TESTS = {
     "db": [
         {"args": "list", "resp": "Listing all databases"},
         {"args": "ls", "resp": "Listing all databases"},
-        {"args": "mk", "resp": "Creating database"},
-        {"args": "rm", "resp": "Deleting database"},
+        {"args": "mk --name test", "resp": "Creating database test"},
+        {"args": "v --name test --table test", "resp": "Viewing test table for test DB"},
     ],
 }
 
@@ -74,7 +72,7 @@ def setup_module():
 def teardown_module(cls):
     runner = CliRunner()
     for cli in pytest.installed_clis:  # type: ignore
-        runner.invoke(remove, cli)
+        runner.invoke(remove_command, cli)
 
     clis = get_clis()
     for cli in clis:
@@ -87,7 +85,7 @@ def teardown_module(cls):
 @pytest.mark.parametrize("cli_name", CLI_LOADS)
 def test_cli_loads(cli_name):
     runner = CliRunner()
-    result = runner.invoke(load, [f"examples/{cli_name}.yaml"])
+    result = runner.invoke(load_command, [f"examples/{cli_name}.yaml"])
     assert result.exit_code == 0
     assert get_metadata(cli_name) is not None
     pytest.installed_clis.append(cli_name)  # type: ignore
@@ -96,7 +94,7 @@ def test_cli_loads(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_LOAD_FAILS)
 def test_cli_load_fails(cli_name):
     runner = CliRunner()
-    result = runner.invoke(load, [f"examples/{cli_name}.yaml"])
+    result = runner.invoke(load_command, [f"examples/{cli_name}.yaml"])
     assert result.exit_code == 1
     assert get_metadata(cli_name) is None
 
@@ -104,7 +102,7 @@ def test_cli_load_fails(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_BUILDS)
 def test_cli_builds(cli_name):
     runner = CliRunner()
-    result = runner.invoke(build, [f"{cli_name}", "-o", "test-builds"])
+    result = runner.invoke(build_command, [f"{cli_name}", "-o", "test-builds"])
     assert result.exit_code == 0
     assert f"+ {cli_name} built" in result.stdout
 
@@ -112,7 +110,7 @@ def test_cli_builds(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_BUILD_FAILS)
 def test_cli_build_fails(cli_name):
     runner = CliRunner()
-    result = runner.invoke(build, [f"{cli_name}", "-o", "test-builds"])
+    result = runner.invoke(build_command, [f"{cli_name}", "-o", "test-builds"])
     assert result.exit_code == 0
     assert f"~ {cli_name} not loaded" in result.stdout
 
@@ -120,7 +118,7 @@ def test_cli_build_fails(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_MANIFEST_BUILDS)
 def test_cli_builds_from_manifests(cli_name):
     runner = CliRunner()
-    result = runner.invoke(build, [f"examples/{cli_name}.yaml", "-o", "test-manifest-builds"])
+    result = runner.invoke(build_command, [f"examples/{cli_name}.yaml", "-o", "test-manifest-builds"])
     assert result.exit_code == 0
 
 

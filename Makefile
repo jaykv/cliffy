@@ -9,7 +9,7 @@ test:
 	pytest -vv --capture=tee-sys
 
 clean:
-	rm -rf build/ dist/ *.egg-info .*_cache
+	rm -rf build/ dist/ *.egg-info .*_cache test-builds test-manifest-builds
 	find . -name '*.pyc' -type f -exec rm -rf {} +
 	find . -name '__pycache__' -exec rm -rf {} +
 
