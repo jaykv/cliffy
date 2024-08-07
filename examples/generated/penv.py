@@ -1,7 +1,7 @@
-## Generated penv on 2024-08-06 21:09:20.243667
-from typing import Optional, Any
+## Generated penv on 2024-08-07 10:34:35.569851
 import typer
 import subprocess
+from typing import Optional, Any
 import os
 from pathlib import Path
 from shutil import rmtree
@@ -38,7 +38,6 @@ def venv_exists(name: str) -> bool:
 
 
 
-@cli.command("ls")
 def ls():
     """
     List venvs in the store
@@ -46,7 +45,8 @@ def ls():
     subprocess.run(["ls",f"""{DEFAULT_VENV_STORE}"""])
 
 
-@cli.command("rm")
+cli.command("ls")(ls)
+
 def rm(name: str = typer.Argument(...)):
     """
     Remove a venv
@@ -54,7 +54,8 @@ def rm(name: str = typer.Argument(...)):
     rmtree(get_venv_path(name))
 
 
-@cli.command("go")
+cli.command("rm")(rm)
+
 def go(name: str = typer.Argument(...), interpreter: str = typer.Option("python", "--interpreter", "-i")):
     """
     Activate a venv
@@ -67,6 +68,8 @@ def go(name: str = typer.Argument(...), interpreter: str = typer.Option("python"
     
     os.system(f"""bash -c ". {get_venv_path(name)}/bin/activate; env PS1='\[\e[38;5;211m\]({name})\[\e[\033[00m\] \w $ ' bash --norc\"""")
 
+
+cli.command("go")(go)
 
 if __name__ == "__main__":
     cli()

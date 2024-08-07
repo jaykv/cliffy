@@ -1,8 +1,7 @@
-## Generated town on 2024-08-06 21:09:20.467366
-from typing import Optional, Any
+## Generated town on 2024-08-07 10:34:35.773337
 import typer
-from typer.core import TyperGroup
 import subprocess
+from typing import Optional, Any
 import re
 import time
 
@@ -22,9 +21,11 @@ def version_callback(value: bool):
 def aliases_callback(value: bool):
     if value:
         print("""
-home.build: bu
-home.sell: s
-home.buy: b
+Command          Aliases
+--------         --------
+home.build       bu
+home.sell        s
+home.buy         b
 """)
         raise typer.Exit()
 
@@ -40,134 +41,149 @@ def format_money(money: float):
 
 
 
-@cli.command("people")
 def people():
     """
     Manage people
     """
 
 
-@cli.command("shops")
+cli.command("people")(people)
+
 def shops():
     """
     Manage shops
     """
 
 
-@cli.command("home")
+cli.command("shops")(shops)
+
 def home():
     """
     Manage homes
     """
 
+
+cli.command("home")(home)
 land_app = typer.Typer()
 cli.add_typer(land_app, name="land", help="")
 
-@land_app.command("build")
 def land_build(name: str = typer.Argument(..., help="Name"), address: str = typer.Argument(...), value: int = typer.Option(100, "--value", "-v")):
     """Build land"""
     print(f"building land {name}")
 
 
-@land_app.command("sell")
+land_app.command("build")(land_build)
+
 def land_sell(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Sell land"""
     print(f"selling land {name}")
 
 
-@land_app.command("buy")
+land_app.command("sell")(land_sell)
+
 def land_buy(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Buy land"""
     print(f"buying land {name} for {format_money(money)}")
 
+
+land_app.command("buy")(land_buy)
 people_app = typer.Typer()
 cli.add_typer(people_app, name="people", help="Manage people")
 
-@people_app.command("add")
 def people_add(fullname: str = typer.Argument(...), age: int = typer.Argument(...), home: str = typer.Option(None, "--home", "-h")):
     """Add a person to town"""
     print(f"adding person {fullname}, {age}, {home}")
 
 
-@people_app.command("remove")
+people_app.command("add")(people_add)
+
 def people_remove(fullname: str = typer.Argument(...)):
     """Remove person from town"""
     print(f"removing person {fullname}")
 
+
+people_app.command("remove")(people_remove)
 shops_app = typer.Typer()
 cli.add_typer(shops_app, name="shops", help="Manage shops")
 
-@shops_app.command("build")
 def shops_build(name: str = typer.Argument(..., help="Name"), land: str = typer.Argument(...), type: str = typer.Option(None, "--type", "-t")):
     """Build a shop"""
     print(f"building shop {name} ({type}) on land {land}")
 
 
-@shops_app.command("sell")
+shops_app.command("build")(shops_build)
+
 def shops_sell(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Sell a shop"""
     print(f"selling shop {name} for ${money}")
 
 
-@shops_app.command("buy")
+shops_app.command("sell")(shops_sell)
+
 def shops_buy(name: str = typer.Argument(..., help="Name"), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Buy a shop"""
     print(f"buying shop {name} for ${money}")
 
 
-HOME_ALIASES = {'bu': 'build', 's': 'sell', 'b': 'buy'}
-class HomeAliasGroup(TyperGroup):
-    def get_command(self, ctx: Any, cmd_name: str) -> Optional[Any]:
-        if cmd_name in HOME_ALIASES:
-            return self.commands.get(HOME_ALIASES[cmd_name])
-
-        return super().get_command(ctx, cmd_name)
-
-home_app = typer.Typer(cls=HomeAliasGroup)
+shops_app.command("buy")(shops_buy)
+home_app = typer.Typer()
 cli.add_typer(home_app, name="home", help="Manage homes")
 
-@home_app.command("build")
 def home_build(address: str = typer.Argument(...), land: str = typer.Argument(None), owner: str = typer.Argument(None)):
     """Build a home"""
     print(f"building home at {address} for {owner} on land {land}")
 
 
-@home_app.command("sell")
+home_app.command("build")(home_build)
+
+home_app.command("bu", hidden=True, epilog="Alias for build")(home_build)
+
 def home_sell(address: str = typer.Argument(...), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Sell a home"""
     print(f"selling home {address} for {format_money(money)}")
 
 
-@home_app.command("buy")
+home_app.command("sell")(home_sell)
+
+home_app.command("s", hidden=True, epilog="Alias for sell")(home_sell)
+
 def home_buy(address: str = typer.Argument(...), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Buy a home"""
     print(f"buying home {address} for {money}")
     print("test123")
 
 
-@land_app.command("list")
+home_app.command("buy")(home_buy)
+
+home_app.command("b", hidden=True, epilog="Alias for buy")(home_buy)
+
 def land_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of land"""
     print(f"listing land")
 
 
-@people_app.command("list")
+land_app.command("list")(land_list)
+
 def people_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of people"""
     print(f"listing people")
 
 
-@shops_app.command("list")
+people_app.command("list")(people_list)
+
 def shops_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of shops"""
     print(f"listing shops")
 
 
-@home_app.command("list")
+shops_app.command("list")(shops_list)
+
 def home_list(limit: int = typer.Option(None, "--limit", "-l")):
     """Get a list of home"""
     print(f"listing home")
 
+
+home_app.command("list")(home_list)
 
 if __name__ == "__main__":
     cli()

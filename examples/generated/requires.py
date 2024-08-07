@@ -1,7 +1,7 @@
-## Generated requires on 2024-08-06 21:09:20.457028
-from typing import Optional, Any
+## Generated requires on 2024-08-07 10:34:35.763264
 import typer
 import subprocess
+from typing import Optional, Any
 import six
 
 
@@ -23,23 +23,26 @@ def main(
     pass
 
 
-@cli.command("bash")
 def bash():
     subprocess.run(["echo","hello from bash"])
 
 
-@cli.command("python")
+cli.command("bash")(bash)
+
 def python():
     print("hello from python")
 
 
-@cli.command("py")
+cli.command("python")(python)
+
 def py():
     if six.PY2:
         print("python 2")
     if six.PY3:
         print("python 3")
 
+
+cli.command("py")(py)
 
 if __name__ == "__main__":
     cli()
