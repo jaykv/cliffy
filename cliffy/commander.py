@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict, Optional
+from typing import DefaultDict
 
 from pybash.transformer import transform as transform_bash
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .manifests import CommandBlock, Manifest
 from .parser import Parser
@@ -13,6 +13,7 @@ from .parser import Parser
 class Command(BaseModel):
     name: str
     script: CommandBlock
+    aliases: list[str] = Field(default_factory=list)
 
     @classmethod
     def from_greedy_make_lazy(cls, greedy_command: Command, group: str) -> Command:
@@ -42,7 +43,6 @@ class Group(BaseModel):
     name: str
     commands: list[Command]
     help: str = ""
-    command_aliases: Optional[dict[str, str]]
 
 
 class Commander:
@@ -71,8 +71,7 @@ class Commander:
             Command(name=name, script=script) for name, script in self.manifest.commands.items()
         ]
         self.root_commands: list[Command] = [command for command in self.commands if "." not in command.name]
-        self.command_aliases: dict[str, str] = {}
-        self.base_imports: set[str] = {"import typer", "import subprocess", "from typing import Optional, Any"}
+        self.base_imports: set[str] = set()
         self.aliases_by_commands: dict[str, list[str]] = defaultdict(list)
         self.build_groups()
         self.setup_command_aliases()
@@ -80,7 +79,6 @@ class Commander:
     def setup_command_aliases(self) -> None:
         for command in self.commands:
             if "|" in command.name:
-                self.base_imports.add("from typer.core import TyperGroup")
                 aliases = command.name.split("|")
 
                 # skip group command aliases
@@ -89,13 +87,12 @@ class Commander:
 
                 command.name = aliases[0]  # update command.name without the alias part
                 for alias in aliases[1:]:
-                    self.command_aliases[alias] = aliases[0]
+                    command.aliases.append(alias)
                     self.aliases_by_commands[command.name].append(alias)
 
     def build_groups(self) -> None:
         groups: DefaultDict[str, list[Command]] = defaultdict(list)
         group_help_dict: dict[str, str] = {}
-        group_command_aliases: DefaultDict[str, dict[str, str]] = defaultdict(dict)
 
         for command in self.commands:
             # Check for greedy commands- evaluate them at the end
@@ -107,12 +104,10 @@ class Commander:
                 group_name = command.name.split(".")[:-1][-1]
 
                 if "|" in command.name:
-                    self.base_imports.add("from typer.core import TyperGroup")
                     command_aliases = command.name.rsplit(".", 1)[1].split("|")
-                    root_alias = command_aliases[0]
                     command_name_sub_alias = command.name.split("|", 1)[0]
                     for alias in command_aliases[1:]:
-                        group_command_aliases[group_name][alias] = root_alias
+                        command.aliases.append(alias)
                         self.aliases_by_commands[command_name_sub_alias].append(alias)
 
                     command.name = command_name_sub_alias
@@ -130,7 +125,6 @@ class Commander:
                 name=group_name,
                 commands=commands,
                 help=group_help_dict.get(group_name, ""),
-                command_aliases=group_command_aliases.get(group_name),
             )
 
     def generate_cli(self) -> None:
