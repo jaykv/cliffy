@@ -9,3 +9,5 @@ commands:
 tests:
   bash: assert result.exit_code == 0
   python: assert result.output == "hello from python\n"
+  bash --help: assert "Show this message and exit" in result.output
+  -h: assert "Hello world!" in result.output
