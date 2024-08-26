@@ -10,6 +10,8 @@ on:
       - 'tests/**'
       - 'examples/**'
       - '!examples/generated/**'
+  workflow_dispatch:
+    
 
 permissions:
   contents: read
