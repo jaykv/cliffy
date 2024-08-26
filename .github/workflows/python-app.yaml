@@ -44,6 +44,10 @@ jobs:
         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}-${{ matrix.extras }}
     - name: Set poetry python version
       run: poetry env use ${pythonLocation}/bin/python
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+    - name: Set poetry python version
+      run: poetry env use ${pythonLocation}\bin\python
+      if: ${{ matrix.os == 'windows-latest' }}
     - name: Install dependencies
       run: poetry install --no-interaction --no-root
       if: ${{ steps.cache.outputs.cache-hit != 'true' && matrix.extras == false }}
