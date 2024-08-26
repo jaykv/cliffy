@@ -56,14 +56,14 @@ def import_module_from_path(filepath: str) -> ModuleType:
         path = Path(filepath)
         module_name = path.stem
         spec = spec_from_file_location(module_name, path)
-        if spec and spec.loader:
-            module = module_from_spec(spec)
-            spec.loader.exec_module(module)
-            return module
-        else:
-            raise ImportError(f"Could not load module from {path}")
+        if not spec or not spec.loader:
+            raise ImportError(f"Could not load module from {filepath}")
+
+        module = module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
     except Exception as e:
-        raise ImportError(f"Failed to import module from {path}: {e}")
+        raise ImportError(f"Failed to import module from {filepath}: {e}")
 
 
 def make_executable(path: str) -> None:
