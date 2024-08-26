@@ -13,6 +13,8 @@ from typing import Any, NoReturn, Optional
 from click import secho
 from packaging import version
 from pydantic import BaseModel
+from types import ModuleType
+from importlib.util import spec_from_file_location, module_from_spec
 
 
 CLIFFY_CLI_DIR = files("cliffy").joinpath("clis")
@@ -47,6 +49,21 @@ def write_to_file(path: str, text: str, executable: bool = False) -> None:
 
     if executable:
         make_executable(path)
+
+
+def import_module_from_path(filepath: str) -> ModuleType:
+    try:
+        path = Path(filepath)
+        module_name = path.stem
+        spec = spec_from_file_location(module_name, path)
+        if not spec or not spec.loader:
+            raise ImportError(f"Could not load module from {filepath}")
+
+        module = module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    except Exception as e:
+        raise ImportError(f"Failed to import module from {filepath}: {e}")
 
 
 def make_executable(path: str) -> None:

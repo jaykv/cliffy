@@ -1,18 +1,16 @@
 from io import TextIOWrapper
 import os
 import sys
-from importlib import import_module
 from pathlib import Path
 from shutil import copy
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from types import ModuleType
 from typing import Optional
 
 from click.testing import CliRunner, Result
 from shiv import cli as shiv_cli
 from shiv import pip
 
-from cliffy.helper import TEMP_FILES, delete_temp_files
+from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path
 
 from cliffy.transformer import Transformer
 
@@ -60,12 +58,6 @@ def build_cli(
             shiv_cli.main,  # type: ignore
             ["--site-packages", tdist, "--compressed", "-e", f"{cli_name}.cli", "-o", output_file, "-p", interpreter],
         )
-
-
-def import_module_from_path(filepath: str) -> ModuleType:
-    module_path, module_filename = os.path.split(filepath)
-    sys.path.append(module_path)
-    return import_module(module_filename[:-3])
 
 
 def run_cli(cli_name: str, script_code: str, args: tuple) -> None:

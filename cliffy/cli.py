@@ -2,9 +2,12 @@
 from io import TextIOWrapper
 import os
 from typing import IO, Any, Optional, TextIO, Union, cast
-
+import traceback
+import sys
 from click.core import Context, Parameter
 from click.types import _is_file_like
+
+from cliffy.tester import Tester
 
 from .rich import click, Console, print_rich_table
 
@@ -22,7 +25,7 @@ from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, s
 from .loader import Loader
 from .manifests import Manifest, set_manifest_version
 from .transformer import Transformer
-from .reloader import CLIManifestReloader
+from .reloader import Reloader
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 ALIASES = {
@@ -236,7 +239,36 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
     - cli dev examples/hello.yaml --run-cli hello
     """
     out(f"Watching {manifest} for changes\n", fg="magenta")
-    CLIManifestReloader.watch(manifest, run_cli, run_cli_args)
+    Reloader.watch(manifest, run_cli, run_cli_args)
+
+
+@click.argument("manifest", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
+def test(manifest: str) -> None:
+    """Run tests defined in a manifest"""
+    tester = Tester(manifest)
+    out("✨ Invoking tests ✨", nl=False)
+    total = len(tester.T.manifest.tests)
+    for i, (command, script) in enumerate(tester.T.manifest.tests.items()):
+        out(f"\n\n🪄 > {tester.T.cli.name} {command}\n")
+        try:
+            test = tester.invoke_test(command, script)
+            result = next(test)
+            if result.exception:
+                out(str(result))
+            next(test, "")
+            out(f"\n💚 {i+1}/{total}")
+        except AssertionError:
+            _, _, tb = sys.exc_info()
+            tb_info = traceback.extract_tb(tb)
+            _, line_no, _, _ = tb_info[-1]
+            expr = script.split("\n")[line_no - 1]
+            out(f"💔 AssertionError: (line {line_no}) > {expr}")
+        except SyntaxError:
+            out("💔 Syntax error")
+            traceback.print_exc()
+        except Exception:
+            out("💔 Exception")
+            traceback.print_exc()
 
 
 # register commands
@@ -251,6 +283,7 @@ remove_command = cli.command("remove")(remove)
 remove_all_command = cli.command("remove-all")(remove_all)
 run_command = cli.command("run")(cliffy_run)
 update_command = cli.command("update")(update)
+test_command = cli.command("test")(test)
 
 # register aliases
 cli.command("add", hidden=True, epilog="Alias for load")(load)
