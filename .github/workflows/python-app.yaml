@@ -48,7 +48,7 @@ jobs:
       run: poetry env use ${pythonLocation}/bin/python
       if: ${{ matrix.os == 'ubuntu-latest' }}
     - name: Set poetry python version
-      run: poetry env use ${pythonLocation}\\bin\\python
+      run: poetry env use ${pythonLocation}\\python.exe
       if: ${{ matrix.os == 'windows-latest' }}
     - name: Install dependencies
       run: poetry install --no-interaction --no-root
