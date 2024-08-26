@@ -13,6 +13,8 @@ from typing import Any, NoReturn, Optional
 from click import secho
 from packaging import version
 from pydantic import BaseModel
+from types import ModuleType
+from importlib import import_module
 
 
 CLIFFY_CLI_DIR = files("cliffy").joinpath("clis")
@@ -47,6 +49,12 @@ def write_to_file(path: str, text: str, executable: bool = False) -> None:
 
     if executable:
         make_executable(path)
+
+
+def import_module_from_path(filepath: str) -> ModuleType:
+    module_path, module_filename = os.path.split(filepath)
+    sys.path.append(module_path)
+    return import_module(module_filename[:-3])
 
 
 def make_executable(path: str) -> None:

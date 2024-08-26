@@ -12,7 +12,7 @@ from pathlib import Path
 import threading
 
 
-class CLIManifestReloader(FileSystemEventHandler):
+class Reloader(FileSystemEventHandler):
     def __init__(self, manifest_path: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
         self.manifest_path = manifest_path
         self.run_cli = run_cli

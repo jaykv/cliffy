@@ -5,3 +5,7 @@ help: Hello world!
 commands:
   bash: $echo "hello from bash"
   python: print("hello from python")
+
+tests:
+  bash: assert result.exit_code == 0
+  python: assert result.output == "hello from python\n"

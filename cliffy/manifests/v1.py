@@ -77,6 +77,7 @@ class CLIManifest(BaseModel):
         {},
         description="A mapping for any additional options that can be used to customize the behavior of the CLI.",
     )
+    tests: dict[str, str] = Field({}, description="A mapping of command with args to its test script.")
 
     @classmethod
     def get_field_description(cls, field_name: str, as_comment: bool = True) -> str:
@@ -208,6 +209,7 @@ class IncludeManifest(BaseModel):
     functions: list[str] = []
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
+    tests: dict[str, str] = {}
 
 
 class CLIMetadata(BaseModel):

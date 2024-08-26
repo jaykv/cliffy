@@ -18,7 +18,14 @@ class Transformer:
 
     __slots__ = ("manifest_io", "command_config", "manifest_version", "includes_config", "manifest", "cli")
 
-    def __init__(self, manifest_io: TextIO, *, as_include: bool = False, validate_requires: bool = True) -> None:
+    def __init__(
+        self,
+        manifest_io: TextIO,
+        *,
+        as_include: bool = False,
+        validate_requires: bool = True,
+        add_command_name_mapping: bool = False,
+    ) -> None:
         self.manifest_io = manifest_io
         self.command_config = self.load_manifest(manifest_io)
         self.manifest_version = self.command_config.pop("manifestVersion", "v1")
