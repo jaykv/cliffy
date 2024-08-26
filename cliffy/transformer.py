@@ -24,7 +24,6 @@ class Transformer:
         *,
         as_include: bool = False,
         validate_requires: bool = True,
-        add_command_name_mapping: bool = False,
     ) -> None:
         self.manifest_io = manifest_io
         self.command_config = self.load_manifest(manifest_io)
