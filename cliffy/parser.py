@@ -67,6 +67,8 @@ class Parser:
         aliases: Optional[list[str]] = None,
         default_val: Any = None,
         is_required: bool = False,
+        help: Optional[str] = None,
+        extra_params: Optional[str] = None,
     ) -> str:
         parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}"
         if not default_val:
@@ -79,6 +81,12 @@ class Parser:
             parsed_arg_type += f', "--{arg_name}"'
             for alias in aliases:
                 parsed_arg_type += f', "{alias.strip()}"'
+
+        if help:
+            parsed_arg_type += f', help="{help}"'
+
+        if extra_params:
+            parsed_arg_type += f", {extra_params}"
 
         parsed_arg_type += "),"
         return parsed_arg_type
@@ -124,10 +132,23 @@ class Parser:
         parsed_command_args = ""
         combined_command_args = self.manifest.global_args + command.args
         for arg in combined_command_args:
+            if isinstance(arg, CommandArg):
+                aliases = [f"-{arg.short}"] if arg.short else None
+
+                parsed_command_args += (
+                    self.build_param_type(
+                        arg_name=arg.name,
+                        arg_type=arg.type,
+                        typer_cls=arg.kind,
+                        help=arg.help,
+                        aliases=aliases,
+                        default_val=str(arg.default) if arg.default is not None else None,
+                        is_required=arg.required,
+                    )
+                    + " "
+                )
             if isinstance(arg, str):
                 parsed_command_args += f"{arg}, "
-            if isinstance(arg, CommandArg):
-                raise NotImplementedError("CommandArg support is not yet implemented.")
             if isinstance(arg, dict):
                 arg_name, arg_type = next(iter(arg.items()))
 

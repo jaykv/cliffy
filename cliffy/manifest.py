@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 from pydantic import BaseModel, Field
 from .helper import wrap_as_comment
 from datetime import datetime
@@ -6,6 +6,7 @@ from datetime import datetime
 
 class CommandArg(BaseModel):
     name: str
+    kind: Union[Literal["Option"], Literal["Argument"]]
     type: str
     default: Any = None
     help: Optional[str] = None
