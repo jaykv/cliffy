@@ -1,6 +1,6 @@
-## Generated pydev on 2024-08-25 23:31:48.031791
-import typer
+## Generated pydev on 2025-01-07 00:05:02.071823
 import subprocess
+import typer
 from typing import Optional, Any
 import sys
 
@@ -49,9 +49,6 @@ def write_to_file(file_name: str, contents: str):
 
 
 def clean():
-    """
-    Clean pycache artifacts
-    """
     subprocess.run(["find",".","-type","f","-name","*.pyc","-delete"])
     subprocess.run(["find",".","-type","d","-name","__pycache__","-delete"])
     subprocess.run(["echo","Cleaned!"])
@@ -60,9 +57,6 @@ def clean():
 cli.command("clean")(clean)
 
 def format():
-    """
-    Format code with black
-    """
     subprocess.run(["black","."])
     subprocess.run(["echo","Formatted!"])
 
@@ -70,9 +64,6 @@ def format():
 cli.command("format")(format)
 
 def lint():
-    """
-    Run linters on the code
-    """
     subprocess.run(["flake8","."])
     subprocess.run(["black","--check","."])
     subprocess.run(["mypy","."])
@@ -82,9 +73,6 @@ def lint():
 cli.command("lint")(lint)
 
 def test():
-    """
-    Run tests
-    """
     subprocess.run(["pytest"])
     print("Tests passed!")
 
@@ -92,9 +80,6 @@ def test():
 cli.command("test")(test)
 
 def bump(major: int = typer.Option(..., help="Version part", min=0), minor: int = typer.Option(..., help="Version part", min=0), patch: int = typer.Option(..., help="Version part", min=0)):
-    """
-    Bump the package version
-    """
     current_version = run_cmd("python setup.py --version")
     print(f"Current version: {current_version}")
     parts = current_version.split('.')

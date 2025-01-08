@@ -4,32 +4,10 @@ from collections import defaultdict
 from typing import DefaultDict
 
 from pybash.transformer import transform as transform_bash
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from .manifests import CommandBlock, Manifest
+from .manifest import CLIManifest, Command, CommandArg
 from .parser import Parser
-
-
-class Command(BaseModel):
-    name: str
-    script: CommandBlock
-    aliases: list[str] = Field(default_factory=list)
-
-    @classmethod
-    def from_greedy_make_lazy(cls, greedy_command: Command, group: str) -> Command:
-        lazy_command_name = greedy_command.name.replace("(*)", group)
-        lazy_command_script: CommandBlock = ""
-        if isinstance(greedy_command.script, str):
-            lazy_command_script = greedy_command.script.replace("{(*)}", group)
-        elif isinstance(greedy_command.script, list):
-            lazy_command_script = []
-            for script_block in greedy_command.script:
-                if isinstance(script_block, dict):
-                    lazy_command_script.append(script_block["help"].replace("{(*)}", group))
-                else:
-                    lazy_command_script.append(script_block.replace("{(*)}", group))
-
-        return cls(name=lazy_command_name, script=lazy_command_script)
 
 
 class CLI(BaseModel):
@@ -54,21 +32,25 @@ class Commander:
         "cli",
         "groups",
         "greedy",
-        "commands",
         "root_commands",
         "command_aliases",
         "base_imports",
         "aliases_by_commands",
+        "commands",
     )
 
-    def __init__(self, manifest: Manifest) -> None:
+    def __init__(self, manifest: CLIManifest) -> None:
         self.manifest = manifest
         self.parser = Parser(self.manifest)
         self.cli: str = ""
         self.groups: dict[str, Group] = {}
         self.greedy: list[Command] = []
+        for name, command in self.manifest.commands.items():
+            if isinstance(command, Command) and not command.name:
+                self.manifest.commands[name].name = name  # type: ignore
         self.commands: list[Command] = [
-            Command(name=name, script=script) for name, script in self.manifest.commands.items()
+            command if isinstance(command, Command) else Command(name=name, run=command)
+            for name, command in self.manifest.commands.items()
         ]
         self.root_commands: list[Command] = [command for command in self.commands if "." not in command.name]
         self.base_imports: set[str] = set()
@@ -77,6 +59,9 @@ class Commander:
         self.setup_command_aliases()
 
     def setup_command_aliases(self) -> None:
+        """Support inferred-aliasing with | operator.
+        i.e. command_name | command_alias: print("hello")
+        """
         for command in self.commands:
             if "|" in command.name:
                 aliases = command.name.split("|")
@@ -92,9 +77,11 @@ class Commander:
 
     def build_groups(self) -> None:
         groups: DefaultDict[str, list[Command]] = defaultdict(list)
-        group_help_dict: dict[str, str] = {}
+        group_help_dict = {}
 
         for command in self.commands:
+            if not command.name:
+                raise ValueError("Command name is missing :(")
             # Check for greedy commands- evaluate them at the end
             if self.is_greedy(command.name):
                 self.greedy.append(command)
@@ -114,11 +101,8 @@ class Commander:
 
                 groups[group_name].append(command)
             else:
-                group_help_dict |= {
-                    command.name: script_block["help"]
-                    for script_block in command.script
-                    if isinstance(script_block, dict) and script_block.get("help")
-                }
+                group_name = command.name
+                group_help_dict[command.name] = command.help
 
         for group_name, commands in groups.items():
             self.groups[group_name] = Group(
@@ -185,10 +169,7 @@ class Commander:
 
     def add_lazy_command(self, greedy_command: Command, group: str):
         # make it lazy and interpolate
-        lazy_command = Command.from_greedy_make_lazy(greedy_command=greedy_command, group=group)
-
-        if greedy_command_args := self.manifest.args.get(greedy_command.name):
-            self.manifest.args[lazy_command.name] = greedy_command_args
+        lazy_command = self.from_greedy_make_lazy_command(greedy_command=greedy_command, group=group)
 
         # lazy load
         self.commands.append(lazy_command)
@@ -226,8 +207,48 @@ class Commander:
     def add_main_block(self) -> None:
         raise NotImplementedError
 
+    def from_greedy_make_lazy_command(self, greedy_command: Command, group: str) -> Command:
+        lazy_command = greedy_command.model_copy(deep=True)
+        lazy_command.name = greedy_command.name.replace("(*)", group)
+        if isinstance(lazy_command.run, str):
+            lazy_command.run = lazy_command.run.replace("{(*)}", group)
+        elif isinstance(lazy_command.run, list):
+            lazy_command.run = [script_block.replace("{(*)}", group) for script_block in lazy_command.run]
+        if lazy_command.help:
+            lazy_command.help = lazy_command.help.replace("{(*)}", group)
 
-def generate_cli(manifest: Manifest, commander_cls=Commander) -> CLI:
+        if lazy_command.template:
+            lazy_command.template.replace("{(*)}", group)
+
+        if lazy_command.pre_run:
+            lazy_command.pre_run.replace("{(*)}", group)
+
+        if lazy_command.post_run:
+            lazy_command.post_run.replace("{(*)}", group)
+
+        if lazy_command.args:
+            if isinstance(lazy_command.args, str):
+                lazy_command.args.replace("{(*)}", group)
+            elif isinstance(lazy_command.args, list):
+                lazy_parsed_args = []
+                for arg in lazy_command.args:
+                    if isinstance(arg, str):
+                        lazy_parsed_args.append(arg.replace("{(*)}", group))
+                    if isinstance(arg, CommandArg):
+                        if arg.help:
+                            arg.help = arg.help.replace("{(*)}", group)
+                        if arg.default:
+                            arg.default = arg.default.replace("{(*)}", group)
+                        if arg.short:
+                            arg.short = arg.short.replace("{(*)}", group)
+                        lazy_parsed_args.append(arg)
+                    if isinstance(arg, dict):
+                        lazy_parsed_args.append(arg)
+                lazy_command.args = lazy_parsed_args
+        return lazy_command
+
+
+def generate_cli(manifest: CLIManifest, commander_cls=Commander) -> CLI:
     commander = commander_cls(manifest)
     commander.generate_cli()
     return CLI(name=manifest.name, version=manifest.version, code=commander.cli, requires=manifest.requires)

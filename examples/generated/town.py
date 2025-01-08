@@ -1,6 +1,6 @@
-## Generated town on 2024-08-25 23:31:48.337317
-import typer
+## Generated town on 2025-01-07 00:05:02.566747
 import subprocess
+import typer
 from typing import Optional, Any
 import re
 import time
@@ -24,8 +24,6 @@ def aliases_callback(value: bool):
 Command          Aliases
 --------         --------
 home.build       bu
-home.sell        s
-home.buy         b
 """)
         raise typer.Exit()
 
@@ -40,32 +38,8 @@ def format_money(money: float):
     return "${:.2f}".format(money)
 
 
-
-def people():
-    """
-    Manage people
-    """
-
-
-cli.command("people")(people)
-
-def shops():
-    """
-    Manage shops
-    """
-
-
-cli.command("shops")(shops)
-
-def home():
-    """
-    Manage homes
-    """
-
-
-cli.command("home")(home)
 land_app = typer.Typer()
-cli.add_typer(land_app, name="land", help="")
+cli.add_typer(land_app, name="land", help="Manage land")
 
 def land_build(name: str = typer.Argument(..., help="Name"), address: str = typer.Argument(...), value: int = typer.Option(100, "--value", "-v")):
     """Build land"""

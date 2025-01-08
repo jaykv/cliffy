@@ -1,15 +1,15 @@
 ## Command parser
-from typing import Any, Literal, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 from pybash.transformer import transform as transform_bash
 
-from .manifests import Manifest
+from .manifest import CLIManifest, Command, CommandBlock, CommandArg
 
 
 class Parser:
     __slots__ = ("manifest",)
 
-    def __init__(self, manifest: Manifest) -> None:
+    def __init__(self, manifest: CLIManifest) -> None:
         self.manifest = manifest
 
     def is_param_required(self, param_type: str) -> bool:
@@ -34,12 +34,16 @@ class Parser:
 
         return base_param_name, aliases
 
-    def parse_command_block(self, script: str) -> str:
-        script = transform_bash(script).strip()
-        return "".join(" " * 4 + line + "\n" for line in script.split("\n"))
+    def parse_command_block(self, script: Union[str, list[str]]) -> str:
+        norm_script = "\n".join(script) if isinstance(script, list) else script
+        parsed_script = transform_bash(norm_script).strip()
+        return "".join(" " * 4 + line + "\n" for line in parsed_script.split("\n"))
 
-    def parse_command(self, block: Union[str, list[Union[str, dict[Literal["help"], str]]]]) -> str:
-        if isinstance(block, list):
+    def parse_command(self, block: CommandBlock) -> str:
+        if isinstance(block, Command):
+            code = f'    """\n    {block.help}\n    """\n' if block.help else ""
+            code += self.parse_command_block(block.run)
+        elif isinstance(block, list):
             script_block = []
             help_text = ""
             for block_elem in block:
@@ -113,18 +117,21 @@ class Parser:
             is_required=is_required,
         )
 
-    def parse_args(self, command) -> str:
-        if not self.manifest.args:
-            return ""
-
-        command_args = self.manifest.args.get(command.name)
-        if not command_args:
+    def parse_args(self, command: Command) -> str:
+        if not command.args:
             return ""
 
         parsed_command_args = ""
-        for arg in command_args:
+        combined_command_args = self.manifest.global_args + command.args
+        for arg in combined_command_args:
+            if isinstance(arg, CommandArg):
+                raise NotImplementedError("CommandArg support is not yet implemented.")
+
             arg_name, arg_type = next(iter(arg.items()))
-            parsed_command_args += f"{self.parse_arg(arg_name.strip(), arg_type.strip())} "
+            if "typer." in arg_type:
+                parsed_command_args += f"{arg_name.strip()}: {arg_type.strip()}, "
+            else:
+                parsed_command_args += f"{self.parse_arg(arg_name.strip(), arg_type.strip())} "
 
         # strip the extra ", "
         return parsed_command_args[:-2]

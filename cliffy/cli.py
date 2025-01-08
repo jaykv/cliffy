@@ -1,4 +1,3 @@
-## CLI to generate CLIs
 from io import TextIOWrapper
 import os
 from typing import IO, Any, Optional, TextIO, Union, cast
@@ -6,8 +5,9 @@ import traceback
 import sys
 from click.core import Context, Parameter
 from click.types import _is_file_like
+import yaml
 
-from cliffy.tester import Tester
+from cliffy.tester import ShellScript, Tester
 
 from .rich import click, Console, print_rich_table
 
@@ -23,7 +23,7 @@ from .helper import (
 )
 from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from .loader import Loader
-from .manifests import Manifest, set_manifest_version
+from .manifest import CLIManifest
 from .transformer import Transformer
 from .reloader import Reloader
 
@@ -113,8 +113,7 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
 
 
 @click.argument("cli_name", type=str, default="cliffy")
-@click.option("--version", "-v", type=str, show_default=True, default="v1", help="Manifest version")
-@click.option("--render", is_flag=True, show_default=True, default=False, help="Render template to terminal directly")
+@click.option("--render", is_flag=True, show_default=True, default=False, help="Print template to terminal directly")
 @click.option(
     "--raw",
     type=bool,
@@ -123,10 +122,9 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
     default=False,
     help="Raw template without boilerplate helpers and examples.",
 )
-def init(cli_name: str, version: str, render: bool, raw: bool) -> None:
+def init(cli_name: str, render: bool, raw: bool) -> None:
     """Generate a CLI manifest template"""
-    set_manifest_version(version)
-    template = Manifest.get_raw_template(cli_name) if raw else Manifest.get_template(cli_name)
+    template = CLIManifest.get_raw_template(cli_name) if raw else CLIManifest.get_template(cli_name)
 
     if render:
         console = Console()
@@ -243,32 +241,81 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
 
 
 @click.argument("manifest", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
-def test(manifest: str) -> None:
+@click.option(
+    "--exitfirst",
+    "-x",
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="exit instantly on first error or failed test.",
+)
+def test(manifest: str, exitfirst: bool) -> None:
     """Run tests defined in a manifest"""
     tester = Tester(manifest)
+    if not tester.test_pipeline:
+        exit_err("Missing tests section in manifest")
     out("✨ Invoking tests ✨", nl=False)
-    total = len(tester.T.manifest.tests)
-    for i, (command, script) in enumerate(tester.T.manifest.tests.items()):
-        out(f"\n\n🪄 > {tester.T.cli.name} {command}\n")
+    total = tester.total_cases
+    passed = 0
+    for i, case in enumerate(tester.test_pipeline):
+        if isinstance(case, ShellScript):
+            tester.invoke_shell(case)
+            continue
+
+        out(f"\n\n🪄 > {tester.T.cli.name} {case.command}\n")
         try:
-            test = tester.invoke_test(command, script)
+            test = tester.invoke_test(case.command, case.assert_script)
             result = next(test)
+            out("⚗️ > \n" + result.output)
             if result.exception:
                 out(str(result))
             next(test, "")
-            out(f"\n💚 {i+1}/{total}")
+            out(f"\n✅ {i+1} of {total}")
+            passed += 1
         except AssertionError:
             _, _, tb = sys.exc_info()
             tb_info = traceback.extract_tb(tb)
             _, line_no, _, _ = tb_info[-1]
-            expr = script.split("\n")[line_no - 1]
+            expr = case.assert_script.split("\n")[line_no - 1]
             out(f"💔 AssertionError: (line {line_no}) > {expr}")
+            if exitfirst:
+                exit()
         except SyntaxError:
             out("💔 Syntax error")
             traceback.print_exc()
+            if exitfirst:
+                exit()
         except Exception:
             out("💔 Exception")
             traceback.print_exc()
+            if exitfirst:
+                exit()
+
+    if not passed:
+        exit_err("All tests failed")
+
+    if passed == total:
+        out("\n\n💚 All tests passed!")
+    else:
+        out("\n\n💛 Some tests failed :(")
+
+
+@click.argument("manifest", type=click.File("rb"), required=True)
+def cli_format(manifest: TextIO) -> None:
+    """Format the CLI manifest"""
+    M = yaml.load(manifest, Loader=yaml.UnsafeLoader)
+    yaml.dump(M, open(manifest.name, "w"), indent=2, sort_keys=False, line_break="\n")
+    out("Formatted", fg="green")
+
+
+@click.argument("manifest", type=click.File("rb"), required=True)
+def validate(manifest: TextIO) -> None:
+    """Validate the syntax and structure of a CLI manifest"""
+    try:
+        Transformer(manifest)
+        out(f"Manifest {manifest.name} is valid", fg="green")
+    except Exception as e:
+        out_err(f"Manifest {manifest.name} is invalid: {e}")
 
 
 # register commands
@@ -284,6 +331,8 @@ remove_all_command = cli.command("remove-all")(remove_all)
 run_command = cli.command("run")(cliffy_run)
 update_command = cli.command("update")(update)
 test_command = cli.command("test")(test)
+validate_command = cli.command("validate")(validate)
+format_command = cli.command("format")(cli_format)
 
 # register aliases
 cli.command("add", hidden=True, epilog="Alias for load")(load)
@@ -292,3 +341,4 @@ cli.command("rm", hidden=True, epilog="Alias for remove")(remove)
 cli.command("rm-all", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("rmall", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("reload", hidden=True, epilog="Alias for update")(update)
+cli.command("fmt", hidden=True, epilog="Alias for format")(cli_format)

@@ -13,62 +13,76 @@ functions:
 
 commands:
   people:
-    - help: Manage people
+    help: Manage people
   shops:
-    - help: Manage shops
+    help: Manage shops
   home:
-    - help: Manage homes
-  land.build: |
-    """Build land"""
-    print(f"building land {name}")
-  land.sell: |
-    """Sell land"""
-    print(f"selling land {name}")
-  land.buy: |
-    """Buy land"""
-    print(f"buying land {name} for {format_money(money)}")
-  people.add: |
-    """Add a person to town"""
-    print(f"adding person {fullname}, {age}, {home}")
-  people.remove: |
-    """Remove person from town"""
-    print(f"removing person {fullname}")
-  shops.build: |
-    """Build a shop"""
-    print(f"building shop {name} ({type}) on land {land}")
-  shops.sell: |
-    """Sell a shop"""
-    print(f"selling shop {name} for ${money}")
-  shops.buy: |
-    """Buy a shop"""
-    print(f"buying shop {name} for ${money}")
-  home.build|bu: |
-    """Build a home"""
-    print(f"building home at {address} for {owner} on land {land}")
-  home.sell|s: |
-    """Sell a home"""
-    print(f"selling home {address} for {format_money(money)}")
-  home.buy|b: |
-    """Buy a home"""
-    print(f"buying home {address} for {money}")
-    print("test123")
-  (*).list: |
-    """Get a list of {(*)}"""
-    print(f"listing {(*)}")
-
-args:
-  land.build: [name: Name!, address: str!, --value|-v: int = 100]
-  land.sell: [name: Name!, money: Money]
-  land.buy: [name: Name!, money: Money]
-  people.add: [fullname: str!, age: int!, --home|-h: str]
-  people.remove: [fullname: str!]
-  shops.build: [name: Name!, land: str!, --type|-t: str]
-  shops.sell: [name: Name!, money: Money]
-  shops.buy: [name: Name!, money: Money]
-  home.build: [address: str!, land: str, owner: str]
-  home.sell: [address: str!, money: Money]
-  home.buy: [address: str!, money: Money]
-  (*).list: [--limit|-l: int]
+    help: Manage homes
+  land:
+    help: Manage land
+  land.build:
+    args: [name: Name!, address: str!, --value|-v: int = 100]
+    run: |
+      """Build land"""
+      print(f"building land {name}")
+  land.sell:
+    args: [name: Name!, money: Money]
+    run: |
+      """Sell land"""
+      print(f"selling land {name}")
+  land.buy:
+    args: [name: Name!, money: Money]
+    run: |
+      """Buy land"""
+      print(f"buying land {name} for {format_money(money)}")
+  people.add:
+    args: [fullname: str!, age: int!, --home|-h: str]
+    run: |
+      """Add a person to town"""
+      print(f"adding person {fullname}, {age}, {home}")
+  people.remove:
+    args: [fullname: str!]
+    run: |
+      """Remove person from town"""
+      print(f"removing person {fullname}")
+  shops.build:
+    args: [name: Name!, land: str!, --type|-t: str]
+    run: |
+      """Build a shop"""
+      print(f"building shop {name} ({type}) on land {land}")
+  shops.sell:
+    args: [name: Name!, money: Money]
+    run: |
+      """Sell a shop"""
+      print(f"selling shop {name} for ${money}")
+  shops.buy:
+    args: [name: Name!, money: Money]
+    run: |
+      """Buy a shop"""
+      print(f"buying shop {name} for ${money}")
+  home.build|bu:
+    args: [address: str!, land: str, owner: str]
+    run: |
+      """Build a home"""
+      print(f"building home at {address} for {owner} on land {land}")
+  home.sell:
+    args: [address: str!, money: Money]
+    aliases: ["s"]
+    run: |
+      """Sell a home"""
+      print(f"selling home {address} for {format_money(money)}")
+  home.buy:
+    args: [address: str!, money: Money]
+    aliases: ["b"]
+    run: |
+      """Buy a home"""
+      print(f"buying home {address} for {money}")
+      print("test123")
+  (*).list:
+    args: [--limit|-l: int]
+    run: |
+      """Get a list of {(*)}"""
+      print(f"listing {(*)}")
 
 types:
   Money: float = typer.Option(..., help="Amount of money", min=0)

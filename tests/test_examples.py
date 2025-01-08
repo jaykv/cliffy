@@ -8,7 +8,7 @@ from shutil import rmtree
 import pytest
 from click.testing import CliRunner
 
-from cliffy.cli import build_command, load_command, remove_command
+from cliffy.cli import build_command, load_command, remove_command, test_command
 from cliffy.homer import get_clis, get_metadata
 
 try:
@@ -19,13 +19,13 @@ try:
 except ImportError:
     RICH_INSTALLED = False
 
-CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
-CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "environ", "penv"}
-CLI_MANIFEST_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "penv"}
+CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster"}
+CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster"}
+CLI_MANIFEST_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "penv", "taskmaster"}
 CLI_LOAD_FAILS = {"requires"}
 CLI_BUILD_FAILS = {"requires"}
 CLI_TESTS = {
-    "hello": [{"args": "bash", "resp": "hello from bash"}, {"args": "python", "resp": "hello from python"}],
+    "hello": [{"args": "shell", "resp": "hello from shell"}, {"args": "python", "resp": "hello from python"}],
     "town": [
         {"args": "land build test123 202str", "resp": "building land"},
         {"args": "land sell test123 --money 50", "resp": "selling"},
@@ -35,7 +35,7 @@ CLI_TESTS = {
         {"args": "home s test123 --money 123", "resp": "selling home test123 for $123.00"},
     ],
     "template": [
-        {"args": "hello bash", "resp": "hello from bash"},
+        {"args": "hello shell", "resp": "hello from shell"},
         {"args": "hello python", "resp": "hello from python"},
     ],
     "environ": [
@@ -51,6 +51,7 @@ CLI_TESTS = {
         {"args": "v --name test --table test", "resp": "Viewing test table for test DB"},
     ],
 }
+CLI_WITH_MANIFEST_TESTS = ["hello", "taskmaster"]
 
 if not RICH_INSTALLED:
     CLI_LOADS.remove("db")
@@ -160,3 +161,11 @@ def test_cli_response(cli_name):
             env=environment,
         )
         assert command["resp"] in built_cli_result.stdout
+
+
+@pytest.mark.parametrize("cli_name", CLI_WITH_MANIFEST_TESTS)
+def test_cli_tests_pass(cli_name):
+    runner = CliRunner()
+    result = runner.invoke(test_command, [f"examples/{cli_name}.yaml"])
+    assert "All tests passed" in result.output
+    assert result.exit_code == 0

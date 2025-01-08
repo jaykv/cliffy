@@ -1,6 +1,6 @@
-## Generated template on 2024-08-25 23:31:48.330347
-import typer
+## Generated template on 2025-01-07 00:05:02.557014
 import subprocess
+import typer
 from typing import Optional, Any
 GLOBAL_VAR = 'hello'
 

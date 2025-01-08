@@ -1,0 +1,154 @@
+name: taskmaster
+version: 0.1.0
+help: A task management CLI
+
+requires:
+  - tabulate>=0.8.0
+
+imports: |
+  import json
+  from datetime import datetime
+  from tabulate import tabulate
+
+vars:
+  data_file: "tasks.json"
+
+functions:
+  - |
+    def load_data():
+        try:
+            with open("{{data_file}}", "r") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {"projects": [], "tasks": []}
+
+  - |
+    def save_data(data):
+        with open("{{data_file}}", "w") as f:
+            json.dump(data, f, indent=2)
+
+  - |
+    def format_date(date_str):
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%b %d, %Y")
+
+types:
+  ProjectName: str = typer.Argument(..., help="Name of the project")
+  TaskName: str = typer.Argument(..., help="Name of the task")
+  DueDate: str = typer.Option(None, "--due", "-d", help="Due date (YYYY-MM-DD)")
+  Priority: int = typer.Option(1, "--priority", "-p", help="Priority (1-5)", min=1, max=5)
+
+commands:
+  project.add:
+    args: [name: ProjectName]
+    run: |
+      data = load_data()
+      if name not in data["projects"]:
+          data["projects"].append(name)
+          save_data(data)
+          print(f"Project '{name}' added successfully.")
+      else:
+          print(f"Project '{name}' already exists.")
+
+  project.list:
+    run: |
+      data = load_data()
+      if data["projects"]:
+          print("Projects:")
+          for project in data["projects"]:
+              print(f"- {project}")
+      else:
+          print("No projects found.")
+
+  project.remove:
+    args: [name: ProjectName]
+    run: |
+      data = load_data()
+      if name in data["projects"]:
+          data["projects"].remove(name)
+          data["tasks"] = [task for task in data["tasks"] if task["project"] != name]
+          save_data(data)
+          print(f"Project '{name}' and its tasks removed successfully.")
+      else:
+          print(f"Project '{name}' not found.")
+
+  task.add:
+    args: [project: ProjectName, name: TaskName, due_date: DueDate, priority: Priority]
+    run: |
+      data = load_data()
+      if project not in data["projects"]:
+          print(f"Project '{project}' not found. Please create the project first.")
+          return
+      task = {
+          "project": project,
+          "name": name,
+          "due_date": due_date,
+          "priority": priority,
+          "completed": False
+      }
+      data["tasks"].append(task)
+      save_data(data)
+      print(f"Task '{name}' added to project '{project}' successfully.")
+
+  task.list:
+    args: [project: ProjectName = typer.Argument(None)]
+    run: |
+      data = load_data()
+      tasks = data["tasks"]
+      if project:
+          tasks = [task for task in tasks if task["project"] == project]
+      
+      if tasks:
+          table_data = [
+              [
+                  task["project"],
+                  task["name"],
+                  format_date(task["due_date"]) if task["due_date"] else "N/A",
+                  task["priority"],
+                  "✓" if task["completed"] else "✗"
+              ]
+              for task in tasks
+          ]
+          headers = ["Project", "Task", "Due Date", "Priority", "Completed"]
+          print(tabulate(table_data, headers=headers, tablefmt="grid"))
+      else:
+          print("No tasks found.")
+
+  task.complete:
+    args: [project: ProjectName, name: TaskName]
+    run: |
+      data = load_data()
+      for task in data["tasks"]:
+          if task["project"] == project and task["name"] == name:
+              task["completed"] = True
+              save_data(data)
+              print(f"Task '{name}' in project '{project}' marked as completed.")
+              return
+      print(f"Task '{name}' in project '{project}' not found.")
+
+  task.remove:
+    args: [project: ProjectName, name: TaskName]
+    run: |
+      data = load_data()
+      data["tasks"] = [task for task in data["tasks"] if not (task["project"] == project and task["name"] == name)]
+      save_data(data)
+      print(f"Task '{name}' removed from project '{project}' successfully.")
+
+  backup:
+    help: Create a backup of the task data
+    run: |
+      $ cp {{data_file}} {{data_file}}.backup
+      $ echo "Backup created: {{data_file}}.backup"
+
+
+tests:
+  - project add test1: assert result.exit_code == 0
+  - project list: assert "test1" in result.output
+  - project add test2: assert result.exit_code == 0
+  - project list: assert "test1" in result.output and "test2" in result.output
+  - task add test1 task1: assert result.exit_code == 0
+  - task add test1 task2: assert result.exit_code == 0
+  - task list test1: assert "task1" in result.output and "task2" in result.output
+  - task remove test1 task1: assert "removed" in result.output
+  - project remove test1: assert "removed" in result.output
+  - task list test1: assert "No tasks found" in result.output
+  - $ rm tasks.json

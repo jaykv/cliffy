@@ -33,6 +33,7 @@ mypy = "^1.3.0"
 
 [tool.poetry.scripts]
 cli = "cliffy.run:run"
+cliffy = "cliffy.run:run"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,0 +1,13 @@
+name: greet
+version: 0.1.0
+
+args:
+  .:
+    - name: Name
+
+commands:
+  .:
+    print(f"hello {name}")
+  
+types:
+  Name: str = typer.Option(help="The name to say hi to.", default="World")
