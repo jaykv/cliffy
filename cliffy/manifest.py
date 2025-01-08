@@ -112,20 +112,11 @@ class CLIManifest(BaseModel):
             return wrap_as_comment(field.description, split_on=". ")
         return field.description
 
-    @property
-    def args(self):
-        for command in self.commands.values():
-            if isinstance(command, str):
-                continue
-
-            if isinstance(command, dict):
-                for sub_command in command.values():
-                    yield from sub_command.args
-            elif isinstance(command, Command) and command.args:
-                yield from command.args
-
     @classmethod
     def get_template(cls, cli_name: str) -> str:
+        if not cli_name.isidentifier():
+            raise ValueError("CLI name must be a valid Python identifier")
+
         return f"""manifestVersion: v2
 
 {cls.get_field_description('name')}

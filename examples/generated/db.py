@@ -1,4 +1,4 @@
-## Generated db on 2025-01-07 20:58:01.687941
+## Generated db on 2025-01-07 22:00:22.447718
 from typing import Optional, Any
 import subprocess
 import typer
@@ -38,7 +38,7 @@ def main(
     pass
 
 
-def create():
+def create(name: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)):
     """Create a new database"""
     console.print(f"Creating database {name}", style="green")
 
@@ -47,7 +47,7 @@ cli.command("create")(create)
 
 cli.command("mk", hidden=True, epilog="Alias for create")(create)
 
-def delete():
+def delete(name: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)):
     """Delete a database"""
     sure = typer.confirm("Are you really really really sure?")
     if sure:
@@ -69,7 +69,7 @@ cli.command("list")(list)
 
 cli.command("ls", hidden=True, epilog="Alias for list")(list)
 
-def view():
+def view(name: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True), table: str = typer.Option(..., prompt="What is the name of the table?")):
     """View database table"""
     console.print(f"Viewing {table} table for {name} DB")
 

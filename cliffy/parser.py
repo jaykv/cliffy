@@ -147,9 +147,9 @@ class Parser:
                     )
                     + " "
                 )
-            if isinstance(arg, str):
+            elif isinstance(arg, str):
                 parsed_command_args += f"{arg}, "
-            if isinstance(arg, dict):
+            elif isinstance(arg, dict):
                 arg_name, arg_type = next(iter(arg.items()))
 
                 if "typer." in arg_type:
