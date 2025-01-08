@@ -1,7 +1,7 @@
-## Generated town on 2025-01-07 00:05:02.566747
+## Generated town on 2025-01-07 20:58:02.114590
+from typing import Optional, Any
 import subprocess
 import typer
-from typing import Optional, Any
 import re
 import time
 
@@ -124,7 +124,6 @@ home_app.command("s", hidden=True, epilog="Alias for sell")(home_sell)
 def home_buy(address: str = typer.Argument(...), money: float = typer.Option(..., help="Amount of money", min=0)):
     """Buy a home"""
     print(f"buying home {address} for {money}")
-    print("test123")
 
 
 home_app.command("buy")(home_buy)

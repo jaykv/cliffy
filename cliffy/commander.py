@@ -6,7 +6,7 @@ from typing import DefaultDict
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
-from .manifest import CLIManifest, Command, CommandArg
+from .manifest import ArgBlock, CLIManifest, Command, CommandArg
 from .parser import Parser
 
 
@@ -230,7 +230,7 @@ class Commander:
             if isinstance(lazy_command.args, str):
                 lazy_command.args.replace("{(*)}", group)
             elif isinstance(lazy_command.args, list):
-                lazy_parsed_args = []
+                lazy_parsed_args: list[ArgBlock] = []
                 for arg in lazy_command.args:
                     if isinstance(arg, str):
                         lazy_parsed_args.append(arg.replace("{(*)}", group))

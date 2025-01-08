@@ -90,7 +90,7 @@ commands:
       print(f"Task '{name}' added to project '{project}' successfully.")
 
   task.list:
-    args: [project: ProjectName = typer.Argument(None)]
+    args: [project: ProjectName]
     run: |
       data = load_data()
       tasks = data["tasks"]
@@ -129,7 +129,7 @@ commands:
     args: [project: ProjectName, name: TaskName]
     run: |
       data = load_data()
-      data["tasks"] = [task for task in data["tasks"] if not (task["project"] == project and task["name"] == name)]
+      data["tasks"] = [task for task in data["tasks"] if task["project"] != project or task["name"] != name]
       save_data(data)
       print(f"Task '{name}' removed from project '{project}' successfully.")
 

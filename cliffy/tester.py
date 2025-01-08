@@ -1,8 +1,9 @@
-from typing import Generator
+from typing import Generator, cast
 from click.testing import Result
 from pydantic import BaseModel, field_validator
 from typer.testing import CliRunner
 from cliffy.commander import Command
+from cliffy.manifest import CLIManifest
 from cliffy.parser import Parser
 from cliffy.transformer import Transformer
 from cliffy.helper import import_module_from_path, delete_temp_files, TEMP_FILES
@@ -47,7 +48,7 @@ class Tester:
         delete_temp_files()
 
         self.runner = CliRunner()
-        self.parser = Parser(self.T.manifest)
+        self.parser = Parser(cast(CLIManifest, self.T.manifest))
 
         self.test_pipeline: list[ShellScript | TestCase] = []
         self.total_cases = 0

@@ -124,14 +124,17 @@ class Parser:
         parsed_command_args = ""
         combined_command_args = self.manifest.global_args + command.args
         for arg in combined_command_args:
+            if isinstance(arg, str):
+                parsed_command_args += f"{arg}, "
             if isinstance(arg, CommandArg):
                 raise NotImplementedError("CommandArg support is not yet implemented.")
+            if isinstance(arg, dict):
+                arg_name, arg_type = next(iter(arg.items()))
 
-            arg_name, arg_type = next(iter(arg.items()))
-            if "typer." in arg_type:
-                parsed_command_args += f"{arg_name.strip()}: {arg_type.strip()}, "
-            else:
-                parsed_command_args += f"{self.parse_arg(arg_name.strip(), arg_type.strip())} "
+                if "typer." in arg_type:
+                    parsed_command_args += f"{arg_name.strip()}: {arg_type.strip()}, "
+                else:
+                    parsed_command_args += f"{self.parse_arg(arg_name.strip(), arg_type.strip())} "
 
         # strip the extra ", "
         return parsed_command_args[:-2]

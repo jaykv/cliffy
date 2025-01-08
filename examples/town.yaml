@@ -77,7 +77,6 @@ commands:
     run: |
       """Buy a home"""
       print(f"buying home {address} for {money}")
-      print("test123")
   (*).list:
     args: [--limit|-l: int]
     run: |

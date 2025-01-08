@@ -1,7 +1,7 @@
-## Generated hello on 2025-01-07 00:05:02.062440
+## Generated hello on 2025-01-07 20:58:01.695302
+from typing import Optional, Any
 import subprocess
 import typer
-from typing import Optional, Any
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""Hello world!""")

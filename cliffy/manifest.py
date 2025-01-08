@@ -13,14 +13,14 @@ class CommandArg(BaseModel):
     required: bool = False
 
 
-ArgBlock = Union[dict[str, str], CommandArg]
+ArgBlock = Union[dict[str, str], CommandArg, str]
 VarBlock = Union[str, dict[str, None]]
 
 
 class Command(BaseModel):
     run: Union[str, list[str]] = ""
     help: Optional[str] = None
-    args: Optional[list[ArgBlock]] = Field(default_factory=list)
+    args: Optional[list[ArgBlock]] = []
     template: Optional[str] = None
     pre_run: Optional[str] = None
     post_run: Optional[str] = None
@@ -32,7 +32,7 @@ CommandBlock = Union[Command, str, list[str]]
 
 
 class CommandTemplate(BaseModel):
-    args: list[ArgBlock] = Field(default_factory=list)
+    args: list[ArgBlock] = []
     pre_run: Optional[str] = None
     post_run: Optional[str] = None
 
@@ -44,11 +44,11 @@ class CLIManifest(BaseModel):
     help: str = Field("", description="Brief description of the CLI")
 
     requires: list[str] = Field(
-        default_factory=list,
+        default=[],
         description="List of Python package dependencies for the CLI." "Supports requirements specifier syntax.",
     )
     includes: list[str] = Field(
-        default_factory=list,
+        default=[],
         description="List of external CLI manifests to include."
         "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest. "
         "and finally, deep merges the merged manifest with this manifest.",
@@ -62,12 +62,12 @@ class CLIManifest(BaseModel):
         "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
     )
     imports: Union[str, list[str]] = Field(
-        default_factory=list,
+        default=[],
         description="String block or list of strings containing any module imports. "
         "These can be used to import any python modules that the CLI depends on.",
     )
     functions: list[str] = Field(
-        default_factory=list,
+        default=[],
         description="List of helper function definitions. "
         "These functions should be defined as strings that can be executed by the Python interpreter.",
     )
@@ -79,7 +79,7 @@ class CLIManifest(BaseModel):
         "for params and options defined in the args section.",
     )
 
-    global_args: list[ArgBlock] = Field(default_factory=list, description="Arguments applied to all commands")
+    global_args: list[ArgBlock] = Field(default=[], description="Arguments applied to all commands")
 
     command_templates: dict[str, CommandTemplate] = Field(
         default_factory=dict, description="Reusable command templates"
@@ -96,7 +96,7 @@ class CLIManifest(BaseModel):
 
     cli_options: dict[str, Any] = Field(default_factory=dict, description="Additional CLI configuration options")
 
-    tests: list[str | dict[str, str]] = Field(default_factory=list, description="Test cases for commands")
+    tests: list[str | dict[str, str]] = Field(default=[], description="Test cases for commands")
 
     class Config:
         extra = "allow"

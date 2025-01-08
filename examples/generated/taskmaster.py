@@ -1,7 +1,7 @@
-## Generated taskmaster on 2025-01-07 00:05:02.552065
+## Generated taskmaster on 2025-01-07 20:58:02.103205
+from typing import Optional, Any
 import subprocess
 import typer
-from typing import Optional, Any
 import json
 from datetime import datetime
 from tabulate import tabulate
@@ -150,7 +150,7 @@ task_app.command("complete")(task_complete)
 
 def task_remove(project: str = typer.Argument(..., help="Name of the project"), name: str = typer.Argument(..., help="Name of the task")):
     data = load_data()
-    data["tasks"] = [task for task in data["tasks"] if not (task["project"] == project and task["name"] == name)]
+    data["tasks"] = [task for task in data["tasks"] if task["project"] != project or task["name"] != name]
     save_data(data)
     print(f"Task '{name}' removed from project '{project}' successfully.")
 
