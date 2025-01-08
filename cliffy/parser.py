@@ -77,7 +77,7 @@ class Parser:
         else:
             parsed_arg_type += f"({default_val.strip()}"
 
-        if aliases:
+        if aliases and typer_cls == "Option":
             parsed_arg_type += f', "--{arg_name}"'
             for alias in aliases:
                 parsed_arg_type += f', "{alias.strip()}"'
@@ -133,7 +133,7 @@ class Parser:
         combined_command_args = self.manifest.global_args + command.args
         for arg in combined_command_args:
             if isinstance(arg, CommandArg):
-                aliases = [f"-{arg.short}"] if arg.short else None
+                aliases = [f"-{arg.short}"] if arg.short and arg.kind == "Option" else None
 
                 parsed_command_args += (
                     self.build_param_type(
