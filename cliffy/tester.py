@@ -1,4 +1,4 @@
-from typing import Generator, cast
+from typing import Generator, Union, cast
 from click.testing import Result
 from pydantic import BaseModel, field_validator
 from typer.testing import CliRunner
@@ -50,7 +50,7 @@ class Tester:
         self.runner = CliRunner()
         self.parser = Parser(cast(CLIManifest, self.T.manifest))
 
-        self.test_pipeline: list[ShellScript | TestCase] = []
+        self.test_pipeline: list[Union[ShellScript, TestCase]] = []
         self.total_cases = 0
 
         for t in self.T.manifest.tests:

@@ -96,7 +96,7 @@ class CLIManifest(BaseModel):
 
     cli_options: dict[str, Any] = Field(default_factory=dict, description="Additional CLI configuration options")
 
-    tests: list[str | dict[str, str]] = Field(default=[], description="Test cases for commands")
+    tests: list[Union[str, dict[str, str]]] = Field(default=[], description="Test cases for commands")
 
     class Config:
         extra = "allow"
@@ -273,7 +273,7 @@ class IncludeManifest(BaseModel):
     functions: list[str] = []
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
-    tests: list[str | dict[str, str]] = []
+    tests: list[Union[str, dict[str, str]]] = []
 
 
 class CLIMetadata(BaseModel):
