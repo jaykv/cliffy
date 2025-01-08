@@ -59,7 +59,7 @@ def test_command_arg_parsing():
                     ),
                     # Test Option kind
                     CommandArg(
-                        name="--greeting", kind="Option", type="str", default="Hello", help="Custom greeting", short="g"
+                        name="greeting", kind="Option", type="str", default='"Hello"', help="Custom greeting", short="g"
                     ),
                 ],
                 run='print(f"{greeting} {name}!")',
