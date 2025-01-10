@@ -6,7 +6,7 @@ from typing import DefaultDict
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
-from .manifest import ArgBlock, CLIManifest, Command, CommandArg
+from .manifest import ArgBlock, CLIManifest, Command, CommandArg, CommandConfig
 from .parser import Parser
 
 
@@ -91,9 +91,15 @@ class Commander:
                 if not template:
                     raise ValueError(f"Template {command.template} undefined in command_templates")
 
-                command.args = (command.args or []) + template.args
+                if template.args:
+                    command.args = template.args + (command.args or [])
+                if template.config:
+                    merged = template.config.model_dump(exclude_unset=True) | (
+                        command.config.model_dump(exclude_unset=True) if command.config else {}
+                    )
+                    command.config = CommandConfig(**merged)
                 if template.pre_run:
-                    command.pre_run = (command.pre_run or "") + "\n" + template.pre_run
+                    command.pre_run = template.pre_run + "\n" + (command.pre_run or "")
                 if template.post_run:
                     command.post_run = (command.post_run or "") + "\n" + template.post_run
 

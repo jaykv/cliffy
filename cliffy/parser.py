@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple, Union
 
 from pybash.transformer import transform as transform_bash
 
-from .manifest import CLIManifest, Command, CommandBlock, CommandArg
+from .manifest import CLIManifest, Command, CommandArg
 
 
 class Parser:
@@ -39,24 +39,13 @@ class Parser:
         parsed_script = transform_bash(norm_script).strip()
         return "".join(" " * 4 + line + "\n" for line in parsed_script.split("\n"))
 
-    def parse_command(self, block: CommandBlock) -> str:
-        if isinstance(block, Command):
-            code = f'    """\n    {block.help}\n    """\n' if block.help else ""
-            code += self.parse_command_block(block.run)
-        elif isinstance(block, list):
-            script_block = []
-            help_text = ""
-            for block_elem in block:
-                if isinstance(block_elem, dict):
-                    help_text = block_elem.get("help", "")
-                else:
-                    script_block.append(block_elem)
-
-            code = f'    """\n    {help_text}\n    """\n' if help_text else ""
-            code += "".join(map(self.parse_command_block, script_block))
-        else:
-            code = self.parse_command_block(block)
-
+    def parse_command_run(self, command: Command) -> str:
+        code = ""
+        if command.pre_run:
+            code += self.parse_command_block(command.pre_run)
+        code += self.parse_command_block(command.run)
+        if command.post_run:
+            code += self.parse_command_block(command.post_run)
         return code
 
     def build_param_type(

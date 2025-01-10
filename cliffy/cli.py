@@ -325,9 +325,11 @@ test_command = cli.command("test")(test)
 validate_command = cli.command("validate")(validate)
 
 # register aliases
-cli.command("add", hidden=True, epilog="Alias for load")(load)
+cli.command("add", hidden=True, epilog="Alias for load")(
+    click.argument("manifests", type=click.File("rb"), nargs=-1)(load)
+)
 cli.command("ls", hidden=True, epilog="Alias for list")(cliffy_list)
-cli.command("rm", hidden=True, epilog="Alias for remove")(remove)
+cli.command("rm", hidden=True, epilog="Alias for remove")(click.argument("cli_names", type=str, nargs=-1)((remove)))
 cli.command("rm-all", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("rmall", hidden=True, epilog="Alias for remove-all")(remove_all)
-cli.command("reload", hidden=True, epilog="Alias for update")(update)
+cli.command("reload", hidden=True, epilog="Alias for update")(click.argument("cli_names", type=str, nargs=-1)(update))

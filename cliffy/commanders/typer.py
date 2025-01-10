@@ -81,7 +81,7 @@ def main("""
 
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_args(command)}):
-{self.parser.parse_command(command.run)}
+{self.parser.parse_command_run(command)}
 
 cli.command("{parsed_command_name}", help="{parsed_help}",{parsed_command_config})({parsed_command_func_name})
 """
@@ -103,7 +103,7 @@ cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
         parsed_help = command.help.replace("\n", "") if command.help else ""
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_args(command)}):
-{self.parser.parse_command(command.run)}
+{self.parser.parse_command_run(command)}
 
 {group.name}_app.command("{parsed_command_name}", help="{parsed_help}","""
         self.cli += f"""{parsed_command_config})({parsed_command_func_name})

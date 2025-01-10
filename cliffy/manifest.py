@@ -49,6 +49,7 @@ class CommandTemplate(BaseModel):
     args: list[ArgBlock] = []
     pre_run: Optional[str] = None
     post_run: Optional[str] = None
+    config: Optional[CommandConfig] = None
 
 
 class CLIManifest(BaseModel):
