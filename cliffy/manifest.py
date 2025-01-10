@@ -18,6 +18,18 @@ ArgBlock = Union[dict[str, str], CommandArg, str]
 VarBlock = Union[str, dict[str, None]]
 
 
+class CommandConfig(BaseModel):
+    context_settings: Optional[dict[Any, Any]] = None
+    epilog: Optional[str] = None
+    short_help: Optional[str] = None
+    options_metavar: str = "[OPTIONS]"
+    add_help_option: bool = True
+    no_args_is_help: bool = False
+    hidden: bool = False
+    deprecated: bool = False
+    rich_help_panel: Optional[str] = None
+
+
 class Command(BaseModel):
     run: Union[str, list[str]] = ""
     help: Optional[str] = None
@@ -27,6 +39,7 @@ class Command(BaseModel):
     post_run: Optional[str] = None
     aliases: list[str] = []
     name: str = ""
+    config: Optional[CommandConfig] = None
 
 
 CommandBlock = Union[Command, str, list[str]]

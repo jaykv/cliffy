@@ -5,7 +5,6 @@ import traceback
 import sys
 from click.core import Context, Parameter
 from click.types import _is_file_like
-import yaml
 
 from cliffy.tester import ShellScript, Tester
 
@@ -301,14 +300,6 @@ def test(manifest: str, exitfirst: bool) -> None:
 
 
 @click.argument("manifest", type=click.File("rb"), required=True)
-def cli_format(manifest: TextIO) -> None:
-    """Format the CLI manifest"""
-    M = yaml.load(manifest, Loader=yaml.UnsafeLoader)
-    yaml.dump(M, open(manifest.name, "w"), indent=2, sort_keys=False, line_break="\n")
-    out("Formatted", fg="green")
-
-
-@click.argument("manifest", type=click.File("rb"), required=True)
 def validate(manifest: TextIO) -> None:
     """Validate the syntax and structure of a CLI manifest"""
     try:
@@ -332,7 +323,6 @@ run_command = cli.command("run")(cliffy_run)
 update_command = cli.command("update")(update)
 test_command = cli.command("test")(test)
 validate_command = cli.command("validate")(validate)
-format_command = cli.command("format")(cli_format)
 
 # register aliases
 cli.command("add", hidden=True, epilog="Alias for load")(load)
@@ -341,4 +331,3 @@ cli.command("rm", hidden=True, epilog="Alias for remove")(remove)
 cli.command("rm-all", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("rmall", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("reload", hidden=True, epilog="Alias for update")(update)
-cli.command("fmt", hidden=True, epilog="Alias for format")(cli_format)

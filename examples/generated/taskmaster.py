@@ -1,7 +1,7 @@
-## Generated taskmaster on 2025-01-07 22:00:22.855797
+## Generated taskmaster on 2025-01-09 23:34:10.921034
 from typing import Optional, Any
-import subprocess
 import typer
+import subprocess
 import json
 from datetime import datetime
 from tabulate import tabulate
@@ -48,7 +48,7 @@ def backup():
     subprocess.run(["echo","Backup created: tasks.json.backup"])
 
 
-cli.command("backup")(backup)
+cli.command("backup", help="Create a backup of the task data",)(backup)
 project_app = typer.Typer()
 cli.add_typer(project_app, name="project", help="")
 
@@ -62,7 +62,7 @@ def project_add(name: str = typer.Argument(..., help="Name of the project")):
         print(f"Project '{name}' already exists.")
 
 
-project_app.command("add")(project_add)
+project_app.command("add", help="",)(project_add)
 
 def project_list():
     data = load_data()
@@ -74,7 +74,7 @@ def project_list():
         print("No projects found.")
 
 
-project_app.command("list")(project_list)
+project_app.command("list", help="",)(project_list)
 
 def project_remove(name: str = typer.Argument(..., help="Name of the project")):
     data = load_data()
@@ -87,7 +87,7 @@ def project_remove(name: str = typer.Argument(..., help="Name of the project")):
         print(f"Project '{name}' not found.")
 
 
-project_app.command("remove")(project_remove)
+project_app.command("remove", help="",)(project_remove)
 task_app = typer.Typer()
 cli.add_typer(task_app, name="task", help="")
 
@@ -108,7 +108,7 @@ def task_add(project: str = typer.Argument(..., help="Name of the project"), nam
     print(f"Task '{name}' added to project '{project}' successfully.")
 
 
-task_app.command("add")(task_add)
+task_app.command("add", help="",)(task_add)
 
 def task_list(project: str = typer.Argument(..., help="Name of the project")):
     data = load_data()
@@ -123,7 +123,7 @@ def task_list(project: str = typer.Argument(..., help="Name of the project")):
                 task["name"],
                 format_date(task["due_date"]) if task["due_date"] else "N/A",
                 task["priority"],
-                "✓" if task["completed"] else "✗"
+                "x" if task["completed"] else "o"
             ]
             for task in tasks
         ]
@@ -133,7 +133,7 @@ def task_list(project: str = typer.Argument(..., help="Name of the project")):
         print("No tasks found.")
 
 
-task_app.command("list")(task_list)
+task_app.command("list", help="",)(task_list)
 
 def task_complete(project: str = typer.Argument(..., help="Name of the project"), name: str = typer.Argument(..., help="Name of the task")):
     data = load_data()
@@ -146,7 +146,7 @@ def task_complete(project: str = typer.Argument(..., help="Name of the project")
     print(f"Task '{name}' in project '{project}' not found.")
 
 
-task_app.command("complete")(task_complete)
+task_app.command("complete", help="",)(task_complete)
 
 def task_remove(project: str = typer.Argument(..., help="Name of the project"), name: str = typer.Argument(..., help="Name of the task")):
     data = load_data()
@@ -155,7 +155,7 @@ def task_remove(project: str = typer.Argument(..., help="Name of the project"), 
     print(f"Task '{name}' removed from project '{project}' successfully.")
 
 
-task_app.command("remove")(task_remove)
+task_app.command("remove", help="",)(task_remove)
 
 if __name__ == "__main__":
     cli()

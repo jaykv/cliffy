@@ -1,4 +1,4 @@
-manifestVersion: v1 # optional (Default will be the latest)
+manifestVersion: v2 # optional (Default will be the latest)
 name: db
 version: 0.1.0
 help: Database CLI
@@ -15,7 +15,7 @@ imports: |
 commands:
   create|mk:
     args: &db_args
-    - name: DatabaseName
+      - name: DatabaseName
     run: |
       """Create a new database"""
       console.print(f"Creating database {name}", style="green")

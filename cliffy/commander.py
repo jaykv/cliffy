@@ -64,7 +64,7 @@ class Commander:
         """
         for command in self.commands:
             if "|" in command.name:
-                aliases = command.name.split("|")
+                aliases = [s.strip() for s in command.name.split("|")]
 
                 # skip group command aliases
                 if "." in aliases[0]:
@@ -80,12 +80,22 @@ class Commander:
         group_help_dict = {}
 
         for command in self.commands:
-            if not command.name:
-                raise ValueError("Command name is missing :(")
             # Check for greedy commands- evaluate them at the end
             if self.is_greedy(command.name):
                 self.greedy.append(command)
                 continue
+
+            # Merge with command template
+            if command.template:
+                template = self.manifest.command_templates.get(command.template)
+                if not template:
+                    raise ValueError(f"Template {command.template} undefined in command_templates")
+
+                command.args = (command.args or []) + template.args
+                if template.pre_run:
+                    command.pre_run = (command.pre_run or "") + "\n" + template.pre_run
+                if template.post_run:
+                    command.post_run = (command.post_run or "") + "\n" + template.post_run
 
             if "." in command.name:
                 group_name = command.name.split(".")[:-1][-1]

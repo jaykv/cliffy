@@ -1,5 +1,5 @@
 from cliffy.commanders.typer import TyperCommander
-from cliffy.manifest import CLIManifest, Command, CommandArg
+from cliffy.manifest import CLIManifest, Command, CommandArg, CommandConfig
 
 
 def test_greedy_command_expand():
@@ -152,3 +152,117 @@ def test_command_arg_required_option():
 
     # Verify required Option
     assert 'token: str = typer.Option(..., help="API token")' in cmdr.cli
+
+
+def test_command_config_options():
+    manifest = CLIManifest(
+        name="test",
+        version="0.1.0",
+        help="Test CLI",
+        commands={
+            "test": Command(
+                name="test",
+                help="Test command",
+                config=CommandConfig(
+                    context_settings={"help_option_names": ["-h", "--helpme"]},
+                    epilog="Epilog text",
+                    short_help="Short help text",
+                    options_metavar="[TEST OPTIONS]",
+                    add_help_option=False,
+                    no_args_is_help=True,
+                    hidden=True,
+                    deprecated=True,
+                    rich_help_panel="Custom Panel",
+                ),
+                run="print('test')",
+            )
+        },
+    )
+
+    cmdr = TyperCommander(manifest=manifest)
+    cmdr.generate_cli()
+
+    assert "context_settings={'help_option_names': ['-h', '--helpme']}," in cmdr.cli
+    assert 'epilog="Epilog text",' in cmdr.cli
+    assert 'short_help="Short help text",' in cmdr.cli
+    assert 'options_metavar="[TEST OPTIONS]",' in cmdr.cli
+    assert "add_help_option=False," in cmdr.cli
+    assert "no_args_is_help=True," in cmdr.cli
+    assert "hidden=True," in cmdr.cli
+    assert "deprecated=True," in cmdr.cli
+    assert 'rich_help_panel="Custom Panel"' in cmdr.cli
+
+
+def test_command_config_empty():
+    manifest = CLIManifest(
+        name="test",
+        version="0.1.0",
+        help="Test CLI",
+        commands={
+            "test": Command(
+                name="test",
+                help="Test command",
+                run="print('test')",
+            ),
+            "test2": Command(
+                name="test2",
+                help="Test command",
+                config=CommandConfig(),
+                run="print('test')",
+            ),
+        },
+    )
+
+    cmdr = TyperCommander(manifest=manifest)
+    cmdr.generate_cli()
+
+    assert "epilog=" not in cmdr.cli
+    assert "short_help=" not in cmdr.cli
+    assert "options_metavar=" not in cmdr.cli
+    assert "add_help_option=" not in cmdr.cli
+    assert "no_args_is_help=" not in cmdr.cli
+    assert "hidden=" not in cmdr.cli
+    assert "deprecated=" not in cmdr.cli
+    assert "rich_help_panel=" not in cmdr.cli
+
+
+def test_command_config_partial():
+    manifest = CLIManifest(
+        name="test",
+        version="0.1.0",
+        help="Test CLI",
+        commands={
+            "test": Command(
+                name="test",
+                help="Test command",
+                config=CommandConfig(hidden=True),  # Partial config
+                run="print('test')",
+            )
+        },
+    )
+
+    cmdr = TyperCommander(manifest=manifest)
+    cmdr.generate_cli()
+
+    assert "hidden=True" in cmdr.cli
+    assert "rich_help_panel=" not in cmdr.cli  # Other options should not be present
+
+
+def test_command_config_help_newline_removed():
+    manifest = CLIManifest(
+        name="test",
+        version="0.1.0",
+        help="Test CLI",
+        commands={
+            "test": Command(
+                name="test",
+                help="Test command\nwith newline",
+                config=CommandConfig(),
+                run="print('test')",
+            )
+        },
+    )
+
+    cmdr = TyperCommander(manifest=manifest)
+    cmdr.generate_cli()
+    assert 'help="Test commandwith newline",' in cmdr.cli

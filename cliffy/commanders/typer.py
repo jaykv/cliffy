@@ -76,11 +76,14 @@ def main("""
 
         parsed_command_func_name = self.parser.get_command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
+        parsed_command_config = self.parser.get_parsed_config(command)
+        parsed_help = command.help.replace("\n", "") if command.help else ""
+
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_args(command)}):
 {self.parser.parse_command(command.run)}
 
-cli.command("{parsed_command_name}")({parsed_command_func_name})
+cli.command("{parsed_command_name}", help="{parsed_help}",{parsed_command_config})({parsed_command_func_name})
 """
 
         for alias in command.aliases:
@@ -96,11 +99,14 @@ cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
     def add_sub_command(self, command: Command, group: Group) -> None:
         parsed_command_func_name = self.parser.get_command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
+        parsed_command_config = self.parser.get_parsed_config(command)
+        parsed_help = command.help.replace("\n", "") if command.help else ""
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_args(command)}):
 {self.parser.parse_command(command.run)}
 
-{group.name}_app.command("{parsed_command_name}")({parsed_command_func_name})
+{group.name}_app.command("{parsed_command_name}", help="{parsed_help}","""
+        self.cli += f"""{parsed_command_config})({parsed_command_func_name})
 """
 
         for alias in command.aliases:

@@ -160,6 +160,13 @@ class Parser:
         # strip the extra ", "
         return parsed_command_args[:-2]
 
+    def get_parsed_config(self, command: Command) -> str:
+        if not command.config:
+            return ""
+
+        configured_options = command.config.model_dump(exclude_unset=True)
+        return self.to_args(configured_options)
+
     def get_command_func_name(self, command) -> str:
         """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""
         return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
@@ -169,5 +176,5 @@ class Parser:
         return command.name.split(".")[-1] if "." in command.name else command.name
 
     def to_args(self, d: dict) -> str:
-        s = "".join(f" {k}={v}," for k, v in d.items())
+        s = "".join(f' {k}="{v}",' if isinstance(v, str) else f" {k}={v}," for k, v in d.items())
         return s[:-1]
