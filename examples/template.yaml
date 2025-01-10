@@ -4,12 +4,27 @@ version: 0.1.0
 vars:
   GLOBAL_VAR: hello
 
+command_templates:
+  common_args:
+    args:
+      - local_arg: str!
+      - -local_arg_2: str = ""
+
 commands:
   hello:
-    help: Demo. global var and command args usage. 
+    help: |
+      Demo. global var and command args usage. 
       Runs hello command by default based on GLOBAL_VAR.
-    args:
-    - local_arg: str!
-    - -local_arg_2: str = ""
+    template: common_args
     run:
     - $ {{GLOBAL_VAR}} f{local_arg} --f{local_arg_2}
+    config:
+      deprecated: True
+      context_settings:
+        help_option_names: ["-h", "--helpme"]
+  
+  debug:
+    help: ""
+    template: common_args
+    run: |
+      print(f"arg1: {local_arg}, arg2: --{local_arg_2}")
