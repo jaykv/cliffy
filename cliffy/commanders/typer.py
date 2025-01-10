@@ -1,16 +1,16 @@
 import datetime
 
 from ..commander import Command, Commander, Group
-from ..manifests import Manifest
+from ..manifest import CLIManifest
 
 
 class TyperCommander(Commander):
     """Generates commands based on the command config"""
 
-    def __init__(self, manifest: Manifest) -> None:
+    def __init__(self, manifest: CLIManifest) -> None:
         super().__init__(manifest)
-        self.base_imports.add("import typer")
         self.base_imports.add("import subprocess")
+        self.base_imports.add("import typer")
         self.base_imports.add("from typing import Optional, Any")
 
     def add_base_imports(self):
@@ -71,11 +71,14 @@ def main("""
 """
 
     def add_root_command(self, command: Command) -> None:
+        if not command.run:
+            return
+
         parsed_command_func_name = self.parser.get_command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_args(command)}):
-{self.parser.parse_command(command.script)}
+{self.parser.parse_command(command.run)}
 
 cli.command("{parsed_command_name}")({parsed_command_func_name})
 """
@@ -95,7 +98,7 @@ cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
         parsed_command_name = self.parser.get_parsed_command_name(command)
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_args(command)}):
-{self.parser.parse_command(command.script)}
+{self.parser.parse_command(command.run)}
 
 {group.name}_app.command("{parsed_command_name}")({parsed_command_func_name})
 """

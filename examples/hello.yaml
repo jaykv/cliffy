@@ -3,11 +3,11 @@ version: 0.1.0
 help: Hello world!
 
 commands:
-  bash: $echo "hello from bash"
+  shell: $echo "hello from shell"
   python: print("hello from python")
 
 tests:
-  bash: assert result.exit_code == 0
-  python: assert result.output == "hello from python\n"
-  bash --help: assert "Show this message and exit" in result.output
-  -h: assert "Hello world!" in result.output
+  - shell: assert result.exit_code == 0
+  - python: assert result.output == "hello from python\n"
+  - shell --help: assert "Show this message and exit" in result.output
+  - -h: assert "Hello world!" in result.output

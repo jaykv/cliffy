@@ -8,7 +8,7 @@ from typing import Iterator, Optional
 
 from .commander import CLI
 from .helper import CLIFFY_METADATA_DIR, write_to_file
-from .manifests.v1 import CLIMetadata
+from .manifest import CLIMetadata
 
 
 def save_metadata(manifest_path: str, cli: CLI) -> None:

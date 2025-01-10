@@ -33,31 +33,39 @@ functions:
 
 commands:
   clean:
-    - help: Clean pycache artifacts
+    help: Clean pycache artifacts
+    run:
     - $ find . -type f -name "*.pyc" -delete
     - $ find . -type d -name "__pycache__" -delete
     - $ echo Cleaned!
 
   format:
-    - help: Format code with black
+    help: Format code with black
+    run:
     - $ black .
     - $ echo Formatted!
 
   lint:
-    - help: Run linters on the code
+    help: Run linters on the code
+    run:
     - $ flake8 .
     - $ black --check .
     - $ mypy .
     - print("Linting successful!")
 
   test:
-    - help: Run tests
+    help: Run tests
+    run:
     - $ pytest
     - print("Tests passed!")
 
   bump: 
-    - help: Bump the package version
-    - |
+    help: Bump the package version
+    args:
+    - --major: VersionPart
+    - --minor: VersionPart
+    - --patch: VersionPart
+    run: |
       current_version = run_cmd("python setup.py --version")
       print(f"Current version: {current_version}")
       parts = current_version.split('.')
@@ -67,9 +75,6 @@ commands:
       contents = contents.replace(current_version, new_version)
       write_to_file("setup.py", contents)
       print(f"Bumped version from {current_version} to {new_version}.")
-
-args:
-  bump: [--major: VersionPart, --minor: VersionPart, --patch: VersionPart]
 
 types:
   VersionPart: int = typer.Option(..., help="Version part", min=0)

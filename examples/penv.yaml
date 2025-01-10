@@ -13,14 +13,6 @@ vars:
   HOME_PATH: {str(Path.home())}
   DEFAULT_VENV_STORE: {'f"{HOME_PATH}/venv-store/"'}
 
-
-args:
-  go:
-    - name: str!
-    - --interpreter | -i: str = "python"
-  rm:
-    - name: str!
-
 functions:
   - |
     def get_venv_path(name: str) -> str:
@@ -31,18 +23,23 @@ functions:
 
 commands:
   ls:
-    - help: List venvs in the store
-    - $ ls f{DEFAULT_VENV_STORE}
+    help: List venvs in the store
+    run: $ ls f{DEFAULT_VENV_STORE}
   rm:
-    - help: Remove a venv
-    - rmtree(get_venv_path(name))
+    help: Remove a venv
+    args:
+      - name: str!
+    run: rmtree(get_venv_path(name))
   go:
-    - help: Activate a venv
-    - |
+    help: Activate a venv
+    args:
+      - name: str!
+      - --interpreter | -i: str = "python"
+    run: |
       if venv_exists(name):
           print(f"~ sourcing {name}")
       else:
           print(f"~ creating {name}")
           $ f{interpreter} -m venv f{os.path.join(DEFAULT_VENV_STORE, name)}
       
-      os.system(f"""bash -c ". {get_venv_path(name)}/bin/activate; env PS1='\[\e[38;5;211m\]({name})\[\e[\033[00m\] \w $ ' bash --norc\"""")
+      os.system(f"""bash -c ". {get_venv_path(name)}/bin/activate; env PS1='\\[\\e[38;5;211m\\]({name})\\[\\e[\033[00m\\] \\w $ ' bash --norc\"""")

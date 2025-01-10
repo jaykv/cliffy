@@ -1,7 +1,7 @@
-## Generated requires on 2024-08-25 23:31:48.327128
-import typer
-import subprocess
+## Generated requires on 2025-01-07 22:00:22.656936
 from typing import Optional, Any
+import subprocess
+import typer
 import six
 
 

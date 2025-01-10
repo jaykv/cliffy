@@ -9,7 +9,7 @@ from typing_extensions import Self
 from .commander import generate_cli
 from .commanders.typer import TyperCommander
 from .helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
-from .manifests import IncludeManifest, Manifest, set_manifest_version
+from .manifest import IncludeManifest, CLIManifest
 from .merger import cliffy_merger
 
 
@@ -27,14 +27,12 @@ class Transformer:
     ) -> None:
         self.manifest_io = manifest_io
         self.command_config = self.load_manifest(manifest_io)
-        self.manifest_version = self.command_config.pop("manifestVersion", "v1")
+        self.manifest_version = self.command_config.pop("manifestVersion", "v2")
         if self.command_config.get("includes"):
             self.includes_config = self.resolve_includes()
             cliffy_merger.merge(self.command_config, self.includes_config)
 
-        set_manifest_version(self.manifest_version)
-
-        manifest_cls = IncludeManifest if as_include else Manifest
+        manifest_cls = IncludeManifest if as_include else CLIManifest
         try:
             self.manifest = manifest_cls(**self.command_config)
         except ValidationError as e:
@@ -44,7 +42,7 @@ class Transformer:
         if validate_requires:
             self.validate_cli_requires()
 
-        if isinstance(self.manifest, Manifest):
+        if isinstance(self.manifest, CLIManifest):
             self.cli = generate_cli(self.manifest, commander_cls=TyperCommander)
 
     def validate_cli_requires(self) -> None:

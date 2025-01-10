@@ -10,12 +10,12 @@ vars:
   # var setup on load time
   default_env_var: "{{ env['ENVIRON_LOAD_VAR'] or 'hello' }}"
 
-args:
-  read:
-  - env-var: str!
-
 commands:
-  read: $ echo f{os.environ[env_var]}
+  read: 
+    args:
+      - env-var: str!
+    run: $ echo f{os.environ[env_var]}
+
   hello: $ echo {{ default_env_var }}
   bye: $ echo f{os.environ['ENVIRON_BYE_TEXT']} # on run time
   hello-bye: |
