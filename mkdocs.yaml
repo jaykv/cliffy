@@ -6,6 +6,8 @@ nav:
   - Schema: schema.md
 theme:
   name: material
+  icon:
+    logo: fontawesome/solid/mountain
   palette:
     - scheme: default
       primary: brown
