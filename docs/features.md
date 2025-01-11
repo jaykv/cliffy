@@ -145,6 +145,6 @@ tests:
   - project list: assert "test1" in result.output
 ```
 
-These tests can then be ran with `cli test <path-to-manifest>`. 
+These tests can then be ran with `cli test`. 
 
 Explore the [Schema](schema.md) for concrete definition of CLI configuration and manifest fields.

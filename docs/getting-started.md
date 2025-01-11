@@ -38,16 +38,44 @@ This manifest defines a CLI named `hello` with a single command `hello` that tak
 
 ## Running Your CLI
 
-To run your CLI, use the `cliffy` command followed by the path to your manifest file:
+To run your CLI, use the `cli run` command followed by the path to your manifest file:
 
 ```bash
-cli run cliffy.yaml hello --name "Your Name"
+$ cli run hello.yaml -- hello --name "Your Name"
 ```
 
 This will output:
 
 ```
 Hello, Your Name!
+```
+
+### Loading CLIs
+
+You can load the CLI using the `cli load` command to avoid needing to prefix `cli run hello.yaml` for each trigger:
+
+```bash
+$ cli load hello.yaml
+```
+
+This command loads the generated CLI into the current Python environment. You can then run the CLI directly from the terminal by its name:
+
+```bash
+$ hello -h
+```
+
+### Building CLIs
+
+To build a CLI into a portable zipapp, you can run the `cli build` command:
+
+```bash
+$ cli build hello.yaml -o dist
+```
+
+This command builds a portable zipapp containing the CLI and its package requirements, outputting it to the `dist` directory. You can then run the built CLI:
+
+```bash
+$ ./dist/hello -h
 ```
 
 ## Next Steps
