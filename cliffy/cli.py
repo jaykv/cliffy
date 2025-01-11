@@ -269,7 +269,7 @@ def test(manifest: str, exitfirst: bool) -> None:
             if result.exception:
                 out(str(result))
             next(test, "")
-            out(f"\n✅ {i+1} of {total}")
+            out(f"\n✅ {i + 1} of {total}")
             passed += 1
         except AssertionError:
             _, _, tb = sys.exc_info()

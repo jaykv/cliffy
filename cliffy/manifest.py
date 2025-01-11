@@ -1,5 +1,5 @@
 from typing import Any, Literal, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from .helper import wrap_as_comment
 from datetime import datetime
 
@@ -60,7 +60,7 @@ class CLIManifest(BaseModel):
 
     requires: list[str] = Field(
         default=[],
-        description="List of Python package dependencies for the CLI." "Supports requirements specifier syntax.",
+        description="List of Python package dependencies for the CLI.Supports requirements specifier syntax.",
     )
     includes: list[str] = Field(
         default=[],
@@ -116,6 +116,17 @@ class CLIManifest(BaseModel):
     class Config:
         extra = "allow"
 
+    @field_validator("manifestVersion", mode="after")
+    @classmethod
+    def is_v2(cls, value: str) -> str:
+        if value.strip() == "v1":
+            raise ValueError(
+                "v1 schema is deprecated with cliffy >= 0.4.0. Please upgrade the manifest to the v2 schema."
+            )
+        if value.strip() != "v2":
+            raise ValueError(f"Unrecognized manifest version {value}. Latest is v2.")
+        return value
+
     @classmethod
     def get_field_description(cls, field_name: str, as_comment: bool = True) -> str:
         field = cls.model_fields.get(field_name)
@@ -133,36 +144,36 @@ class CLIManifest(BaseModel):
 
         return f"""manifestVersion: v2
 
-{cls.get_field_description('name')}
+{cls.get_field_description("name")}
 name: {cli_name}
 
-{cls.get_field_description('version')}
+{cls.get_field_description("version")}
 version: 0.1.0
 
-{cls.get_field_description('help')}
+{cls.get_field_description("help")}
 help: A brief description of your CLI
 
-{cls.get_field_description('requires')}
+{cls.get_field_description("requires")}
 requires: []
   # - requests>=2.25.1
   # - pyyaml~=5.4
 
-{cls.get_field_description('includes')}
+{cls.get_field_description("includes")}
 includes: []
   # - path/to/other/manifest.yaml
 
-{cls.get_field_description('vars')}
+{cls.get_field_description("vars")}
 vars:
   data_file: "data.json"
   debug_mode: "{{{{ env['DEBUG'] or 'False' }}}}"
 
-{cls.get_field_description('imports')}
+{cls.get_field_description("imports")}
 imports: |
   import json
   import os
   from pathlib import Path
 
-{cls.get_field_description('functions')}
+{cls.get_field_description("functions")}
 functions:
   - |
     def load_data() -> dict:
@@ -175,16 +186,16 @@ functions:
       def save_data(data):
           with open("{{{{data_file}}}}", "w") as f:
               json.dump(data, f, indent=2)
-{cls.get_field_description('types')}
+{cls.get_field_description("types")}
 types:
   Filename: str = typer.Argument(..., help="Name of the file to process")
   Verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
 
-{cls.get_field_description('global_args')}
+{cls.get_field_description("global_args")}
 global_args:
   - verbose: Verbose
 
-{cls.get_field_description('command_templates')}
+{cls.get_field_description("command_templates")}
 command_templates:
   with_confirmation:
     args:
@@ -193,7 +204,7 @@ command_templates:
       if not yes:
         typer.confirm("Are you sure you want to proceed?", abort=True)
 
-{cls.get_field_description('commands')}
+{cls.get_field_description("commands")}
 commands:
   hello:
     help: Greet the user
@@ -226,11 +237,11 @@ commands:
       os.remove(filename)
       print("File deleted successfully")
 
-{cls.get_field_description('cli_options')}
+{cls.get_field_description("cli_options")}
 cli_options:
   rich_help_panel: True
 
-{cls.get_field_description('tests')}
+{cls.get_field_description("tests")}
 tests:
   - hello --name Alice: assert 'Hello, Alice!' in result.output
   - file process test.txt: assert 'Processing test.txt' in result.output
