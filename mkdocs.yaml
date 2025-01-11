@@ -1,0 +1,46 @@
+site_name: Cliffy
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Features: features.md
+  - Schema: schema.md
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: brown
+      accent: indigo
+      toggle:
+        icon: material/brightness-7 
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - content.code.copy
+plugins:
+  - search
+  - literate-nav
+  - git-committers:
+      repository: jaykv/cliffy
+      branch: main
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed
+  - toc:
+      permalink: true
+repo_url: https://github.com/jaykv/cliffy
