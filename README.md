@@ -1,6 +1,7 @@
 [![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/cliffy/python-app.yaml?branch=main)](https://github.com/jaykv/cliffy/actions)
 [![PyPI](https://img.shields.io/pypi/v/cliffy)](https://pypi.org/project/cliffy/)
 ![GitHub](https://img.shields.io/github/license/jaykv/cliffy)
+[![cliffy docs](https://img.shields.io/badge/just%20the%20message-8A2BE2)](https://github.com/jaykv/cliffy)
 
 # cliffy :mountain:
 **cliffy** simplifies the creation, management, and deployment of CLIs. Define your CLI's structure and behavior in a YAML manifest, and let cliffy handle the rest.
@@ -22,7 +23,9 @@ name: hello
 version: 0.1.0
 
 commands:
-  shell: $echo "hello from shell"
+  shell: 
+    help: Print hello in shell
+    run: $echo "hello from shell"
   python: print("hello from python")
 ```
 
@@ -79,16 +82,22 @@ Builds a portable zipapp containing the CLI and its package requirements.
 
 ## Usage
 `cli <command>`
-* `init <cli name> --raw`: Generate a template CLI manifest for a new CLI
-* `load <manifest>`: Add a new CLI based on the manifest
-* `render <manifest>`: View generated CLI script for a manifest
-* `list` or `ls`: Output a list of loaded CLIs 
-* `update <cli name>`: Reload a loaded CLI
-* `remove <cli name>` or `rm <cli name>`: Remove a loaded CLI
-* `run <manifest> -- <args>`: Runs a CLI manifest as a one-time operation
-* `build <cli name or manifest>`: Build a CLI manifest or a loaded CLI into a self-contained zipapp
-* `info <cli name>`: Display CLI metadata
-* `dev <manifest>`: Start hot-reloader for a manifest for active development
+
+
+| Command | Description |
+|---|---|
+| init \<cli name> | Generate a template CLI manifest for a new CLI |
+| load \<manifest> | Add a new CLI based on the manifest |
+| render \<manifest> | View generated CLI script for a manifest |
+| list, ls | Output a list of loaded CLIs |
+| update \<cli name> | Reload a loaded CLI |
+| remove \<cli name>, rm \<cli name> | Remove a loaded CLI |
+| run \<manifest> -- \<args> | Runs a CLI manifest command in isolation|
+| build \<cli name or manifest> | Build a CLI manifest or a loaded CLI into a self-contained zipapp |
+| info \<cli name> | Display CLI metadata |
+| dev \<manifest> | Start hot-reloader for a manifest for active development |
+| test \<manifest> | Run tests defined in a manifest |
+| validate \<manifest> | Validate the syntax and structure of a CLI manifest |
 
 ## How it works
 1. Define CLI manifests in YAML files
@@ -110,8 +119,8 @@ or
 * `pip install cliffy` to use the default help output.
 
 ### With uv
-* `uvx --from cliffy cli --help`
-* Load: `uvx --from cliffy cli load examples/hello.yaml`
+* `uvx cliffy --help`
+* Load: `uvx cliffy load examples/hello.yaml`
 * Run: `uvx --from cliffy hello`
 
 ## Manifest template
