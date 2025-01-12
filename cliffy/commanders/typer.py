@@ -1,7 +1,7 @@
 import datetime
 
-from ..commander import Command, Commander, Group
-from ..manifest import CLIManifest
+from cliffy.commander import Commander, Group
+from cliffy.manifest import CLIManifest, Command
 
 
 class TyperCommander(Commander):
@@ -13,7 +13,7 @@ class TyperCommander(Commander):
         self.base_imports.add("import typer")
         self.base_imports.add("from typing import Optional, Any")
 
-    def add_base_imports(self):
+    def add_base_imports(self) -> None:
         self.cli = f"""## Generated {self.manifest.name} on {datetime.datetime.now()}\n"""
         for imp in self.base_imports:
             self.cli += imp + "\n"

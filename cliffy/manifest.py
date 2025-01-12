@@ -1,55 +1,171 @@
-from typing import Any, Literal, Optional, Union
-from pydantic import BaseModel, Field, field_validator
+from typing import Any, Optional, Union
+from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
 from .helper import wrap_as_comment
 from datetime import datetime
+import sys
+
+
+class SimpleCommandArg(RootModel):
+    root: dict[str, str] = Field(
+        json_schema_extra={
+            "title": "Simple Command Arg\nBuild args with key as the arg name and value as the type and default vals, i.e. `verbose: bool = typer.Option(...)`"
+        },
+        max_length=1,
+    )
 
 
 class CommandArg(BaseModel):
-    name: str
-    kind: Union[Literal["Option"], Literal["Argument"]]
-    type: str
-    default: Any = None
-    help: Optional[str] = None
-    short: Optional[str] = None
-    required: bool = False
+    """
+    Defines the structure of a command argument. It is used
+    within the `args` field of a `Command` object.
+
+    By default, arguments are treated as positional arguments. To define an option, set `is_option` to True.
+    """
+
+    name: str = Field(..., description="Argument name.")
+    type: str = Field(
+        ...,
+        description="Argument type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section).",
+    )
+    is_option: bool = Field(
+        default=False,
+        description="Whether the argument is an option. Options are prefixed with '--'. Defaults to False.",
+    )
+    default: Any = Field(default=None, description="Default argument value.")
+    help: str = Field(default="", description="Argument description.")
+    short: str = Field(default="", description="Short option alias. i.e. '-v' for verbose.")
+    required: bool = Field(default=False, description="Whether the argument is required.")
+
+    @field_validator("short", mode="after")
+    @classmethod
+    def short_only_with_option(cls, v: str, info: ValidationInfo) -> str:
+        if v and not info.data.get("is_option"):
+            raise ValueError("`short` option can only be used when `is_option` is True.")
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "dependencies": {"short": ["is_option"]},
+        }
 
 
-ArgBlock = Union[dict[str, str], CommandArg, str]
+ArgBlock = Union[CommandArg, SimpleCommandArg, str]
 VarBlock = Union[str, dict[str, None]]
 
 
 class CommandConfig(BaseModel):
-    context_settings: Optional[dict[Any, Any]] = None
-    epilog: Optional[str] = None
-    short_help: Optional[str] = None
-    options_metavar: str = "[OPTIONS]"
-    add_help_option: bool = True
-    no_args_is_help: bool = False
-    hidden: bool = False
-    deprecated: bool = False
-    rich_help_panel: Optional[str] = None
+    """Configuration options for a Cliffy command."""
+
+    context_settings: dict[Any, Any] = Field(
+        default={},
+        description="""Arbitrary settings passed to Click's context. Useful for things
+        like overriding the default `max_content_width`.
+        See Click's documentation for more details:
+        https://click.palletsprojects.com/en/8.1.x/advanced/#context-settings""",
+    )
+    epilog: str = Field(default="", description="Text displayed after the help message.")
+    short_help: str = Field(default="", description="Short one-line help message displayed in help overviews.")
+    options_metavar: str = Field(
+        default="[OPTIONS]", description="Placeholder text displayed for options in help messages."
+    )
+    add_help_option: bool = Field(default=True, description="Whether to add the `--help` option automatically.")
+    no_args_is_help: bool = Field(
+        default=False,
+        description="If True, invoking the command without any arguments displays the help message.",
+    )
+    hidden: bool = Field(
+        default=False, description="If True, the command is hidden from help messages and command lists."
+    )
+    deprecated: bool = Field(
+        default=False, description="If True, the command is marked as deprecated in help messages."
+    )
+    rich_help_panel: str = Field(
+        default="",
+        description="""Name of a Rich help panel to display after the default help. This is useful for
+        displaying more complex help information, such as tables or formatted text.
+        The content of the panel is defined using the `@rich_help` decorator.""",
+    )
 
 
 class Command(BaseModel):
-    run: Union[str, list[str]] = ""
-    help: Optional[str] = None
-    args: Optional[list[ArgBlock]] = []
-    template: Optional[str] = None
-    pre_run: Optional[str] = None
-    post_run: Optional[str] = None
-    aliases: list[str] = []
-    name: str = ""
-    config: Optional[CommandConfig] = None
+    """
+    Defines a single command within the CLI. It specifies the command's execution logic,
+    arguments, and configuration.
+    """
+
+    run: Union[str, list[str]] = Field(
+        default="",
+        json_schema_extra={
+            "anyOf": [
+                {
+                    "type": "string",
+                    "description": "The command's execution logic. Lines prefixed with '$' are treated as shell commands.",
+                },
+                {
+                    "items": {"type": "string", "description": "Each list item is a line of the command script."},
+                    "type": "array",
+                },
+            ]
+        },
+        description="The command's execution logic. Lines prefixed with '$' are treated as shell commands.",
+    )
+    help: str = Field(default="", description="A description of the command, displayed in the help output.")
+    args: list[ArgBlock] = Field(
+        default=[],
+        description="A list of arguments for the command.\nThere are three ways to define an arg: \n(generic) 1. A string with the arg string. The string is simply appended to the params.\n(implicit) 2. A mapping with the arg name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 args syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `is_option` (False by default), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
+    )
+    template: str = Field(
+        default="",
+        description="A reference to a command template defined in the `command_templates` section of the manifest. This allows for reusable command definitions.",
+    )
+    pre_run: str = Field(
+        default="",
+        description="A script to run before the command is executed. This can be used for setup tasks or preconditions.",
+    )
+    post_run: str = Field(
+        default="",
+        description="A script to run after the command is executed. This can be used for cleanup tasks or post-processing.",
+    )
+    aliases: list[str] = Field(
+        default=[],
+        description="A list of aliases for the command. These aliases can be used to invoke the command with a different name.",
+    )
+    name: str = Field(
+        default="",
+        description="The name of the command. This is generally derived from the key in the `commands` section of the manifest, but can be explicitly set here.",
+    )
+    config: Optional[CommandConfig] = Field(
+        default=None,
+        description="An optional `CommandConfig` object that provides additional configuration options for the command, such as context settings, help text customization, and visibility.",
+    )
 
 
 CommandBlock = Union[Command, str, list[str]]
 
 
 class CommandTemplate(BaseModel):
-    args: list[ArgBlock] = []
-    pre_run: Optional[str] = None
-    post_run: Optional[str] = None
-    config: Optional[CommandConfig] = None
+    """
+    Defines a reusable template for command definitions.  Templates allow you to define
+    common arguments, pre-run/post-run scripts, and configuration options that can be
+    applied to multiple commands.
+    """
+
+    args: list[ArgBlock] = Field(
+        default=[],
+        description="A list of arguments for the command template.  These arguments will be applied to any command that uses this template.",
+    )
+    pre_run: str = Field(
+        default="",
+        description="A script to run before the command is executed. This script will be executed for any command that uses this template.",
+    )
+    post_run: str = Field(
+        default="",
+        description="A script to run after the command is executed. This script will be executed for any command that uses this template.",
+    )
+    config: Optional[CommandConfig] = Field(
+        default=None,
+        description="Additional configuration options for commands using this template. This allows customization of help text, context settings, and other Typer command parameters.",
+    )
 
 
 class CLIManifest(BaseModel):
@@ -138,42 +254,45 @@ class CLIManifest(BaseModel):
         return field.description
 
     @classmethod
-    def get_template(cls, cli_name: str) -> str:
+    def get_template(cls, cli_name: str, json_schema: bool) -> str:
         if not cli_name.isidentifier():
             raise ValueError("CLI name must be a valid Python identifier")
 
-        return f"""manifestVersion: v2
+        manifest = ""
+        if json_schema:
+            manifest += "# yaml-language-server: $schema=cliffy_schema.json\n"
+        manifest += f"""manifestVersion: v2
 
-{cls.get_field_description("name")}
+{"" if json_schema else cls.get_field_description("name")}
 name: {cli_name}
 
-{cls.get_field_description("version")}
+{"" if json_schema else cls.get_field_description("version")}
 version: 0.1.0
 
-{cls.get_field_description("help")}
+{"" if json_schema else cls.get_field_description("help")}
 help: A brief description of your CLI
 
-{cls.get_field_description("requires")}
+{"" if json_schema else cls.get_field_description("requires")}
 requires: []
   # - requests>=2.25.1
   # - pyyaml~=5.4
 
-{cls.get_field_description("includes")}
+{"" if json_schema else cls.get_field_description("includes")}
 includes: []
   # - path/to/other/manifest.yaml
 
-{cls.get_field_description("vars")}
+{"" if json_schema else cls.get_field_description("vars")}
 vars:
   data_file: "data.json"
   debug_mode: "{{{{ env['DEBUG'] or 'False' }}}}"
 
-{cls.get_field_description("imports")}
+{"" if json_schema else cls.get_field_description("imports")}
 imports: |
   import json
   import os
   from pathlib import Path
 
-{cls.get_field_description("functions")}
+{"" if json_schema else cls.get_field_description("functions")}
 functions:
   - |
     def load_data() -> dict:
@@ -186,16 +305,16 @@ functions:
       def save_data(data):
           with open("{{{{data_file}}}}", "w") as f:
               json.dump(data, f, indent=2)
-{cls.get_field_description("types")}
+{"" if json_schema else cls.get_field_description("types")}
 types:
   Filename: str = typer.Argument(..., help="Name of the file to process")
   Verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
 
-{cls.get_field_description("global_args")}
+{"" if json_schema else cls.get_field_description("global_args")}
 global_args:
   - verbose: Verbose
 
-{cls.get_field_description("command_templates")}
+{"" if json_schema else cls.get_field_description("command_templates")}
 command_templates:
   with_confirmation:
     args:
@@ -204,7 +323,7 @@ command_templates:
       if not yes:
         typer.confirm("Are you sure you want to proceed?", abort=True)
 
-{cls.get_field_description("commands")}
+{"" if json_schema else cls.get_field_description("commands")}
 commands:
   hello:
     help: Greet the user
@@ -237,20 +356,23 @@ commands:
       os.remove(filename)
       print("File deleted successfully")
 
-{cls.get_field_description("cli_options")}
+{"" if json_schema else cls.get_field_description("cli_options")}
 cli_options:
   rich_help_panel: True
 
-{cls.get_field_description("tests")}
+{"" if json_schema else cls.get_field_description("tests")}
 tests:
   - hello --name Alice: assert 'Hello, Alice!' in result.output
   - file process test.txt: assert 'Processing test.txt' in result.output
 """
+        return manifest
 
     @classmethod
-    def get_raw_template(cls, cli_name: str) -> str:
-        return f"""
-manifestVersion: v2
+    def get_raw_template(cls, cli_name: str, json_schema: bool) -> str:
+        manifest = ""
+        if json_schema:
+            manifest += "# yaml-language-server: $schema=cliffy_schema.json\n"
+        manifest += f"""manifestVersion: v2
 
 name: {cli_name}
 version: 0.1.0
@@ -278,10 +400,13 @@ cli_options: {{}}
 
 tests: []
 """
+        return manifest
 
 
 class IncludeManifest(BaseModel):
-    """Special manifest specifically to define the allowed named objects that can be included"""
+    """Special model specifically to define the allowed named objects that
+    can be merged with other manifests.
+    """
 
     requires: list[str]
     commands: dict[str, CommandBlock] = {}
@@ -305,11 +430,11 @@ class CLIMetadata(BaseModel):
 
 
 if __name__ == "__main__":
-    yaml_template = CLIManifest.get_raw_template(cli_name="mycli")
-    print(yaml_template)
+    import json
 
-    # You could also create an instance and validate it:
-    # import yaml
-    # manifest_dict = yaml.safe_load(yaml_template)
-    # manifest = CLIManifest(**manifest_dict)
-    # print(manifest.json(indent=2))
+    if "--json-schema" in sys.argv:
+        print(json.dumps(CLIManifest.model_json_schema(), indent=4))
+        sys.exit()
+
+    yaml_template = CLIManifest.get_raw_template(cli_name="mycli", json_schema=False)
+    print(yaml_template)

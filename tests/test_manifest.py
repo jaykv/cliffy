@@ -1,5 +1,5 @@
 from cliffy.commanders.typer import TyperCommander
-from cliffy.manifest import CLIManifest, Command, CommandArg, CommandConfig, CommandTemplate
+from cliffy.manifest import CLIManifest, Command, CommandArg, CommandConfig, CommandTemplate, SimpleCommandArg
 
 
 def test_greedy_command_expand():
@@ -10,7 +10,9 @@ def test_greedy_command_expand():
         commands={
             "homes.buy": Command(help="buy home", run="print('buying home')"),
             "shops.buy": Command(help="buy shop", run="print('buying shop')"),
-            "(*).list": Command(args=[{"--limit|-l": "int"}], run='"""Get a list of {(*)}"""\nprint(f"listing {(*)}")'),
+            "(*).list": Command(
+                args=[SimpleCommandArg({"--limit|-l": "int"})], run='"""Get a list of {(*)}"""\nprint(f"listing {(*)}")'
+            ),
         },
     )
     cmdr = TyperCommander(manifest=manifest)
@@ -54,12 +56,15 @@ def test_command_arg_parsing():
                 help="Greet someone",
                 args=[
                     # Test Argument kind
-                    CommandArg(
-                        name="name", kind="Argument", type="str", required=True, help="Name to greet", short="n"
-                    ),
+                    CommandArg(name="name", type="str", required=True, help="Name to greet"),
                     # Test Option kind
                     CommandArg(
-                        name="greeting", kind="Option", type="str", default='"Hello"', help="Custom greeting", short="g"
+                        name="greeting",
+                        is_option=True,
+                        type="str",
+                        default='"Hello"',
+                        help="Custom greeting",
+                        short="g",
                     ),
                 ],
                 run='print(f"{greeting} {name}!")',
@@ -83,14 +88,14 @@ def test_command_arg_with_global_args():
         help="Test CLI",
         global_args=[
             CommandArg(
-                name="verbose", kind="Option", type="bool", default=False, help="Enable verbose output", short="v"
+                name="verbose", is_option=True, type="bool", default=False, help="Enable verbose output", short="v"
             )
         ],
         commands={
             "test": Command(
                 name="test",
                 help="Test command",
-                args=[CommandArg(name="input", kind="Argument", type="str", required=True, help="Input to process")],
+                args=[CommandArg(name="input", type="str", required=True, help="Input to process")],
                 run="print(input)",
             )
         },
@@ -115,8 +120,8 @@ def test_command_arg_mixed_with_dict():
                 name="list",
                 help="List items",
                 args=[
-                    CommandArg(name="--page", kind="Option", type="int", default=1, help="Page number"),
-                    {"--limit|-l": "int = 10"},  # Dict-style arg
+                    CommandArg(name="page", is_option=True, type="int", default=1, help="Page number"),
+                    SimpleCommandArg({"--limit|-l": "int = 10"}),  # Dict-style arg
                 ],
                 run="print(f'Page {page}, Limit {limit}')",
             )
@@ -141,7 +146,7 @@ def test_command_arg_required_option():
             "config": Command(
                 name="config",
                 help="Configure settings",
-                args=[CommandArg(name="--token", kind="Option", type="str", required=True, help="API token")],
+                args=[CommandArg(name="token", is_option=True, type="str", required=True, help="API token")],
                 run="print(f'Token: {token}')",
             )
         },

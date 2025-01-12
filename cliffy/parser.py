@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple, Union
 
 from pybash.transformer import transform as transform_bash
 
-from .manifest import CLIManifest, Command, CommandArg
+from .manifest import CLIManifest, Command, CommandArg, SimpleCommandArg
 
 
 class Parser:
@@ -122,13 +122,13 @@ class Parser:
         combined_command_args = self.manifest.global_args + command.args
         for arg in combined_command_args:
             if isinstance(arg, CommandArg):
-                aliases = [f"-{arg.short}"] if arg.short and arg.kind == "Option" else None
+                aliases = [f"-{arg.short}"] if arg.short and arg.is_option else None
 
                 parsed_command_args += (
                     self.build_param_type(
                         arg_name=arg.name,
                         arg_type=arg.type,
-                        typer_cls=arg.kind,
+                        typer_cls="Option" if arg.is_option else "Argument",
                         help=arg.help,
                         aliases=aliases,
                         default_val=str(arg.default) if arg.default is not None else None,
@@ -138,8 +138,8 @@ class Parser:
                 )
             elif isinstance(arg, str):
                 parsed_command_args += f"{arg}, "
-            elif isinstance(arg, dict):
-                arg_name, arg_type = next(iter(arg.items()))
+            elif isinstance(arg, SimpleCommandArg):
+                arg_name, arg_type = next(iter(arg.root.items()))
 
                 if "typer." in arg_type:
                     parsed_command_args += f"{arg_name.strip()}: {arg_type.strip()}, "
@@ -156,11 +156,11 @@ class Parser:
         configured_options = command.config.model_dump(exclude_unset=True)
         return self.to_args(configured_options)
 
-    def get_command_func_name(self, command) -> str:
+    def get_command_func_name(self, command: Command) -> str:
         """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""
         return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
 
-    def get_parsed_command_name(self, command) -> str:
+    def get_parsed_command_name(self, command: Command) -> str:
         """a -> a, a.b -> b"""
         return command.name.split(".")[-1] if "." in command.name else command.name
 

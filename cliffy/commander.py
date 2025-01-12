@@ -6,7 +6,8 @@ from typing import DefaultDict
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
-from .manifest import ArgBlock, CLIManifest, Command, CommandArg, CommandConfig
+
+from .manifest import ArgBlock, CLIManifest, Command, CommandArg, CommandConfig, SimpleCommandArg
 from .parser import Parser
 
 
@@ -183,7 +184,7 @@ class Commander:
             group = command.name.split(".")[:-1][-1]
             self.add_sub_command(command, self.groups[group])
 
-    def add_lazy_command(self, greedy_command: Command, group: str):
+    def add_lazy_command(self, greedy_command: Command, group: str) -> None:
         # make it lazy and interpolate
         lazy_command = self.from_greedy_make_lazy_command(greedy_command=greedy_command, group=group)
 
@@ -258,13 +259,13 @@ class Commander:
                         if arg.short:
                             arg.short = arg.short.replace("{(*)}", group)
                         lazy_parsed_args.append(arg)
-                    if isinstance(arg, dict):
+                    if isinstance(arg, SimpleCommandArg):
                         lazy_parsed_args.append(arg)
                 lazy_command.args = lazy_parsed_args
         return lazy_command
 
 
-def generate_cli(manifest: CLIManifest, commander_cls=Commander) -> CLI:
+def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Commander) -> CLI:
     commander = commander_cls(manifest)
     commander.generate_cli()
     return CLI(name=manifest.name, version=manifest.version, code=commander.cli, requires=manifest.requires)

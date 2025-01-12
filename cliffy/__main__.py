@@ -1,9 +1,10 @@
 from cliffy.cli import cli
 
 
-def main():
-    cli()
+def main() -> None:
+    cli()  # type: ignore
 
 
 if __name__ == "__main__":
-    exit(main())
+    main()
+    exit()
