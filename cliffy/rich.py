@@ -21,7 +21,7 @@ except ImportError:
         def __init__(self) -> None:
             pass
 
-        def print(self, text: Any, **kwargs) -> None:
+        def print(self, text: Any, **kwargs: Any) -> None:
             if isinstance(text, Table):
                 click.echo(text)
             else:
@@ -39,7 +39,7 @@ except ImportError:
             self.cols.append(col)
             self.styles.append(style)
 
-        def add_row(self, *row) -> None:
+        def add_row(self, *row: Any) -> None:
             self.rows.append([*row])
 
         def __str__(self) -> str:

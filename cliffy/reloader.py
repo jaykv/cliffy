@@ -7,7 +7,7 @@ from .builder import run_cli as cli_runner
 import time
 from datetime import datetime, timedelta
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent
+from watchdog.events import FileSystemEventHandler, FileModifiedEvent, FileSystemEvent
 from pathlib import Path
 import threading
 
@@ -21,7 +21,7 @@ class Reloader(FileSystemEventHandler):
 
         super().__init__()
 
-    def on_modified(self, event):
+    def on_modified(self, event: FileSystemEvent) -> None:
         if event.is_directory or not event.src_path.endswith(self.manifest_path):
             return
 
@@ -38,7 +38,7 @@ class Reloader(FileSystemEventHandler):
         t.start()
 
     @classmethod
-    def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple[str]):
+    def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
         event_handler = cls(manifest_path, run_cli, run_cli_args)
         observer = Observer()
         observer.schedule(event_handler, path=Path(manifest_path).parent, recursive=False)
@@ -52,7 +52,7 @@ class Reloader(FileSystemEventHandler):
         observer.join()
 
     @staticmethod
-    def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple[str]):
+    def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
         manifest_io = open(manifest_path, "r")
 
         T = Transformer(manifest_io)

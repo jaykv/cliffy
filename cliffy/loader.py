@@ -28,21 +28,21 @@ class Loader:
         L.deploy_cli()
 
     @classmethod
-    def unload_cli(cls, cli_name) -> None:
+    def unload_cli(cls, cli_name: str) -> None:
         with contextlib.suppress(FileNotFoundError):
             os.remove(cls.get_cli_script_path(cli_name))
             os.remove(cls.get_cli_path(cli_name))
 
     @staticmethod
-    def get_cli_path(cli_name) -> str:
+    def get_cli_path(cli_name: str) -> str:
         return f"{CLIFFY_CLI_DIR}/{cli_name}.py"
 
     @staticmethod
-    def get_cli_script_path(cli_name) -> str:
+    def get_cli_script_path(cli_name: str) -> str:
         return f"{PYTHON_BIN}/{cli_name}"
 
     @staticmethod
-    def get_cli_script(cli_name) -> str:
+    def get_cli_script(cli_name: str) -> str:
         return f"""#!{PYTHON_EXECUTABLE}
 import sys
 from cliffy.clis.{cli_name} import cli

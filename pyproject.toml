@@ -65,6 +65,13 @@ enable_error_code = [
     "possibly-undefined",
     "redundant-self"
 ]
+disable_error_code = [
+    "type-arg",
+    "misc",
+    "unused-ignore",
+    "no-untyped-call",
+    "no-any-return"
+]
 
 [[tool.mypy.overrides]]
 module = "yaml"

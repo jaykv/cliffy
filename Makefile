@@ -26,18 +26,25 @@ format:
 lint:
 	ruff format --check --diff ${SOURCE_FILES} --exclude=cliffy/clis
 	ruff check ${SOURCE_FILES}
-	mypy ${SOURCE_FILES}
+	mypy cliffy --strict
+	mypy tests
 
 shell:
 	source .venv/bin/activate
 
-generate-all:
+generate-clis: 
 	pip install requests "six<1.0.0" rich
 	cli load examples/*.yaml
 	cp cliffy/clis/*.py examples/generated/
 
+generate-all: generate-clis generate-schema generate-cleanup
+	@echo "~ done"
+
 generate-cleanup:
 	pip uninstall -y requests six rich
 	cli rm-all
+
+generate-schema:
+	python -m cliffy.manifest --json-schema > examples/cliffy_schema.json
 
 .PHONY: test clean

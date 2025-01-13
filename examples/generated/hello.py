@@ -1,7 +1,7 @@
-## Generated hello on 2025-01-09 23:34:10.506888
-from typing import Optional, Any
-import typer
+## Generated hello on 2025-01-12 09:41:13.055390
 import subprocess
+import typer
+from typing import Optional, Any
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""Hello world!""")
@@ -25,7 +25,7 @@ def shell():
     subprocess.run(["echo","hello from shell"])
 
 
-cli.command("shell", help="",)(shell)
+cli.command("shell", help="Print hello in shell",)(shell)
 
 def python():
     print("hello from python")

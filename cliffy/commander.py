@@ -6,7 +6,20 @@ from typing import DefaultDict
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
-from .manifest import ArgBlock, CLIManifest, Command, CommandArg, CommandConfig
+
+from .manifest import (
+    ArgBlock,
+    CLIManifest,
+    Command,
+    CommandArg,
+    CommandConfig,
+    GenericCommandArg,
+    PostRunBlock,
+    PreRunBlock,
+    RunBlock,
+    SimpleCommandArg,
+    RunBlockList,
+)
 from .parser import Parser
 
 
@@ -99,9 +112,9 @@ class Commander:
                     )
                     command.config = CommandConfig(**merged)
                 if template.pre_run:
-                    command.pre_run = template.pre_run + "\n" + (command.pre_run or "")
+                    command.pre_run = PreRunBlock(template.pre_run.root + "\n" + (command.pre_run.root or ""))
                 if template.post_run:
-                    command.post_run = (command.post_run or "") + "\n" + template.post_run
+                    command.post_run = PostRunBlock((command.post_run.root or "") + "\n" + template.post_run.root)
 
             if "." in command.name:
                 group_name = command.name.split(".")[:-1][-1]
@@ -183,7 +196,7 @@ class Commander:
             group = command.name.split(".")[:-1][-1]
             self.add_sub_command(command, self.groups[group])
 
-    def add_lazy_command(self, greedy_command: Command, group: str):
+    def add_lazy_command(self, greedy_command: Command, group: str) -> None:
         # make it lazy and interpolate
         lazy_command = self.from_greedy_make_lazy_command(greedy_command=greedy_command, group=group)
 
@@ -226,30 +239,32 @@ class Commander:
     def from_greedy_make_lazy_command(self, greedy_command: Command, group: str) -> Command:
         lazy_command = greedy_command.model_copy(deep=True)
         lazy_command.name = greedy_command.name.replace("(*)", group)
-        if isinstance(lazy_command.run, str):
-            lazy_command.run = lazy_command.run.replace("{(*)}", group)
-        elif isinstance(lazy_command.run, list):
-            lazy_command.run = [script_block.replace("{(*)}", group) for script_block in lazy_command.run]
+        if isinstance(lazy_command.run, RunBlock):
+            lazy_command.run = RunBlock(lazy_command.run.root.replace("{(*)}", group))
+        elif isinstance(lazy_command.run, RunBlockList):
+            lazy_command.run = RunBlockList(
+                [RunBlock(script_block.root.replace("{(*)}", group)) for script_block in lazy_command.run]
+            )
         if lazy_command.help:
             lazy_command.help = lazy_command.help.replace("{(*)}", group)
 
         if lazy_command.template:
-            lazy_command.template.replace("{(*)}", group)
+            lazy_command.template = lazy_command.template.replace("{(*)}", group)
 
         if lazy_command.pre_run:
-            lazy_command.pre_run.replace("{(*)}", group)
+            lazy_command.pre_run.root = lazy_command.pre_run.root.replace("{(*)}", group)
 
         if lazy_command.post_run:
-            lazy_command.post_run.replace("{(*)}", group)
+            lazy_command.post_run.root = lazy_command.post_run.root.replace("{(*)}", group)
 
         if lazy_command.args:
-            if isinstance(lazy_command.args, str):
-                lazy_command.args.replace("{(*)}", group)
+            if isinstance(lazy_command.args, GenericCommandArg):
+                lazy_command.args.root = lazy_command.args.root.replace("{(*)}", group)
             elif isinstance(lazy_command.args, list):
                 lazy_parsed_args: list[ArgBlock] = []
                 for arg in lazy_command.args:
-                    if isinstance(arg, str):
-                        lazy_parsed_args.append(arg.replace("{(*)}", group))
+                    if isinstance(arg, GenericCommandArg):
+                        lazy_parsed_args.append(GenericCommandArg(arg.root.replace("{(*)}", group)))
                     if isinstance(arg, CommandArg):
                         if arg.help:
                             arg.help = arg.help.replace("{(*)}", group)
@@ -258,13 +273,16 @@ class Commander:
                         if arg.short:
                             arg.short = arg.short.replace("{(*)}", group)
                         lazy_parsed_args.append(arg)
-                    if isinstance(arg, dict):
-                        lazy_parsed_args.append(arg)
+                    if isinstance(arg, SimpleCommandArg):
+                        new_arg = SimpleCommandArg(
+                            {k.replace("{(*)}", group): v.replace("{(*)}", group) for k, v in arg.root.items()}
+                        )
+                        lazy_parsed_args.append(new_arg)
                 lazy_command.args = lazy_parsed_args
         return lazy_command
 
 
-def generate_cli(manifest: CLIManifest, commander_cls=Commander) -> CLI:
+def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Commander) -> CLI:
     commander = commander_cls(manifest)
     commander.generate_cli()
     return CLI(name=manifest.name, version=manifest.version, code=commander.cli, requires=manifest.requires)

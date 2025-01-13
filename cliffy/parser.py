@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple, Union
 
 from pybash.transformer import transform as transform_bash
 
-from .manifest import CLIManifest, Command, CommandArg
+from .manifest import CLIManifest, Command, CommandArg, GenericCommandArg, RunBlock, RunBlockList, SimpleCommandArg
 
 
 class Parser:
@@ -34,18 +34,20 @@ class Parser:
 
         return base_param_name, aliases
 
-    def parse_command_block(self, script: Union[str, list[str]]) -> str:
-        norm_script = "\n".join(script) if isinstance(script, list) else script
-        parsed_script = transform_bash(norm_script).strip()
+    def parse_run_block(self, script: Union[RunBlock, RunBlockList]) -> str:
+        norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
+        if not isinstance(norm_script, str):
+            raise ValueError(f"Invalid script type: {type(norm_script)}")
+        parsed_script: str = transform_bash(norm_script).strip()
         return "".join(" " * 4 + line + "\n" for line in parsed_script.split("\n"))
 
     def parse_command_run(self, command: Command) -> str:
         code = ""
         if command.pre_run:
-            code += self.parse_command_block(command.pre_run)
-        code += self.parse_command_block(command.run)
+            code += self.parse_run_block(command.pre_run)
+        code += self.parse_run_block(command.run)
         if command.post_run:
-            code += self.parse_command_block(command.post_run)
+            code += self.parse_run_block(command.post_run)
         return code
 
     def build_param_type(
@@ -122,13 +124,13 @@ class Parser:
         combined_command_args = self.manifest.global_args + command.args
         for arg in combined_command_args:
             if isinstance(arg, CommandArg):
-                aliases = [f"-{arg.short}"] if arg.short and arg.kind == "Option" else None
+                aliases = [f"-{arg.short}"] if arg.short and arg.is_option else None
 
                 parsed_command_args += (
                     self.build_param_type(
                         arg_name=arg.name,
                         arg_type=arg.type,
-                        typer_cls=arg.kind,
+                        typer_cls="Option" if arg.is_option else "Argument",
                         help=arg.help,
                         aliases=aliases,
                         default_val=str(arg.default) if arg.default is not None else None,
@@ -136,10 +138,10 @@ class Parser:
                     )
                     + " "
                 )
-            elif isinstance(arg, str):
+            elif isinstance(arg, GenericCommandArg):
                 parsed_command_args += f"{arg}, "
-            elif isinstance(arg, dict):
-                arg_name, arg_type = next(iter(arg.items()))
+            elif isinstance(arg, SimpleCommandArg):
+                arg_name, arg_type = next(iter(arg.root.items()))
 
                 if "typer." in arg_type:
                     parsed_command_args += f"{arg_name.strip()}: {arg_type.strip()}, "
@@ -156,11 +158,13 @@ class Parser:
         configured_options = command.config.model_dump(exclude_unset=True)
         return self.to_args(configured_options)
 
-    def get_command_func_name(self, command) -> str:
+    def get_command_func_name(self, command: Command) -> str:
         """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""
+        if not command.name.replace(".", "").replace("-", "").replace("_", "").replace("|", "").isalnum():
+            raise ValueError(f"Invalid command name: {command.name}")
         return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
 
-    def get_parsed_command_name(self, command) -> str:
+    def get_parsed_command_name(self, command: Command) -> str:
         """a -> a, a.b -> b"""
         return command.name.split(".")[-1] if "." in command.name else command.name
 

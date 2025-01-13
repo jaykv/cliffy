@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=cliffy_schema.json
+
 manifestVersion: v2 # optional (Default will be the latest)
 name: db
 version: 0.1.0
@@ -19,6 +21,8 @@ commands:
     run: |
       """Create a new database"""
       console.print(f"Creating database {name}", style="green")
+    pre_run: |
+      console.print("Running pre-run hook", style="green")
   delete|rm:
     args: *db_args
     run: |

@@ -1,5 +1,17 @@
+from pydantic import ValidationError
 from cliffy.commanders.typer import TyperCommander
-from cliffy.manifest import CLIManifest, Command, CommandArg, CommandConfig, CommandTemplate
+from cliffy.manifest import (
+    CLIManifest,
+    Command,
+    CommandArg,
+    CommandConfig,
+    CommandTemplate,
+    PostRunBlock,
+    PreRunBlock,
+    RunBlock,
+    SimpleCommandArg,
+)
+import pytest
 
 
 def test_greedy_command_expand():
@@ -8,9 +20,12 @@ def test_greedy_command_expand():
         help="",
         version="",
         commands={
-            "homes.buy": Command(help="buy home", run="print('buying home')"),
-            "shops.buy": Command(help="buy shop", run="print('buying shop')"),
-            "(*).list": Command(args=[{"--limit|-l": "int"}], run='"""Get a list of {(*)}"""\nprint(f"listing {(*)}")'),
+            "homes.buy": Command(help="buy home", run=RunBlock("print('buying home')")),
+            "shops.buy": Command(help="buy shop", run=RunBlock("print('buying shop')")),
+            "(*).list": Command(
+                args=[SimpleCommandArg({"--limit|-l": "int"})],
+                run=RunBlock('"""Get a list of {(*)}"""\nprint(f"listing {(*)}")'),
+            ),
         },
     )
     cmdr = TyperCommander(manifest=manifest)
@@ -54,15 +69,18 @@ def test_command_arg_parsing():
                 help="Greet someone",
                 args=[
                     # Test Argument kind
-                    CommandArg(
-                        name="name", kind="Argument", type="str", required=True, help="Name to greet", short="n"
-                    ),
+                    CommandArg(name="name", type="str", required=True, help="Name to greet"),
                     # Test Option kind
                     CommandArg(
-                        name="greeting", kind="Option", type="str", default='"Hello"', help="Custom greeting", short="g"
+                        name="greeting",
+                        is_option=True,
+                        type="str",
+                        default='"Hello"',
+                        help="Custom greeting",
+                        short="g",
                     ),
                 ],
-                run='print(f"{greeting} {name}!")',
+                run=RunBlock('print(f"{greeting} {name}!")'),
             )
         },
     )
@@ -83,15 +101,15 @@ def test_command_arg_with_global_args():
         help="Test CLI",
         global_args=[
             CommandArg(
-                name="verbose", kind="Option", type="bool", default=False, help="Enable verbose output", short="v"
+                name="verbose", is_option=True, type="bool", default=False, help="Enable verbose output", short="v"
             )
         ],
         commands={
             "test": Command(
                 name="test",
                 help="Test command",
-                args=[CommandArg(name="input", kind="Argument", type="str", required=True, help="Input to process")],
-                run="print(input)",
+                args=[CommandArg(name="input", type="str", required=True, help="Input to process")],
+                run=RunBlock("print(input)"),
             )
         },
     )
@@ -115,10 +133,10 @@ def test_command_arg_mixed_with_dict():
                 name="list",
                 help="List items",
                 args=[
-                    CommandArg(name="--page", kind="Option", type="int", default=1, help="Page number"),
-                    {"--limit|-l": "int = 10"},  # Dict-style arg
+                    CommandArg(name="page", is_option=True, type="int", default=1, help="Page number"),
+                    SimpleCommandArg({"--limit|-l": "int = 10"}),  # Dict-style arg
                 ],
-                run="print(f'Page {page}, Limit {limit}')",
+                run=RunBlock("print(f'Page {page}, Limit {limit}')"),
             )
         },
     )
@@ -141,8 +159,8 @@ def test_command_arg_required_option():
             "config": Command(
                 name="config",
                 help="Configure settings",
-                args=[CommandArg(name="--token", kind="Option", type="str", required=True, help="API token")],
-                run="print(f'Token: {token}')",
+                args=[CommandArg(name="token", is_option=True, type="str", required=True, help="API token")],
+                run=RunBlock("print(f'Token: {token}')"),
             )
         },
     )
@@ -174,7 +192,7 @@ def test_command_config_options():
                     deprecated=True,
                     rich_help_panel="Custom Panel",
                 ),
-                run="print('test')",
+                run=RunBlock("print('test')"),
             )
         },
     )
@@ -202,13 +220,13 @@ def test_command_config_empty():
             "test": Command(
                 name="test",
                 help="Test command",
-                run="print('test')",
+                run=RunBlock("print('test')"),
             ),
             "test2": Command(
                 name="test2",
                 help="Test command",
                 config=CommandConfig(),
-                run="print('test')",
+                run=RunBlock("print('test')"),
             ),
         },
     )
@@ -236,7 +254,7 @@ def test_command_config_partial():
                 name="test",
                 help="Test command",
                 config=CommandConfig(hidden=True),  # Partial config
-                run="print('test')",
+                run=RunBlock("print('test')"),
             )
         },
     )
@@ -258,7 +276,7 @@ def test_command_config_help_newline_removed():
                 name="test",
                 help="Test command\nwith newline",
                 config=CommandConfig(),
-                run="print('test')",
+                run=RunBlock("print('test')"),
             )
         },
     )
@@ -277,9 +295,9 @@ def test_command_pre_run_post_run():
             "test": Command(
                 name="test",
                 help="Test command",
-                pre_run="print('pre-run')",
-                run="print('run')",
-                post_run="print('post-run')",
+                pre_run=PreRunBlock("print('pre-run')"),
+                run=RunBlock("print('run')"),
+                post_run=PostRunBlock("print('post-run')"),
             )
         },
     )
@@ -301,8 +319,8 @@ def test_command_template_pre_run_post_run():
         help="Test CLI",
         command_templates={
             "common": CommandTemplate(
-                pre_run="print('template pre-run')",
-                post_run="print('template post-run')",
+                pre_run=PreRunBlock("print('template pre-run')"),
+                post_run=PostRunBlock("print('template post-run')"),
             )
         },
         commands={
@@ -310,7 +328,7 @@ def test_command_template_pre_run_post_run():
                 name="test",
                 help="Test command",
                 template="common",
-                run="print('run')",
+                run=RunBlock("print('run')"),
             )
         },
     )
@@ -330,8 +348,8 @@ def test_command_and_template_pre_run_post_run():
         help="Test CLI",
         command_templates={
             "common": CommandTemplate(
-                pre_run="print('template pre-run')",
-                post_run="print('template post-run')",
+                pre_run=PreRunBlock("print('template pre-run')"),
+                post_run=PostRunBlock("print('template post-run')"),
             )
         },
         commands={
@@ -339,9 +357,9 @@ def test_command_and_template_pre_run_post_run():
                 name="test",
                 help="Test command",
                 template="common",
-                pre_run="print('command pre-run')",
-                run="print('run')",
-                post_run="print('command post-run')",
+                pre_run=PreRunBlock("print('command pre-run')"),
+                run=RunBlock("print('run')"),
+                post_run=PostRunBlock("print('command post-run')"),
             )
         },
     )
@@ -381,7 +399,7 @@ def test_command_template_config_merge():
                     epilog="Command Epilog",
                     short_help="Command Short Help",
                 ),
-                run="print('test')",
+                run=RunBlock("print('test')"),
             )
         },
     )
@@ -422,14 +440,14 @@ def test_command_template_config_merge_empty_command_config():
                 help="Test command",
                 template="common",
                 # command.config is implicitly an empty CommandConfig in this case
-                run="print('test')",
+                run=RunBlock("print('test')"),
             ),
             "test2": Command(
                 name="test2",
                 help="Test command 2",
                 template="common",
                 config=None,  # Explicitly set config as None - should be equivalent to an empty config
-                run="print('test2')",
+                run=RunBlock("print('test2')"),
             ),
         },
     )
@@ -439,3 +457,79 @@ def test_command_template_config_merge_empty_command_config():
     # Assertions for both commands using the same template config
     assert "context_settings={'help_option_names': ['-h', '--helpme']}" in generated_cli
     assert 'epilog="Template Epilog"' in generated_cli
+
+
+def test_command_arg_short_without_option():
+    """Test that short flag can only be used with is_option=True"""
+    with pytest.raises(ValidationError) as exc_info:
+        CommandArg(
+            name="name",
+            type="str",
+            short="n",  # Invalid: short flag without is_option=True
+            required=True,
+            help="Name to greet",
+        )
+    assert "short can only be used when `is_option` is True" in str(exc_info.value)
+
+
+def test_invalid_template_reference():
+    """Test that referencing non-existent template raises error"""
+    with pytest.raises(ValueError) as exc_info:
+        manifest = CLIManifest(
+            name="test",
+            version="0.1.0",
+            help="Test CLI",
+            commands={
+                "greet": Command(
+                    help="Greet command",
+                    template="non_existent",  # Invalid template reference
+                    run=RunBlock("print('hello')"),
+                )
+            },
+        )
+        cmdr = TyperCommander(manifest=manifest)
+        cmdr.generate_cli()
+
+    assert "Template non_existent undefined in command_templates" in str(exc_info.value)
+
+
+def test_invalid_command_arg_type():
+    """Test that invalid argument type raises error"""
+    with pytest.raises(ValidationError) as exc_info:
+        CLIManifest(
+            name="test",
+            version="0.1.0",
+            help="Test CLI",
+            commands={
+                "greet": Command(
+                    help="Greet command",
+                    args=[
+                        CommandArg(
+                            name="count",
+                            type=0.1,  # Invalid type # type: ignore
+                            required=True,
+                        )
+                    ],
+                    run=RunBlock("print('hello')"),
+                )
+            },
+        )
+    assert "type" in str(exc_info.value)
+
+
+def test_invalid_simple_command_arg():
+    """Test that invalid SimpleCommandArg structure raises error"""
+    with pytest.raises(ValidationError) as exc_info:
+        CLIManifest(
+            name="test",
+            version="0.1.0",
+            help="Test CLI",
+            commands={
+                "list": Command(
+                    help="List items",
+                    args=[SimpleCommandArg({"invalid format"})],  # Invalid format # type: ignore
+                    run=RunBlock("print('listing')"),
+                )
+            },
+        )
+    assert "validation error" in str(exc_info.value).lower()

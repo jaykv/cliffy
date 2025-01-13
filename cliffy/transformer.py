@@ -63,7 +63,7 @@ class Transformer:
                     f"    found version `{installed_package_versions[dep_spec.name]}`"
                 )
 
-    def resolve_includes(self) -> dict:
+    def resolve_includes(self) -> dict[str, Any]:
         include_transforms = map(self.resolve_include_by_path, set(self.command_config["includes"]))
         merged_config: dict[str, Any] = {}
         for transformed_include in include_transforms:
@@ -72,7 +72,7 @@ class Transformer:
         return merged_config
 
     @classmethod
-    def resolve_include_by_path(cls, path) -> Self:
+    def resolve_include_by_path(cls, path: str) -> Self:
         with open(path, "r") as m:
             return cls(m, as_include=True)
 

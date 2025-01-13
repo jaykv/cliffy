@@ -1,4 +1,4 @@
-def run():
+def run() -> None:
     from .cli import cli
 
-    cli()
+    cli()  # type: ignore

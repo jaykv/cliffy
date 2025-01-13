@@ -52,7 +52,7 @@ class ManifestOrCLI(click.File):
         return value
 
 
-def show_aliases_callback(ctx: Any, param: Any, val: bool):
+def show_aliases_callback(ctx: Any, param: Any, val: bool) -> None:
     if val:
         out("Aliases:")
         for alias, command in ALIASES.items():
@@ -121,9 +121,19 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
     default=False,
     help="Raw template without boilerplate helpers and examples.",
 )
-def init(cli_name: str, render: bool, raw: bool) -> None:
+@click.option(
+    "--json-schema",
+    type=bool,
+    is_flag=True,
+    show_default=True,
+    default=False,
+    help="Write JSON schema (cliffy_schema.json) file to the current directory. Useful for development.",
+)
+def init(cli_name: str, render: bool, raw: bool, json_schema: bool) -> None:
     """Generate a CLI manifest template"""
-    template = CLIManifest.get_raw_template(cli_name) if raw else CLIManifest.get_template(cli_name)
+    template = (
+        CLIManifest.get_raw_template(cli_name, json_schema) if raw else CLIManifest.get_template(cli_name, json_schema)
+    )
 
     if render:
         console = Console()
@@ -134,6 +144,12 @@ def init(cli_name: str, render: bool, raw: bool) -> None:
         except Exception as e:
             exit_err(f"~ error writing to file: {e}")
         out(f"+ {cli_name}.yaml", fg="green")
+
+    if json_schema:
+        import json
+
+        write_to_file("cliffy_schema.json", json.dumps(CLIManifest.model_json_schema()))
+        out("+ cliffy_schema.json", fg="green")
 
 
 def cliffy_list() -> None:
@@ -183,7 +199,7 @@ def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, py
             cli, result = build_cli_from_manifest(cli_or_manifest, output_dir=output_dir, interpreter=python)
             cli_name = cli.name
         else:
-            cli_name = cast("str", cli_or_manifest)
+            cli_name = cli_or_manifest
             if not (metadata := get_metadata(cli_name)):
                 out_err(f"~ {cli_name} not loaded")
                 continue
@@ -205,7 +221,7 @@ def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, py
 
 
 @click.argument("cli_name", type=str)
-def info(cli_name: str):
+def info(cli_name: str) -> None:
     """Display CLI info"""
     metadata = get_metadata(cli_name) or exit_err(f"~ {cli_name} not loaded")
     out(f"{click.style('name:', fg='blue')} {metadata.cli_name}")

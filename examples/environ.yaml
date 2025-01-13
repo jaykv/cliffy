@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=cliffy_schema.json
+
 name: environ
 description: Read environment variables
 version: 0.1.0

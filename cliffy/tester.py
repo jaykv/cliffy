@@ -2,8 +2,7 @@ from typing import Generator, Union, cast
 from click.testing import Result
 from pydantic import BaseModel, field_validator
 from typer.testing import CliRunner
-from cliffy.commander import Command
-from cliffy.manifest import CLIManifest
+from cliffy.manifest import CLIManifest, Command, RunBlock
 from cliffy.parser import Parser
 from cliffy.transformer import Transformer
 from cliffy.helper import import_module_from_path, delete_temp_files, TEMP_FILES
@@ -62,7 +61,7 @@ class Tester:
                 self.total_cases += len(test_cases)
                 self.test_pipeline.extend(test_cases)
 
-    def invoke_shell(self, script: ShellScript):
+    def invoke_shell(self, script: ShellScript) -> None:
         py_code = transformer.transform(script.command)
         exec("import subprocess\n" + py_code)
 
@@ -74,7 +73,7 @@ class Tester:
 
     def is_valid_command(self, command: str) -> bool:
         command_name = command.split(" ")[0]
-        cmd = Command(name=command_name, run="")
+        cmd = Command(name=command_name, run=RunBlock(""))
         command_func_name = self.parser.get_command_func_name(cmd)
         matching_command_func = [func for fname, func in self.module_funcs if fname == command_func_name]
         return bool(matching_command_func)

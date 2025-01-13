@@ -79,7 +79,7 @@ def delete_temp_files() -> None:
             os.unlink(file.name)
 
 
-def indent_block(block: str, spaces=4) -> str:
+def indent_block(block: str, spaces: int = 4) -> str:
     return "\n".join([" " * spaces + line for line in block.splitlines()])
 
 
