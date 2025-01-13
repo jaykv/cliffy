@@ -21,6 +21,8 @@ commands:
     run: |
       """Create a new database"""
       console.print(f"Creating database {name}", style="green")
+    pre_run: |
+      console.print("Running pre-run hook", style="green")
   delete|rm:
     args: *db_args
     run: |
@@ -37,9 +39,9 @@ commands:
     args:
     - <<: *db_args
     - table: TableName
-    run: |
-      """View database table"""
-      console.print(f"Viewing {table} table for {name} DB")
+    run:
+      - "test1"
+      - "test2"
 
 types:
   DatabaseName: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)

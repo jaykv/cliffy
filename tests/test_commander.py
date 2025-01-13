@@ -1,6 +1,6 @@
 import pytest
 from cliffy.commanders.typer import TyperCommander
-from cliffy.manifest import CLIManifest, Command, CommandTemplate, SimpleCommandArg
+from cliffy.manifest import CLIManifest, Command, CommandTemplate, SimpleCommandArg, RunBlock
 
 
 @pytest.mark.parametrize(
@@ -25,7 +25,7 @@ def test_is_greedy(id, command_name, expected_result):
     ],
 )
 def test_from_greedy_make_lazy_command(id, command_name, group, expected_lazy_command_name):
-    greedy_command = Command(name=command_name, run="echo hello")
+    greedy_command = Command(name=command_name, run=RunBlock("echo hello"))
     commander = TyperCommander(CLIManifest(name="mycli", help="", version="0.1.0", commands={}))
 
     lazy_command = commander.from_greedy_make_lazy_command(greedy_command, group)
@@ -37,7 +37,7 @@ def test_setup_command_aliases():
         name="mycli",
         help="",
         version="0.1.0",
-        commands={"command1 | alias1 | alias2": "echo hello"},
+        commands={"command1 | alias1 | alias2": RunBlock("echo hello")},
     )
     commander = TyperCommander(manifest)
     assert commander.commands[0].name == "command1"
@@ -51,9 +51,9 @@ def test_build_groups():
         help="",
         version="0.1.0",
         commands={
-            "group1.command1": "echo hello",
-            "group1.command2": "echo world",
-            "group2.command3": "echo foo",
+            "group1.command1": RunBlock("echo hello"),
+            "group1.command2": RunBlock("echo world"),
+            "group2.command3": RunBlock("echo foo"),
         },
     )
     commander = TyperCommander(manifest)
@@ -70,7 +70,7 @@ def test_build_groups_with_template():
         help="",
         version="0.1.0",
         commands={
-            "group1.command1": Command(run="echo hello", template="my_template"),
+            "group1.command1": Command(run=RunBlock("echo hello"), template="my_template"),
         },
         command_templates={"my_template": CommandTemplate(args=[SimpleCommandArg(root={"name": "name"})])},
     )
@@ -84,7 +84,7 @@ def test_build_groups_with_missing_template():
         help="",
         version="0.1.0",
         commands={
-            "group1.command1": Command(run="echo hello", template="missing_template"),
+            "group1.command1": Command(run=RunBlock("echo hello"), template="missing_template"),
         },
         command_templates={},
     )

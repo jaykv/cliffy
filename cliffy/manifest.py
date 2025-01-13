@@ -1,8 +1,14 @@
-from typing import Any, Optional, Union
+from typing import Any, ItemsView, Iterator, Optional, Union
 from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
 from .helper import wrap_as_comment
 from datetime import datetime
 import sys
+
+
+class GenericCommandArg(RootModel):
+    root: str = Field(
+        json_schema_extra={"title": "Generic Command Arg\nGets appended to the command params signature."}
+    )
 
 
 class SimpleCommandArg(RootModel):
@@ -10,8 +16,15 @@ class SimpleCommandArg(RootModel):
         json_schema_extra={
             "title": "Simple Command Arg\nBuild args with key as the arg name and value as the type and default vals, i.e. `verbose: bool = typer.Option(...)`"
         },
+        min_length=1,
         max_length=1,
     )
+
+    def __iter__(self) -> Iterator[str]:  # type: ignore[override]
+        return iter(self.root)
+
+    def items(self) -> ItemsView[str, str]:  # type: ignore[override]
+        return self.root.items()
 
 
 class CommandArg(BaseModel):
@@ -40,7 +53,7 @@ class CommandArg(BaseModel):
     @classmethod
     def short_only_with_option(cls, v: str, info: ValidationInfo) -> str:
         if v and not info.data.get("is_option"):
-            raise ValueError("`short` option can only be used when `is_option` is True.")
+            raise ValueError("short can only be used when `is_option` is True.")
         return v
 
     class Config:
@@ -49,7 +62,7 @@ class CommandArg(BaseModel):
         }
 
 
-ArgBlock = Union[CommandArg, SimpleCommandArg, str]
+ArgBlock = Union[CommandArg, SimpleCommandArg, GenericCommandArg]
 VarBlock = Union[str, dict[str, None]]
 
 
@@ -87,44 +100,64 @@ class CommandConfig(BaseModel):
     )
 
 
+class RunBlock(RootModel):
+    root: str = Field(
+        json_schema_extra={"title": "Command Run Block"},
+        description="Command execution logic. Lines prefixed with '$' are treated as shell commands.",
+    )
+
+    def __bool__(self) -> bool:
+        return bool(self.root)
+
+
+class PreRunBlock(RunBlock):
+    root: str = Field(json_schema_extra={"title": "Pre-run Block"})
+
+
+class PostRunBlock(RunBlock):
+    root: str = Field(json_schema_extra={"title": "Post-run Block"})
+
+
+class RunBlockList(RootModel):
+    root: list[RunBlock] = Field(
+        json_schema_extra={"title": "Run Block List\nList of Run Blocks executed in order."},
+    )
+
+    def __iter__(self) -> Iterator[RunBlock]:  # type: ignore[override]
+        return iter(self.root)
+
+    def __getitem__(self, item: int) -> RunBlock:
+        return self.root[item]
+
+    def to_script(self) -> str:
+        return "\n".join(run.root for run in self.root)
+
+
 class Command(BaseModel):
     """
     Defines a single command within the CLI. It specifies the command's execution logic,
     arguments, and configuration.
     """
 
-    run: Union[str, list[str]] = Field(
-        default="",
-        json_schema_extra={
-            "anyOf": [
-                {
-                    "type": "string",
-                    "description": "The command's execution logic. Lines prefixed with '$' are treated as shell commands.",
-                },
-                {
-                    "items": {"type": "string", "description": "Each list item is a line of the command script."},
-                    "type": "array",
-                },
-            ]
-        },
-        description="The command's execution logic. Lines prefixed with '$' are treated as shell commands.",
+    run: Union[RunBlock, RunBlockList] = Field(
+        default=RunBlock(root=""),
     )
     help: str = Field(default="", description="A description of the command, displayed in the help output.")
     args: list[ArgBlock] = Field(
         default=[],
-        description="A list of arguments for the command.\nThere are three ways to define an arg: \n(generic) 1. A string with the arg string. The string is simply appended to the params.\n(implicit) 2. A mapping with the arg name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 args syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `is_option` (False by default), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
+        description="A list of arguments for the command.\nThere are three ways to define an arg: \n(generic) 1. A string as arg definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the arg name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 args syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `is_option` (False by default), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
     )
     template: str = Field(
         default="",
         description="A reference to a command template defined in the `command_templates` section of the manifest. This allows for reusable command definitions.",
     )
-    pre_run: str = Field(
-        default="",
-        description="A script to run before the command is executed. This can be used for setup tasks or preconditions.",
+    pre_run: PreRunBlock = Field(
+        default=PreRunBlock(root=""),
+        description="Script to run before the command's run block. This can be used for setup tasks or preconditions.",
     )
-    post_run: str = Field(
-        default="",
-        description="A script to run after the command is executed. This can be used for cleanup tasks or post-processing.",
+    post_run: PostRunBlock = Field(
+        default=PostRunBlock(root=""),
+        description="Script to run after the command's run block. This can be used for cleanup tasks or post-processing.",
     )
     aliases: list[str] = Field(
         default=[],
@@ -140,7 +173,7 @@ class Command(BaseModel):
     )
 
 
-CommandBlock = Union[Command, str, list[str]]
+CommandBlock = Union[Command, RunBlock, RunBlockList]
 
 
 class CommandTemplate(BaseModel):
@@ -154,13 +187,13 @@ class CommandTemplate(BaseModel):
         default=[],
         description="A list of arguments for the command template.  These arguments will be applied to any command that uses this template.",
     )
-    pre_run: str = Field(
-        default="",
-        description="A script to run before the command is executed. This script will be executed for any command that uses this template.",
+    pre_run: PreRunBlock = Field(
+        default=PreRunBlock(root=""),
+        description="Script to run before the command's run and pre-run block. This script will be applied to any command that uses this template.",
     )
-    post_run: str = Field(
-        default="",
-        description="A script to run after the command is executed. This script will be executed for any command that uses this template.",
+    post_run: PostRunBlock = Field(
+        default=PostRunBlock(root=""),
+        description="Script to run after the command's run and post-run block. This script will be applied to any command that uses this template.",
     )
     config: Optional[CommandConfig] = Field(
         default=None,

@@ -6,19 +6,13 @@
                 "run": {
                     "anyOf": [
                         {
-                            "description": "The command's execution logic. Lines prefixed with '$' are treated as shell commands.",
-                            "type": "string"
+                            "$ref": "#/$defs/RunBlock"
                         },
                         {
-                            "items": {
-                                "description": "Each list item is a line of the command script.",
-                                "type": "string"
-                            },
-                            "type": "array"
+                            "$ref": "#/$defs/RunBlockList"
                         }
                     ],
                     "default": "",
-                    "description": "The command's execution logic. Lines prefixed with '$' are treated as shell commands.",
                     "title": "Run"
                 },
                 "help": {
@@ -29,7 +23,7 @@
                 },
                 "args": {
                     "default": [],
-                    "description": "A list of arguments for the command.\nThere are three ways to define an arg: \n(generic) 1. A string with the arg string. The string is simply appended to the params.\n(implicit) 2. A mapping with the arg name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 args syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `is_option` (False by default), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
+                    "description": "A list of arguments for the command.\nThere are three ways to define an arg: \n(generic) 1. A string as arg definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the arg name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 args syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `is_option` (False by default), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
                     "items": {
                         "anyOf": [
                             {
@@ -39,7 +33,7 @@
                                 "$ref": "#/$defs/SimpleCommandArg"
                             },
                             {
-                                "type": "string"
+                                "$ref": "#/$defs/GenericCommandArg"
                             }
                         ]
                     },
@@ -53,16 +47,14 @@
                     "type": "string"
                 },
                 "pre_run": {
+                    "$ref": "#/$defs/PreRunBlock",
                     "default": "",
-                    "description": "A script to run before the command is executed. This can be used for setup tasks or preconditions.",
-                    "title": "Pre Run",
-                    "type": "string"
+                    "description": "Script to run before the command's run block. This can be used for setup tasks or preconditions."
                 },
                 "post_run": {
+                    "$ref": "#/$defs/PostRunBlock",
                     "default": "",
-                    "description": "A script to run after the command is executed. This can be used for cleanup tasks or post-processing.",
-                    "title": "Post Run",
-                    "type": "string"
+                    "description": "Script to run after the command's run block. This can be used for cleanup tasks or post-processing."
                 },
                 "aliases": {
                     "default": [],
@@ -226,7 +218,7 @@
                                 "$ref": "#/$defs/SimpleCommandArg"
                             },
                             {
-                                "type": "string"
+                                "$ref": "#/$defs/GenericCommandArg"
                             }
                         ]
                     },
@@ -234,16 +226,14 @@
                     "type": "array"
                 },
                 "pre_run": {
+                    "$ref": "#/$defs/PreRunBlock",
                     "default": "",
-                    "description": "A script to run before the command is executed. This script will be executed for any command that uses this template.",
-                    "title": "Pre Run",
-                    "type": "string"
+                    "description": "Script to run before the command's run and pre-run block. This script will be applied to any command that uses this template."
                 },
                 "post_run": {
+                    "$ref": "#/$defs/PostRunBlock",
                     "default": "",
-                    "description": "A script to run after the command is executed. This script will be executed for any command that uses this template.",
-                    "title": "Post Run",
-                    "type": "string"
+                    "description": "Script to run after the command's run and post-run block. This script will be applied to any command that uses this template."
                 },
                 "config": {
                     "anyOf": [
@@ -261,11 +251,36 @@
             "title": "CommandTemplate",
             "type": "object"
         },
+        "GenericCommandArg": {
+            "title": "Generic Command Arg\nGets appended to the command params signature.",
+            "type": "string"
+        },
+        "PostRunBlock": {
+            "title": "Post-run Block",
+            "type": "string"
+        },
+        "PreRunBlock": {
+            "title": "Pre-run Block",
+            "type": "string"
+        },
+        "RunBlock": {
+            "description": "Command execution logic. Lines prefixed with '$' are treated as shell commands.",
+            "title": "Command Run Block",
+            "type": "string"
+        },
+        "RunBlockList": {
+            "items": {
+                "$ref": "#/$defs/RunBlock"
+            },
+            "title": "Run Block List\nList of Run Blocks executed in order.",
+            "type": "array"
+        },
         "SimpleCommandArg": {
             "additionalProperties": {
                 "type": "string"
             },
             "maxProperties": 1,
+            "minProperties": 1,
             "title": "Simple Command Arg\nBuild args with key as the arg name and value as the type and default vals, i.e. `verbose: bool = typer.Option(...)`",
             "type": "object"
         }
@@ -374,7 +389,7 @@
                         "$ref": "#/$defs/SimpleCommandArg"
                     },
                     {
-                        "type": "string"
+                        "$ref": "#/$defs/GenericCommandArg"
                     }
                 ]
             },
@@ -396,13 +411,10 @@
                         "$ref": "#/$defs/Command"
                     },
                     {
-                        "type": "string"
+                        "$ref": "#/$defs/RunBlock"
                     },
                     {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array"
+                        "$ref": "#/$defs/RunBlockList"
                     }
                 ]
             },

@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple, Union
 
 from pybash.transformer import transform as transform_bash
 
-from .manifest import CLIManifest, Command, CommandArg, SimpleCommandArg
+from .manifest import CLIManifest, Command, CommandArg, GenericCommandArg, RunBlock, RunBlockList, SimpleCommandArg
 
 
 class Parser:
@@ -34,18 +34,18 @@ class Parser:
 
         return base_param_name, aliases
 
-    def parse_command_block(self, script: Union[str, list[str]]) -> str:
-        norm_script = "\n".join(script) if isinstance(script, list) else script
-        parsed_script = transform_bash(norm_script).strip()
+    def parse_run_block(self, script: Union[RunBlock, RunBlockList]) -> str:
+        norm_script: str = script.to_script() if isinstance(script, RunBlockList) else script.root
+        parsed_script: str = transform_bash(norm_script).strip()
         return "".join(" " * 4 + line + "\n" for line in parsed_script.split("\n"))
 
     def parse_command_run(self, command: Command) -> str:
         code = ""
         if command.pre_run:
-            code += self.parse_command_block(command.pre_run)
-        code += self.parse_command_block(command.run)
+            code += self.parse_run_block(command.pre_run)
+        code += self.parse_run_block(command.run)
         if command.post_run:
-            code += self.parse_command_block(command.post_run)
+            code += self.parse_run_block(command.post_run)
         return code
 
     def build_param_type(
@@ -136,7 +136,7 @@ class Parser:
                     )
                     + " "
                 )
-            elif isinstance(arg, str):
+            elif isinstance(arg, GenericCommandArg):
                 parsed_command_args += f"{arg}, "
             elif isinstance(arg, SimpleCommandArg):
                 arg_name, arg_type = next(iter(arg.root.items()))

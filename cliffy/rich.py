@@ -39,7 +39,7 @@ except ImportError:
             self.cols.append(col)
             self.styles.append(style)
 
-        def add_row(self, *row: str) -> None:
+        def add_row(self, *row: Any) -> None:
             self.rows.append([*row])
 
         def __str__(self) -> str:
