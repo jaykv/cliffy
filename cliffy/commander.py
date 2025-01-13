@@ -249,17 +249,17 @@ class Commander:
             lazy_command.help = lazy_command.help.replace("{(*)}", group)
 
         if lazy_command.template:
-            lazy_command.template.replace("{(*)}", group)
+            lazy_command.template = lazy_command.template.replace("{(*)}", group)
 
         if lazy_command.pre_run:
-            lazy_command.pre_run.root.replace("{(*)}", group)
+            lazy_command.pre_run.root = lazy_command.pre_run.root.replace("{(*)}", group)
 
         if lazy_command.post_run:
-            lazy_command.post_run.root.replace("{(*)}", group)
+            lazy_command.post_run.root = lazy_command.post_run.root.replace("{(*)}", group)
 
         if lazy_command.args:
             if isinstance(lazy_command.args, GenericCommandArg):
-                lazy_command.args.root.replace("{(*)}", group)
+                lazy_command.args.root = lazy_command.args.root.replace("{(*)}", group)
             elif isinstance(lazy_command.args, list):
                 lazy_parsed_args: list[ArgBlock] = []
                 for arg in lazy_command.args:

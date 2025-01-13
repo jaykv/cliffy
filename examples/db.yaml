@@ -39,9 +39,9 @@ commands:
     args:
     - <<: *db_args
     - table: TableName
-    run:
-      - "test1"
-      - "test2"
+    run: |
+      """View database table"""
+      console.print(f"Viewing {table} table for {name} DB")
 
 types:
   DatabaseName: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)

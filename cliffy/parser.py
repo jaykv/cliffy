@@ -35,7 +35,9 @@ class Parser:
         return base_param_name, aliases
 
     def parse_run_block(self, script: Union[RunBlock, RunBlockList]) -> str:
-        norm_script: str = script.to_script() if isinstance(script, RunBlockList) else script.root
+        norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
+        if not isinstance(norm_script, str):
+            raise ValueError(f"Invalid script type: {type(norm_script)}")
         parsed_script: str = transform_bash(norm_script).strip()
         return "".join(" " * 4 + line + "\n" for line in parsed_script.split("\n"))
 
@@ -158,6 +160,8 @@ class Parser:
 
     def get_command_func_name(self, command: Command) -> str:
         """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""
+        if not command.name.replace(".", "").replace("-", "").replace("_", "").replace("|", "").isalnum():
+            raise ValueError(f"Invalid command name: {command.name}")
         return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
 
     def get_parsed_command_name(self, command: Command) -> str:
