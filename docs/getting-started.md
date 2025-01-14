@@ -28,7 +28,7 @@ help: A simple CLI that greets the user.
 commands:
   hello:
     help: Greet the user
-    args:
+    params:
       - name: str = typer.Option("World", "--name", "-n", help="Name to greet")
     run: |
       print(f"Hello, {name}!")

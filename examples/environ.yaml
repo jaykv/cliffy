@@ -14,7 +14,7 @@ vars:
 
 commands:
   read: 
-    args:
+    params:
       - env-var: str!
     run: $ echo f{os.environ[env_var]}
 

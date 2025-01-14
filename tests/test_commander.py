@@ -1,6 +1,6 @@
 import pytest
 from cliffy.commanders.typer import TyperCommander
-from cliffy.manifest import CLIManifest, Command, CommandTemplate, SimpleCommandArg, RunBlock
+from cliffy.manifest import CLIManifest, Command, CommandTemplate, SimpleCommandParam, RunBlock
 
 
 @pytest.mark.parametrize(
@@ -72,10 +72,10 @@ def test_build_groups_with_template():
         commands={
             "group1.command1": Command(run=RunBlock("echo hello"), template="my_template"),
         },
-        command_templates={"my_template": CommandTemplate(args=[SimpleCommandArg(root={"name": "name"})])},
+        command_templates={"my_template": CommandTemplate(params=[SimpleCommandParam(root={"name": "name"})])},
     )
     commander = TyperCommander(manifest)
-    assert commander.groups["group1"].commands[0].args == [SimpleCommandArg(root={"name": "name"})]
+    assert commander.groups["group1"].commands[0].params == [SimpleCommandParam(root={"name": "name"})]
 
 
 def test_build_groups_with_missing_template():

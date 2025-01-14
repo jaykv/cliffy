@@ -6,11 +6,11 @@ from jinja2 import BaseLoader, Environment, FileSystemLoader
 from pydantic import ValidationError
 from typing_extensions import Self
 
-from .commander import generate_cli
-from .commanders.typer import TyperCommander
-from .helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
-from .manifest import IncludeManifest, CLIManifest
-from .merger import cliffy_merger
+from cliffy.commander import generate_cli
+from cliffy.commanders.typer import TyperCommander
+from cliffy.helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
+from cliffy.manifest import IncludeManifest, CLIManifest
+from cliffy.merger import cliffy_merger
 
 
 class Transformer:

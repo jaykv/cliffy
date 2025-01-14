@@ -23,64 +23,64 @@ commands:
   land:
     help: Manage land
   land.build:
-    args: [name: Name!, address: str!, --value|-v: int = 100]
+    params: [name: Name!, address: str!, --value|-v: int = 100]
     run: |
       """Build land"""
       print(f"building land {name}")
   land.sell:
-    args: [name: Name!, money: Money]
+    params: [name: Name!, money: Money]
     run: |
       """Sell land"""
       print(f"selling land {name}")
   land.buy:
-    args: [name: Name!, money: Money]
+    params: [name: Name!, money: Money]
     run: |
       """Buy land"""
       print(f"buying land {name} for {format_money(money)}")
   people.add:
-    args: [fullname: str!, age: int!, --home|-h: str]
+    params: [fullname: str!, age: int!, --home|-h: str]
     run: |
       """Add a person to town"""
       print(f"adding person {fullname}, {age}, {home}")
   people.remove:
-    args: [fullname: str!]
+    params: [fullname: str!]
     run: |
       """Remove person from town"""
       print(f"removing person {fullname}")
   shops.build:
-    args: [name: Name!, land: str!, --type|-t: str]
+    params: [name: Name!, land: str!, --type|-t: str]
     run: |
       """Build a shop"""
       print(f"building shop {name} ({type}) on land {land}")
   shops.sell:
-    args: [name: Name!, money: Money]
+    params: [name: Name!, money: Money]
     run: |
       """Sell a shop"""
       print(f"selling shop {name} for ${money}")
   shops.buy:
-    args: [name: Name!, money: Money]
+    params: [name: Name!, money: Money]
     run: |
       """Buy a shop"""
       print(f"buying shop {name} for ${money}")
   home.build|bu:
-    args: [address: str!, land: str, owner: str]
+    params: [address: str!, land: str, owner: str]
     run: |
       """Build a home"""
       print(f"building home at {address} for {owner} on land {land}")
   home.sell:
-    args: [address: str!, money: Money]
+    params: [address: str!, money: Money]
     aliases: ["s"]
     run: |
       """Sell a home"""
       print(f"selling home {address} for {format_money(money)}")
   home.buy:
-    args: [address: str!, money: Money]
+    params: [address: str!, money: Money]
     aliases: ["b"]
     run: |
       """Buy a home"""
       print(f"buying home {address} for {money}")
   (*).list:
-    args: [--limit|-l: int]
+    params: [--limit|-l: int]
     run: |
       """Get a list of {(*)}"""
       print(f"listing {(*)}")

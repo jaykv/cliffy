@@ -1,7 +1,7 @@
 {
     "$defs": {
         "Command": {
-            "description": "Defines a single command within the CLI. It specifies the command's execution logic,\narguments, and configuration.",
+            "description": "Defines a single command within the CLI. It specifies the command's execution logic,\nparameters, and configuration.",
             "properties": {
                 "run": {
                     "anyOf": [
@@ -21,23 +21,23 @@
                     "title": "Help",
                     "type": "string"
                 },
-                "args": {
+                "params": {
                     "default": [],
-                    "description": "A list of arguments for the command.\nThere are three ways to define an arg: \n(generic) 1. A string as arg definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the arg name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 args syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `is_option` (False by default), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
+                    "description": "A list of parameters for the command.\nThere are three ways to define a param: \n(generic) 1. A string as param definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the param name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 params syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
                     "items": {
                         "anyOf": [
                             {
-                                "$ref": "#/$defs/CommandArg"
+                                "$ref": "#/$defs/CommandParam"
                             },
                             {
-                                "$ref": "#/$defs/SimpleCommandArg"
+                                "$ref": "#/$defs/SimpleCommandParam"
                             },
                             {
-                                "$ref": "#/$defs/GenericCommandArg"
+                                "$ref": "#/$defs/GenericCommandParam"
                             }
                         ]
                     },
-                    "title": "Args",
+                    "title": "Params",
                     "type": "array"
                 },
                 "template": {
@@ -85,61 +85,6 @@
                 }
             },
             "title": "Command",
-            "type": "object"
-        },
-        "CommandArg": {
-            "dependencies": {
-                "short": [
-                    "is_option"
-                ]
-            },
-            "description": "Defines the structure of a command argument. It is used\nwithin the `args` field of a `Command` object.\n\nBy default, arguments are treated as positional arguments. To define an option, set `is_option` to True.",
-            "properties": {
-                "name": {
-                    "description": "Argument name.",
-                    "title": "Name",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "Argument type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section).",
-                    "title": "Type",
-                    "type": "string"
-                },
-                "is_option": {
-                    "default": false,
-                    "description": "Whether the argument is an option. Options are prefixed with '--'. Defaults to False.",
-                    "title": "Is Option",
-                    "type": "boolean"
-                },
-                "default": {
-                    "default": null,
-                    "description": "Default argument value.",
-                    "title": "Default"
-                },
-                "help": {
-                    "default": "",
-                    "description": "Argument description.",
-                    "title": "Help",
-                    "type": "string"
-                },
-                "short": {
-                    "default": "",
-                    "description": "Short option alias. i.e. '-v' for verbose.",
-                    "title": "Short",
-                    "type": "string"
-                },
-                "required": {
-                    "default": false,
-                    "description": "Whether the argument is required.",
-                    "title": "Required",
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "name",
-                "type"
-            ],
-            "title": "CommandArg",
             "type": "object"
         },
         "CommandConfig": {
@@ -203,26 +148,70 @@
             "title": "CommandConfig",
             "type": "object"
         },
-        "CommandTemplate": {
-            "description": "Defines a reusable template for command definitions.  Templates allow you to define\ncommon arguments, pre-run/post-run scripts, and configuration options that can be\napplied to multiple commands.",
+        "CommandParam": {
+            "description": "Defines the structure of a command parameter. It is used\nwithin the `params` field of a `Command` object.\n\nBy default, parameters are treated as positional arguments. To specify an option, prefix the name with `--` to indicate flag.",
             "properties": {
-                "args": {
+                "name": {
+                    "description": "Parameter name. Prefix with `--` to indicate an option.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Parameter type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section).",
+                    "title": "Type",
+                    "type": "string"
+                },
+                "default": {
+                    "default": null,
+                    "description": "Default parameter value.",
+                    "title": "Default"
+                },
+                "help": {
+                    "default": "",
+                    "description": "Parameter description.",
+                    "title": "Help",
+                    "type": "string"
+                },
+                "short": {
+                    "default": "",
+                    "description": "Short option alias. i.e. '-v' for verbose.",
+                    "title": "Short",
+                    "type": "string"
+                },
+                "required": {
+                    "default": false,
+                    "description": "Whether the parameter is required.",
+                    "title": "Required",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "name",
+                "type"
+            ],
+            "title": "CommandParam",
+            "type": "object"
+        },
+        "CommandTemplate": {
+            "description": "Defines a reusable template for command definitions.  Templates allow you to define\ncommon parameters, pre-run/post-run scripts, and configuration options that can be\napplied to multiple commands.",
+            "properties": {
+                "params": {
                     "default": [],
-                    "description": "A list of arguments for the command template.  These arguments will be applied to any command that uses this template.",
+                    "description": "A list of parameters for the command template.  These parameters will be applied to any command that uses this template.",
                     "items": {
                         "anyOf": [
                             {
-                                "$ref": "#/$defs/CommandArg"
+                                "$ref": "#/$defs/CommandParam"
                             },
                             {
-                                "$ref": "#/$defs/SimpleCommandArg"
+                                "$ref": "#/$defs/SimpleCommandParam"
                             },
                             {
-                                "$ref": "#/$defs/GenericCommandArg"
+                                "$ref": "#/$defs/GenericCommandParam"
                             }
                         ]
                     },
-                    "title": "Args",
+                    "title": "Params",
                     "type": "array"
                 },
                 "pre_run": {
@@ -251,8 +240,8 @@
             "title": "CommandTemplate",
             "type": "object"
         },
-        "GenericCommandArg": {
-            "title": "Generic Command Arg\nGets appended to the command params signature.",
+        "GenericCommandParam": {
+            "title": "Generic Command Param\nGets appended to the command params signature.",
             "type": "string"
         },
         "PostRunBlock": {
@@ -275,13 +264,13 @@
             "title": "Run Block List\nList of Run Blocks executed in order.",
             "type": "array"
         },
-        "SimpleCommandArg": {
+        "SimpleCommandParam": {
             "additionalProperties": {
                 "type": "string"
             },
             "maxProperties": 1,
             "minProperties": 1,
-            "title": "Simple Command Arg\nBuild args with key as the arg name and value as the type and default vals, i.e. `verbose: bool = typer.Option(...)`",
+            "title": "Simple Command Param\nBuild params with key as the param name and value as the type and default vals, i.e. `verbose: bool = typer.Option(...)`",
             "type": "object"
         }
     },
@@ -373,27 +362,27 @@
             "additionalProperties": {
                 "type": "string"
             },
-            "description": "A mapping containing any shared type definitions. These types can be referenced by name in the args section to provide type annotations for params and options defined in the args section.",
+            "description": "A mapping containing any shared type definitions. These types can be referenced by name in the params section to provide type annotations for args and options defined in the params section.",
             "title": "Types",
             "type": "object"
         },
-        "global_args": {
+        "global_params": {
             "default": [],
-            "description": "Arguments applied to all commands",
+            "description": "Parameters applied to all commands",
             "items": {
                 "anyOf": [
                     {
-                        "$ref": "#/$defs/CommandArg"
+                        "$ref": "#/$defs/CommandParam"
                     },
                     {
-                        "$ref": "#/$defs/SimpleCommandArg"
+                        "$ref": "#/$defs/SimpleCommandParam"
                     },
                     {
-                        "$ref": "#/$defs/GenericCommandArg"
+                        "$ref": "#/$defs/GenericCommandParam"
                     }
                 ]
             },
-            "title": "Global Args",
+            "title": "Global Params",
             "type": "array"
         },
         "command_templates": {

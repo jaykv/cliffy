@@ -29,12 +29,12 @@ commands:
     run: $ ls f{DEFAULT_VENV_STORE}
   rm:
     help: Remove a venv
-    args:
+    params:
       - name: str!
     run: rmtree(get_venv_path(name))
   go:
     help: Activate a venv
-    args:
+    params:
       - name: str!
       - --interpreter | -i: str = "python"
     run: |

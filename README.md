@@ -185,13 +185,13 @@ types:
   Verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
 
 # Arguments applied to all commands
-global_args:
+global_params:
   - verbose: Verbose
 
 # Reusable command templates
 command_templates:
   with_confirmation:
-    args:
+    params:
       - "yes": bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
     pre_run: |
       if not yes:
@@ -205,7 +205,7 @@ command_templates:
 commands:
   hello:
     help: Greet the user
-    args:
+    params:
       - name: str = typer.Option("World", "--name", "-n", help="Name to greet")
     run: |
       print(f"Hello, {name}!")
@@ -213,7 +213,7 @@ commands:
 
   file.process:
     help: Process a file
-    args:
+    params:
       - filename: Filename
     run: |
       data = load_data()
@@ -227,7 +227,7 @@ commands:
   delete|rm:
     help: Delete a file
     template: with_confirmation
-    args: [filename: Filename]
+    params: [filename: Filename]
     run: |
       if verbose:
         print(f"Deleting {filename}")

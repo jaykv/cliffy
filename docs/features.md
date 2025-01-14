@@ -75,7 +75,7 @@ The `commands` section defines the different commands that your CLI supports. Fo
 ```yaml
 commands:
   project.add:
-    args: [name: ProjectName]
+    params: [name: ProjectName]
     run: |
       data = load_data()
       if name not in data["projects"]:
@@ -111,7 +111,7 @@ You can define reusable command templates in the `command_templates` section. Fo
 ```yaml
 command_templates:
   with_confirmation:
-    args:
+    params:
       - "yes": bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
     pre_run: |
       if not yes:
@@ -125,7 +125,7 @@ commands:
   delete|rm:
     help: Delete a file
     template: with_confirmation
-    args: [filename: Filename]
+    params: [filename: Filename]
     run: |
       if verbose:
         print(f"Deleting {{filename}}")

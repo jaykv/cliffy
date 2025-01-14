@@ -3,7 +3,15 @@ from typing import Any, Optional, Tuple, Union
 
 from pybash.transformer import transform as transform_bash
 
-from .manifest import CLIManifest, Command, CommandArg, GenericCommandArg, RunBlock, RunBlockList, SimpleCommandArg
+from .manifest import (
+    CLIManifest,
+    Command,
+    CommandParam,
+    GenericCommandParam,
+    RunBlock,
+    RunBlockList,
+    SimpleCommandParam,
+)
 
 
 class Parser:
@@ -52,8 +60,8 @@ class Parser:
 
     def build_param_type(
         self,
-        arg_name: str,
-        arg_type: str,
+        param_name: str,
+        param_type: str,
         typer_cls: str,
         aliases: Optional[list[str]] = None,
         default_val: Any = None,
@@ -61,95 +69,99 @@ class Parser:
         help: Optional[str] = None,
         extra_params: Optional[str] = None,
     ) -> str:
-        parsed_arg_type = f"{arg_name}: {arg_type} = typer.{typer_cls}"
+        parsed_param_type = f"{param_name}: {param_type} = typer.{typer_cls}"
         if not default_val:
             # Required param needs ...
-            parsed_arg_type += "(..." if is_required else "(None"
+            parsed_param_type += "(..." if is_required else "(None"
         else:
-            parsed_arg_type += f"({default_val.strip()}"
+            parsed_param_type += f"({default_val.strip()}"
 
         if aliases and typer_cls == "Option":
-            parsed_arg_type += f', "--{arg_name}"'
+            if param_name.startswith("--"):
+                parsed_param_type += f', "{param_name}"'
+            else:
+                parsed_param_type += f', "--{param_name}"'
+
             for alias in aliases:
-                parsed_arg_type += f', "{alias.strip()}"'
+                parsed_param_type += f', "{alias.strip()}"'
 
         if help:
-            parsed_arg_type += f', help="{help}"'
+            parsed_param_type += f', help="{help}"'
 
         if extra_params:
-            parsed_arg_type += f", {extra_params}"
+            parsed_param_type += f", {extra_params}"
 
-        parsed_arg_type += "),"
-        return parsed_arg_type
+        parsed_param_type += "),"
+        return parsed_param_type
 
-    def parse_arg(self, arg_name: str, arg_type: str) -> str:
-        is_required = self.is_param_required(arg_type)
-        default_val = self.get_default_param_val(arg_type)
-        param_type = "Option" if self.is_param_option(arg_name) else "Argument"
+    def parse_param(self, param_name: str, param_type: str) -> str:
+        is_required = self.is_param_required(param_type)
+        default_val = self.get_default_param_val(param_type)
+        param_typer_cls = "Option" if self.is_param_option(param_name) else "Argument"
         arg_aliases: list[str] = []
 
         # extract default val before parsing it
-        if "=" in arg_type:
-            arg_type = arg_type.split("=")[0].strip()
+        if "=" in param_type:
+            param_type = param_type.split("=")[0].strip()
 
         # lstrip - before parsing it
-        if self.is_param_option(arg_name):
-            arg_name, arg_aliases = self.capture_param_aliases(arg_name)
+        if self.is_param_option(param_name):
+            param_name, arg_aliases = self.capture_param_aliases(param_name)
 
         # rstrip ! before parsing it
         if is_required:
-            arg_type = arg_type[:-1]
+            param_type = param_type[:-1]
 
         # replace - with _ for arg name
-        arg_name = arg_name.replace("-", "_")
+        param_name = param_name.replace("-", "_")
 
-        # check for a type def that matches arg_type
-        if arg_type in self.manifest.types:
-            return f"{arg_name}: {self.manifest.types[arg_type]},"
+        # check for a type def that matches param_type
+        if param_type in self.manifest.types:
+            return f"{param_name}: {self.manifest.types[param_type]},"
 
         return self.build_param_type(
-            arg_name,
-            arg_type,
-            typer_cls=param_type,
+            param_name,
+            param_type,
+            typer_cls=param_typer_cls,
             aliases=arg_aliases,
             default_val=default_val,
             is_required=is_required,
         )
 
-    def parse_args(self, command: Command) -> str:
-        if not command.args:
+    def parse_params(self, command: Command) -> str:
+        if not command.params:
             return ""
 
-        parsed_command_args = ""
-        combined_command_args = self.manifest.global_args + command.args
-        for arg in combined_command_args:
-            if isinstance(arg, CommandArg):
-                aliases = [f"-{arg.short}"] if arg.short and arg.is_option else None
+        parsed_command_params = ""
+        combined_command_params = self.manifest.global_params + command.params
+        for param in combined_command_params:
+            if isinstance(param, CommandParam):
+                aliases = [param.short] if param.short else None
 
-                parsed_command_args += (
+                parsed_command_params += (
                     self.build_param_type(
-                        arg_name=arg.name,
-                        arg_type=arg.type,
-                        typer_cls="Option" if arg.is_option else "Argument",
-                        help=arg.help,
+                        param_name=param.name,
+                        param_type=param.type,
+                        typer_cls="Option" if param.is_option() else "Argument",
+                        help=param.help,
                         aliases=aliases,
-                        default_val=str(arg.default) if arg.default is not None else None,
-                        is_required=arg.required,
+                        default_val=str(param.default) if param.default is not None else None,
+                        is_required=param.required,
                     )
                     + " "
                 )
-            elif isinstance(arg, GenericCommandArg):
-                parsed_command_args += f"{arg}, "
-            elif isinstance(arg, SimpleCommandArg):
-                arg_name, arg_type = next(iter(arg.root.items()))
+            elif isinstance(param, GenericCommandParam):
+                parsed_command_params += f"{param}, "
+            elif isinstance(param, SimpleCommandParam):
+                param_name, param_type = next(iter(param.root.items()))
 
-                if "typer." in arg_type:
-                    parsed_command_args += f"{arg_name.strip()}: {arg_type.strip()}, "
+                if "typer." in param_type:
+                    parsed_command_params += f"{param_name.strip()}: {param_type.strip()}, "
                 else:
-                    parsed_command_args += f"{self.parse_arg(arg_name.strip(), arg_type.strip())} "
+                    parsed_command_params += f"{self.parse_param(param_name.strip(), param_type.strip())} "
 
         # strip the extra ", "
-        return parsed_command_args[:-2]
+        return parsed_command_params[:-2]
 
     def get_parsed_config(self, command: Command) -> str:
         if not command.config:

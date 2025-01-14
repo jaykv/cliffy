@@ -7,17 +7,17 @@ vars:
   GLOBAL_VAR: hello
 
 command_templates:
-  common_args:
-    args:
+  common_params:
+    params:
       - local_arg: str!
-      - -local_arg_2: str = ""
+      - --local_arg_2: str = ""
 
 commands:
   hello:
     help: |
       Demo. global var and command args usage. 
       Runs hello command by default based on GLOBAL_VAR.
-    template: common_args
+    template: common_params
     run:
     - $ {{GLOBAL_VAR}} f{local_arg} --f{local_arg_2}
     config:
@@ -27,6 +27,6 @@ commands:
   
   debug:
     help: ""
-    template: common_args
+    template: common_params
     run: |
       print(f"arg1: {local_arg}, arg2: --{local_arg_2}")
