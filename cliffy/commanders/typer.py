@@ -71,6 +71,20 @@ def main("""
 """
 
     def add_root_command(self, command: Command) -> None:
+        """
+        Add a root command to the CLI application with optional aliases.
+        
+        This method dynamically generates a command function for the Typer CLI based on the provided Command configuration. It handles command registration, help text, and optional command aliases.
+        
+        Parameters:
+            command (Command): The command configuration to be added as a root command.
+        
+        Notes:
+            - Skips command generation if no run method is defined
+            - Supports command help text and configuration
+            - Creates hidden alias commands for the primary command
+            - Integrates with the Typer CLI framework
+        """
         if not command.run:
             return
 
@@ -97,6 +111,19 @@ cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
 """
 
     def add_sub_command(self, command: Command, group: Group) -> None:
+        """
+        Add a sub-command to a Typer CLI group with support for command configuration, help text, and aliases.
+        
+        Parameters:
+            command (Command): The command to be added as a sub-command
+            group (Group): The group to which the sub-command belongs
+        
+        This method dynamically generates a function for the sub-command, registers it with the specified group's Typer app,
+        and adds any defined aliases as hidden commands. The function handles parsing command parameters, help text,
+        and configuration settings.
+        
+        The generated sub-command can be invoked directly or through its aliases, with optional help text and configuration.
+        """
         parsed_command_func_name = self.parser.get_command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)
