@@ -1,9 +1,10 @@
+![Cliffy logo](docs/images/logo.svg)
+
 [![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/cliffy/python-app.yaml?branch=main)](https://github.com/jaykv/cliffy/actions)
 [![PyPI](https://img.shields.io/pypi/v/cliffy)](https://pypi.org/project/cliffy/)
 ![GitHub](https://img.shields.io/github/license/jaykv/cliffy)
-[![cliffy docs](https://img.shields.io/badge/cliffy%20docs-8A2BE2)](https://jaykv.github.io/cliffy)
+[![docs](https://img.shields.io/badge/docs-8A2BE2)](https://jaykv.github.io/cliffy)
 
-# cliffy :mountain:
 **cliffy** simplifies the creation, management, and deployment of CLIs. Define your CLI's structure and behavior in a YAML manifest, and let cliffy handle the rest.
 
 ## Features

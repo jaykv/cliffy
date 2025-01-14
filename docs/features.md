@@ -148,3 +148,14 @@ tests:
 These tests can then be run with `cli test`. 
 
 Explore the [Schema](schema.md) for concrete definition of CLI configuration and manifest fields.
+
+
+## IDE Support
+
+Cliffy's [JSON schema](https://json-schema.org/specification) can be generated locally with `cli init --json-schema`. This will output a `cliffy_schema.json` file which can be referenced in any of your CLI manifest files to enable schema validation and hints. 
+
+
+For referencing the latest schema remotely, add the following to the CLI manifest yaml:
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jaykv/cliffy/refs/heads/main/examples/cliffy_schema.json
+```
