@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=cliffy_schema.json
 
-manifestVersion: v2 # optional (Default will be the latest)
+manifestVersion: v3 # optional (Default will be the latest)
 name: db
 version: 0.1.0
 help: Database CLI

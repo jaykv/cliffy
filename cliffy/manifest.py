@@ -196,7 +196,7 @@ class CommandTemplate(BaseModel):
 
 
 class CLIManifest(BaseModel):
-    manifestVersion: str = "v2"
+    manifestVersion: str = "v3"
     name: str = Field(..., description="The name of the CLI, used when invoking from command line.")
     version: str = Field(..., description="CLI version")
     help: str = Field("", description="Brief description of the CLI")
@@ -261,13 +261,17 @@ class CLIManifest(BaseModel):
 
     @field_validator("manifestVersion", mode="after")
     @classmethod
-    def is_v2(cls, value: str) -> str:
+    def is_v3(cls, value: str) -> str:
         if value.strip() == "v1":
             raise ValueError(
-                "v1 schema is deprecated with cliffy >= 0.4.0. Please upgrade the manifest to the v2 schema."
+                "v1 schema is deprecated with cliffy >= 0.4.0. Please upgrade the manifest to the v3 schema."
             )
-        if value.strip() != "v2":
-            raise ValueError(f"Unrecognized manifest version {value}. Latest is v2.")
+        if value.strip() == "v2":
+            raise ValueError(
+                "v2 schema is deprecated with cliffy >= 0.5.0. Please upgrade the manifest to the v3 schema."
+            )
+        if value.strip() != "v3":
+            raise ValueError(f"Unrecognized manifest version {value}. Latest is v3.")
         return value
 
     @classmethod

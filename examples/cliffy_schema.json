@@ -277,7 +277,7 @@
     "additionalProperties": true,
     "properties": {
         "manifestVersion": {
-            "default": "v2",
+            "default": "v3",
             "title": "Manifestversion",
             "type": "string"
         },

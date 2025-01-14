@@ -27,7 +27,7 @@ class Transformer:
     ) -> None:
         self.manifest_io = manifest_io
         self.command_config = self.load_manifest(manifest_io)
-        self.manifest_version = self.command_config.pop("manifestVersion", "v2")
+        self.manifest_version = self.command_config.pop("manifestVersion", "v3")
         if self.command_config.get("includes"):
             self.includes_config = self.resolve_includes()
             cliffy_merger.merge(self.command_config, self.includes_config)

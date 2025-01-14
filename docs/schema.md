@@ -32,7 +32,7 @@ The `Command` model defines a single command within the CLI. It specifies the co
 - `run`: The command's execution logic, defined as a `RunBlock`. Can be a single command or a list of commands.
 - `help`: A description of the command.
 - `args`: A list of arguments for the command. Each argument can be:
-    - A `SimpleCommandParam`: `{"name": "str = "tester"}` structure
+    - A `SimpleCommandParam`: `{'name': 'str = "tester"'}` structure
     - A `CommandParam`: Full argument specification
     - A string: Type annotation string
 - `template`: A reference to a command template.
