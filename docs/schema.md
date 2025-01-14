@@ -1,17 +1,6 @@
 # CLI Manifest Schema
 
-This document describes the schema for the CLI manifest. The manifest structure is now validated against a JSON schema.
-
-## JSON Schema Support
-
-Enable JSON schema validation from the IDE in your CLI files by adding:
-```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/jaykv/cliffy/refs/heads/main/examples/cliffy_schema.json
-```
-
-or 
-
-with `cli init --json-schema`
+This document describes the schema for the CLI manifest.
 
 ## CLIManifest
 
@@ -43,9 +32,9 @@ The `Command` model defines a single command within the CLI. It specifies the co
 - `run`: The command's execution logic, defined as a `RunBlock`. Can be a single command or a list of commands.
 - `help`: A description of the command.
 - `args`: A list of arguments for the command. Each argument can be:
-  - A `SimpleCommandArg`: `{"name": "value"}` structure
-  - A `CommandArg`: Full argument specification
-  - A string: Type annotation string
+    - A `SimpleCommandArg`: `{"name": "value"}` structure
+    - A `CommandArg`: Full argument specification
+    - A string: Type annotation string
 - `template`: A reference to a command template.
 - `pre_run`: A `PreRunBlock` to execute before the command.
 - `post_run`: A `PostRunBlock` to execute after the command.
@@ -75,6 +64,20 @@ Commands now use specialized blocks for execution:
 - `PreRunBlock`: Pre-execution hook
 - `PostRunBlock`: Post-execution hook
 - `RunBlockList`: List of execution blocks
+
+!!! example 
+    ```yaml
+    commands:
+        deploy:
+            pre_run: |
+                if not confirm_deployment():
+                    raise typer.Abort()
+            run:
+            - print("Starting deployment...")
+            - deploy_application()
+            post_run: |
+                notify_team("Deployment completed")
+    ```
 
 ## CommandConfig
 
