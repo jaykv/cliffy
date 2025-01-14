@@ -148,3 +148,18 @@ tests:
 These tests can then be run with `cli test`. 
 
 Explore the [Schema](schema.md) for concrete definition of CLI configuration and manifest fields.
+
+
+## IDE Integration
+
+JSON schema validation provides real-time feedback, autocomplete suggestions, and type checking in your IDE. 
+
+### VSCode
+To setup, either:
+
+a. Generate manifest with local json-schema: `cli init --json-schema`
+b. Reference the latest remote json-schema in your manifest:
+
+  ```yaml
+  # yaml-language-server: $schema=https://raw.githubusercontent.com/jaykv/cliffy/refs/heads/main/examples/cliffy_schema.json
+  ```

@@ -1,6 +1,6 @@
 # CLI Manifest Schema
 
-This document describes the schema for the CLI manifest, focusing on the `Command` model and its relationship with `CommandConfig`.
+This document describes the schema for the CLI manifest.
 
 ## CLIManifest
 
@@ -23,22 +23,24 @@ The `CLIManifest` model defines the structure of a CLI manifest file. It include
 - `commands`: A mapping containing the command definitions for the CLI. Each command should have a unique key- which can be either a group command or nested subcommands. Nested subcommands are joined by '.' in between each level. Aliases for commands can be separated in the key by '|'. A special '(*)' wildcard can be used to spread the subcommand to all group-level commands.
 - `cli_options`: Additional CLI configuration options.
 - `tests`: Test cases for commands.
-
 ## Command
 
 The `Command` model defines a single command within the CLI. It specifies the command's execution logic, arguments, and configuration.
 
 ### Fields
 
-- `run`: The command's execution logic, which can be a string or a list of strings.
+- `run`: The command's execution logic, defined as a `RunBlock`. Can be a single command or a list of commands.
 - `help`: A description of the command.
-- `args`: A list of arguments for the command. Each argument can be defined as a dictionary, a `CommandArg` object, or a string. Types can be referenced inline using `typer.Option` and `typer.Argument`.
+- `args`: A list of arguments for the command. Each argument can be:
+    - A `SimpleCommandArg`: `{"name": "value"}` structure
+    - A `CommandArg`: Full argument specification
+    - A string: Type annotation string
 - `template`: A reference to a command template.
-- `pre_run`: A script to run before the command.
-- `post_run`: A script to run after the command.
+- `pre_run`: A `PreRunBlock` to execute before the command.
+- `post_run`: A `PostRunBlock` to execute after the command.
 - `aliases`: A list of aliases for the command.
 - `name`: The name of the command.
-- `config`: An optional `CommandConfig` object that provides additional configuration for the command.
+- `config`: An optional `CommandConfig` object.
 
 ### CommandArg
 
@@ -47,12 +49,35 @@ The `CommandArg` model defines the structure of a command argument.
 #### Fields
 
 - `name`: The name of the argument.
-- `kind`: The kind of argument, which can be either "Option" or "Argument".
-- `type`: The type of the argument. This corresponds to Typer's type annotations, such as `str`, `int`, `bool`, or custom types defined in the `types` section of the manifest.
-- `default`: The default value of the argument.
-- `help`: A description of the argument.
-- `short`: A short alias for the argument.
+- `type`: The type of the argument (e.g., `str`, `int`, `bool`).
+- `is_option`: Whether the argument is an option (replaces old `kind` field).
+- `default`: The default value.
+- `help`: Description of the argument.
+- `short`: Short alias (only valid when `is_option=True`).
 - `required`: Whether the argument is required.
+
+### RunBlock Types
+
+Commands now use specialized blocks for execution:
+
+- `RunBlock`: Main command execution block
+- `PreRunBlock`: Pre-execution hook
+- `PostRunBlock`: Post-execution hook
+- `RunBlockList`: List of execution blocks
+
+!!! example 
+    ```yaml
+    commands:
+        deploy:
+            pre_run: |
+                if not confirm_deployment():
+                    raise typer.Abort()
+            run:
+            - print("Starting deployment...")
+            - deploy_application()
+            post_run: |
+                notify_team("Deployment completed")
+    ```
 
 ## CommandConfig
 
