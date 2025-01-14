@@ -258,10 +258,7 @@ class Commander:
         """
         Convert a greedy command to a lazy command by replacing placeholders with a specific group name.
 
-        This method creates a deep copy of the input greedy command and replaces all occurrences of 
-        greedy placeholders ('{(*)}' and '(*)') with the provided group name across various command attributes.
-
-        Parameters:
+        Args:
             greedy_command (Command): The original greedy command to be transformed
             group (str): The group name to replace placeholders with
 
@@ -322,7 +319,7 @@ def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Command
     """
     Generate a CLI object from a CLI manifest using the specified commander class.
 
-    Parameters:
+    Args:
         manifest (CLIManifest): The manifest containing CLI configuration details
         commander_cls (type[Commander], optional): Commander class to use for CLI generation. Defaults to Commander.
 
