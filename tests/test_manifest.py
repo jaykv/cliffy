@@ -15,21 +15,6 @@ import pytest
 
 
 def test_greedy_command_expand():
-    """
-    Test the expansion of greedy command patterns in CLI manifest generation.
-    
-    This test verifies that:
-    - Greedy command patterns (using `(*)`) are correctly expanded
-    - Expanded commands include appropriate help text
-    - Command-specific parameters are correctly included
-    - Greedy placeholder `(*)` is removed from the final CLI output
-    
-    Parameters:
-        None
-    
-    Raises:
-        AssertionError: If CLI generation does not meet expected criteria
-    """
     manifest = CLIManifest(
         name="test",
         help="",
@@ -74,24 +59,6 @@ def test_greedy_command_expand():
 
 
 def test_command_param_parsing():
-    """
-    Test the parsing of command parameters with different types (argument and option).
-    
-    This test verifies that the CLI framework correctly handles command parameters with:
-    - A required positional argument (name)
-    - An optional option with a default value and short flag (greeting)
-    
-    The test checks that:
-    - Required arguments are correctly marked with Typer's Argument(...) syntax
-    - Optional options are correctly defined with default values, long and short flags
-    - Help text is properly associated with each parameter
-    
-    Parameters:
-        None
-    
-    Raises:
-        AssertionError: If the generated CLI does not match the expected parameter definitions
-    """
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -127,21 +94,6 @@ def test_command_param_parsing():
 
 
 def test_command_param_with_global_params():
-    """
-    Test the inclusion of global parameters in a command's CLI generation.
-    
-    This test verifies that global parameters are correctly integrated into the CLI generation process, 
-    specifically checking that:
-    1. Global options are properly defined with their type, default value, help text, and short flag
-    2. The global parameter appears in the generated CLI code
-    3. Command-specific parameters are also correctly represented
-    
-    Parameters:
-        None
-    
-    Raises:
-        AssertionError: If the generated CLI does not include the expected global parameter or command parameter definitions
-    """
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -169,24 +121,6 @@ def test_command_param_with_global_params():
 
 
 def test_command_param_mixed_with_dict():
-    """
-    Test the mixed definition of command parameters using both standard and dictionary-style parameter declarations.
-    
-    This test verifies that the CLI framework can handle command parameters defined in two different formats:
-    1. Using the `CommandParam` class with explicit configuration
-    2. Using a dictionary-style `SimpleCommandParam` with compact parameter definition
-    
-    The test checks that:
-    - A standard parameter with a name, type, default value, and help text is correctly parsed
-    - A dictionary-style parameter with a combined name/flag and type is correctly interpreted
-    - Both parameter styles generate the expected Typer Option declarations
-    
-    Parameters:
-        None
-    
-    Raises:
-        AssertionError: If the generated CLI does not match the expected parameter declarations
-    """
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -214,20 +148,6 @@ def test_command_param_mixed_with_dict():
 
 
 def test_command_param_required_option():
-    """
-    Test the definition and generation of a command parameter with a required option.
-    
-    This test verifies that a command parameter marked as required is correctly represented 
-    in the generated CLI, specifically checking that the Typer Option is created with 
-    the Ellipsis (...) syntax to indicate a mandatory parameter.
-    
-    Parameters:
-        None
-    
-    Raises:
-        AssertionError: If the generated CLI does not include the correct representation 
-                        of a required option parameter with the expected help text.
-    """
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -539,12 +459,12 @@ def test_command_template_config_merge_empty_command_config():
 def test_command_param_short_without_option():
     """
     Test the validation of command parameter short flag definition.
-    
+
     Ensures that a short flag cannot be defined without a corresponding long option.
-    
+
     Raises:
         ValidationError: If a short flag is specified without a long option prefixed with '--'
-    
+
     Validates:
         - Short flag must be accompanied by a long option
         - Appropriate error message is raised when validation fails
@@ -563,12 +483,12 @@ def test_command_param_short_without_option():
 def test_invalid_template_reference():
     """
     Test the error handling for referencing a non-existent command template.
-    
+
     This test verifies that attempting to use an undefined command template raises a ValueError
     with an appropriate error message. It checks that:
     - Creating a command with a non-existent template reference triggers an error
     - The error message specifically indicates the undefined template name
-    
+
     Raises:
         ValueError: When a command references a template that has not been defined
     """
@@ -594,12 +514,12 @@ def test_invalid_template_reference():
 def test_invalid_command_param_type():
     """
     Test that an invalid parameter type raises a validation error.
-    
+
     This test verifies the input validation mechanism for command parameters by attempting to create a CLI manifest with an incorrectly specified parameter type.
-    
+
     Raises:
         ValidationError: When an invalid type is provided for a command parameter.
-    
+
     Validates:
         - The validation error is raised
         - The error message contains the word "type"
@@ -629,12 +549,12 @@ def test_invalid_command_param_type():
 def test_invalid_simple_command_param():
     """
     Test that an invalid SimpleCommandParam structure raises a validation error.
-    
-    This test ensures that attempting to create a CLI manifest with an improperly defined 
+
+    This test ensures that attempting to create a CLI manifest with an improperly defined
     SimpleCommandParam triggers a validation error. It checks that:
     - An invalid parameter structure causes a ValidationError to be raised
     - The error message contains the phrase "validation error"
-    
+
     Raises:
         ValidationError: When an invalid SimpleCommandParam is provided
     """

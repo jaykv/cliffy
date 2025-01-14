@@ -91,19 +91,19 @@ class Commander:
     def build_groups(self) -> None:
         """
         Organize commands into groups and process command templates and aliases.
-        
+
         This method performs several key operations:
         - Separates greedy commands for later processing
         - Merges command templates with individual commands
         - Handles command aliases
         - Creates command groups based on hierarchical command names
-        
+
         Side Effects:
             - Populates self.greedy with greedy commands
             - Populates self.groups with organized command groups
             - Updates command attributes with template configurations
             - Tracks command aliases in self.aliases_by_commands
-        
+
         Raises:
             ValueError: If a referenced command template is undefined
         """
@@ -257,17 +257,17 @@ class Commander:
     def from_greedy_make_lazy_command(self, greedy_command: Command, group: str) -> Command:
         """
         Convert a greedy command to a lazy command by replacing placeholders with a specific group name.
-        
-        This method creates a deep copy of the input greedy command and replaces all occurrences of greedy placeholders 
-        ('{(*)}' and '(*)') with the provided group name across various command attributes.
-        
+
+        This method creates a deep copy of the input greedy command and replaces all occurrences of 
+        greedy placeholders ('{(*)}' and '(*)') with the provided group name across various command attributes.
+
         Parameters:
             greedy_command (Command): The original greedy command to be transformed
             group (str): The group name to replace placeholders with
-        
+
         Returns:
             Command: A new command with placeholders replaced by the group name, ready for lazy loading
-        
+
         Notes:
             - Handles replacement in command name, run blocks, help text, template, pre-run, and post-run blocks
             - Supports different parameter types: GenericCommandParam, CommandParam, and SimpleCommandParam
@@ -321,11 +321,11 @@ class Commander:
 def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Commander) -> CLI:
     """
     Generate a CLI object from a CLI manifest using the specified commander class.
-    
+
     Parameters:
         manifest (CLIManifest): The manifest containing CLI configuration details
         commander_cls (type[Commander], optional): Commander class to use for CLI generation. Defaults to Commander.
-    
+
     Returns:
         CLI: A CLI object with generated code, name, version, and required dependencies
     """

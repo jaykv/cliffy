@@ -65,22 +65,6 @@ def test_build_groups():
 
 
 def test_build_groups_with_template():
-    """
-    Test the functionality of building command groups with a command template.
-    
-    This test verifies that when a command is created with a template, the command's parameters
-    are correctly inherited from the specified template in the CLI manifest.
-    
-    Parameters:
-        None
-    
-    Raises:
-        AssertionError: If the command's parameters do not match the expected template parameters.
-    
-    Example:
-        The test creates a CLI manifest with a command using a template that defines a parameter
-        with the name "name", and then checks that the command's parameters are correctly set.
-    """
     manifest = CLIManifest(
         name="mycli",
         help="",
@@ -95,15 +79,6 @@ def test_build_groups_with_template():
 
 
 def test_build_groups_with_missing_template():
-    """
-    Test the behavior of TyperCommander when initializing with a command referencing a non-existent template.
-    
-    This test verifies that attempting to create a TyperCommander with a command that has a template 
-    not defined in the command_templates dictionary raises a ValueError.
-    
-    Raises:
-        ValueError: When a command references a template that does not exist in the manifest
-    """
     manifest = CLIManifest(
         name="mycli",
         help="",

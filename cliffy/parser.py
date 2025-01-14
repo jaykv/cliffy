@@ -71,8 +71,8 @@ class Parser:
     ) -> str:
         """
         Builds a type-annotated parameter definition for Typer CLI command.
-        
-        Parameters:
+
+        Args:
             param_name (str): Name of the parameter to be defined.
             param_type (str): Type annotation for the parameter.
             typer_cls (str): Typer class to use (e.g., "Option", "Argument").
@@ -81,17 +81,17 @@ class Parser:
             is_required (bool, default=False): Whether the parameter is mandatory.
             help (str, optional): Help text describing the parameter.
             extra_params (str, optional): Additional Typer parameter configurations.
-        
+
         Returns:
             str: A formatted parameter type definition for Typer CLI command generation.
-        
+
         Example:
             # Generates: username: str = typer.Option("", "--username", help="User login")
             build_param_type(
-                param_name="username", 
-                param_type="str", 
-                typer_cls="Option", 
-                default_val="", 
+                param_name="username",
+                param_type="str",
+                typer_cls="Option",
+                default_val="",
                 help="User login"
             )
         """
@@ -123,17 +123,17 @@ class Parser:
     def parse_param(self, param_name: str, param_type: str) -> str:
         """
         Parse a single command parameter, determining its type, required status, and formatting.
-        
-        Processes a parameter by extracting its characteristics such as required status, default value, 
+
+        Processes a parameter by extracting its characteristics such as required status, default value,
         and type. Handles parameter aliases, option/argument classification, and type resolution.
-        
-        Parameters:
+
+        Args:
             param_name (str): The name of the parameter to parse.
             param_type (str): The type definition of the parameter.
-        
+
         Returns:
             str: A formatted parameter definition for use in command parsing.
-        
+
         Notes:
             - Strips trailing '!' to indicate required parameters
             - Replaces dashes with underscores in parameter names
@@ -177,17 +177,17 @@ class Parser:
     def parse_params(self, command: Command) -> str:
         """
         Parse command parameters for a given command, combining global and command-specific parameters.
-        
-        Processes a list of command parameters, handling different parameter types including CommandParam, 
-        GenericCommandParam, and SimpleCommandParam. Generates a formatted string representation of parameters 
+
+        Processes a list of command parameters, handling different parameter types including CommandParam,
+        GenericCommandParam, and SimpleCommandParam. Generates a formatted string representation of parameters
         suitable for command definition.
-        
-        Parameters:
+
+        Args:
             command (Command): The command whose parameters are to be parsed.
-        
+
         Returns:
             str: A formatted string of parsed command parameters, or an empty string if no parameters exist.
-        
+
         Notes:
             - Combines global parameters with command-specific parameters
             - Supports different parameter types with varying parsing strategies
@@ -231,19 +231,19 @@ class Parser:
     def get_parsed_config(self, command: Command) -> str:
         """
         Retrieve and format the configuration options for a given command.
-        
-        Converts the command's configuration to a string of command-line arguments, excluding any unset options.
-        
-        Parameters:
+
+        Converts the command's configuration to a string of python params, excluding any unset options.
+
+        Args:
             command (Command): The command whose configuration is to be parsed.
-        
+
         Returns:
-            str: A formatted string of command-line arguments representing the command's configuration, 
+            str: A formatted string of python-style params representing the command's configuration,
                  or an empty string if no configuration is set.
-        
+
         Example:
             If a command has a configuration with {'verbose': True, 'output': 'log.txt'},
-            this method would return '--verbose --output log.txt'
+            this method would return 'verbose=True, output="log.txt"'
         """
         if not command.config:
             return ""

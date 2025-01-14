@@ -49,23 +49,13 @@ class CommandParam(BaseModel):
     @classmethod
     def short_only_with_option(cls, v: str, info: ValidationInfo) -> str:
         """
-        Validates that a short parameter alias is only used when the parameter name is a flag (starts with `--`).
-        
-        Parameters:
-            cls (type): The class being validated (automatically passed by Pydantic).
-            v (str): The short alias value to validate.
-            info (ValidationInfo): Validation context containing the parameter data.
-        
-        Returns:
-            str: The original short alias if validation passes.
-        
         Raises:
             ValueError: If a short alias is provided without a flag-style parameter name.
-        
+
         Example:
             # Valid: Short alias with flag parameter
             param = CommandParam(name='--verbose', short='v')
-        
+
             # Invalid: Short alias without flag parameter
             param = CommandParam(name='verbose', short='v')  # Raises ValueError
         """
@@ -76,10 +66,10 @@ class CommandParam(BaseModel):
     def is_option(self) -> bool:
         """
         Determines whether the command parameter represents a command-line option.
-        
+
         Returns:
             bool: True if the parameter name starts with '--', indicating it is a command-line option; False otherwise.
-        
+
         Examples:
             - '--verbose' returns True
             - 'input' returns False
@@ -320,21 +310,21 @@ class CLIManifest(BaseModel):
     def get_template(cls, cli_name: str, json_schema: bool) -> str:
         """
         Generate a template for a CLI manifest with optional JSON schema reference.
-        
+
         This method creates a comprehensive YAML template for a CLI application, providing a structured
         outline with placeholders and example configurations for various manifest components.
-        
-        Parameters:
+
+        Args:
             cls (type): The class on which the method is called (typically CLIManifest).
             cli_name (str): The name of the CLI, which must be a valid Python identifier.
             json_schema (bool): Flag to include a JSON schema reference comment.
-        
+
         Returns:
             str: A YAML-formatted manifest template with example configurations.
-        
+
         Raises:
             ValueError: If the provided CLI name is not a valid Python identifier.
-        
+
         Example:
             manifest = CLIManifest.get_template("mycli", json_schema=True)
         """
@@ -454,11 +444,11 @@ tests:
     def get_raw_template(cls, cli_name: str, json_schema: bool) -> str:
         """
         Generate a raw YAML template for a CLI manifest.
-        
+
         Parameters:
             cli_name (str): The name of the CLI to be used in the template
             json_schema (bool): Flag to include JSON schema reference comment
-        
+
         Returns:
             str: A YAML-formatted template for a CLI manifest with default configuration
         """
