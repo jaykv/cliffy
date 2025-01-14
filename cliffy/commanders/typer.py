@@ -71,6 +71,12 @@ def main("""
 """
 
     def add_root_command(self, command: Command) -> None:
+        """
+        Add a root command to the CLI application with optional aliases.
+
+        Args:
+            command (Command): The command configuration to be added as a root command.
+        """
         if not command.run:
             return
 
@@ -97,6 +103,13 @@ cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
 """
 
     def add_sub_command(self, command: Command, group: Group) -> None:
+        """
+        Add a sub-command to a Typer CLI group.
+
+        Args:
+            command (Command): The command to be added as a sub-command
+            group (Group): The group to which the sub-command belongs
+        """
         parsed_command_func_name = self.parser.get_command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)

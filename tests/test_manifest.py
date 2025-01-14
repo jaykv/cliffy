@@ -457,7 +457,18 @@ def test_command_template_config_merge_empty_command_config():
 
 
 def test_command_param_short_without_option():
-    """Test that short flag can only be used with -- prefixed name"""
+    """
+    Test the validation of command parameter short flag definition.
+
+    Ensures that a short flag cannot be defined without a corresponding long option.
+
+    Raises:
+        ValidationError: If a short flag is specified without a long option prefixed with '--'
+
+    Validates:
+        - Short flag must be accompanied by a long option
+        - Appropriate error message is raised when validation fails
+    """
     with pytest.raises(ValidationError) as exc_info:
         CommandParam(
             name="name",
@@ -470,7 +481,17 @@ def test_command_param_short_without_option():
 
 
 def test_invalid_template_reference():
-    """Test that referencing non-existent template raises error"""
+    """
+    Test the error handling for referencing a non-existent command template.
+
+    This test verifies that attempting to use an undefined command template raises a ValueError
+    with an appropriate error message. It checks that:
+    - Creating a command with a non-existent template reference triggers an error
+    - The error message specifically indicates the undefined template name
+
+    Raises:
+        ValueError: When a command references a template that has not been defined
+    """
     with pytest.raises(ValueError) as exc_info:
         manifest = CLIManifest(
             name="test",
@@ -491,7 +512,18 @@ def test_invalid_template_reference():
 
 
 def test_invalid_command_param_type():
-    """Test that invalid argument type raises error"""
+    """
+    Test that an invalid parameter type raises a validation error.
+
+    This test verifies the input validation mechanism for command parameters by attempting to create a CLI manifest with an incorrectly specified parameter type.
+
+    Raises:
+        ValidationError: When an invalid type is provided for a command parameter.
+
+    Validates:
+        - The validation error is raised
+        - The error message contains the word "type"
+    """
     with pytest.raises(ValidationError) as exc_info:
         CLIManifest(
             name="test",
@@ -515,7 +547,17 @@ def test_invalid_command_param_type():
 
 
 def test_invalid_simple_command_param():
-    """Test that invalid SimpleCommandParam structure raises error"""
+    """
+    Test that an invalid SimpleCommandParam structure raises a validation error.
+
+    This test ensures that attempting to create a CLI manifest with an improperly defined
+    SimpleCommandParam triggers a validation error. It checks that:
+    - An invalid parameter structure causes a ValidationError to be raised
+    - The error message contains the phrase "validation error"
+
+    Raises:
+        ValidationError: When an invalid SimpleCommandParam is provided
+    """
     with pytest.raises(ValidationError) as exc_info:
         CLIManifest(
             name="test",
