@@ -1,7 +1,7 @@
 name: greet
 version: 0.1.0
 
-args:
+params:
   .:
     - name: Name
 

@@ -32,8 +32,8 @@ The `Command` model defines a single command within the CLI. It specifies the co
 - `run`: The command's execution logic, defined as a `RunBlock`. Can be a single command or a list of commands.
 - `help`: A description of the command.
 - `args`: A list of arguments for the command. Each argument can be:
-    - A `SimpleCommandArg`: `{"name": "value"}` structure
-    - A `CommandArg`: Full argument specification
+    - A `SimpleCommandParam`: `{'name': 'str = "tester"'}` structure
+    - A `CommandParam`: Full argument specification
     - A string: Type annotation string
 - `template`: A reference to a command template.
 - `pre_run`: A `PreRunBlock` to execute before the command.
@@ -42,18 +42,17 @@ The `Command` model defines a single command within the CLI. It specifies the co
 - `name`: The name of the command.
 - `config`: An optional `CommandConfig` object.
 
-### CommandArg
+### CommandParam
 
-The `CommandArg` model defines the structure of a command argument.
+The `CommandParam` model defines the structure of a command parameter.
 
 #### Fields
 
-- `name`: The name of the argument.
+- `name`: The name of the parameter. Options must be prefixed with `--`.
 - `type`: The type of the argument (e.g., `str`, `int`, `bool`).
-- `is_option`: Whether the argument is an option (replaces old `kind` field).
 - `default`: The default value.
 - `help`: Description of the argument.
-- `short`: Short alias (only valid when `is_option=True`).
+- `short`: Short alias (only valid when name is prefixed with `--` as an option/flag).
 - `required`: Whether the argument is required.
 
 ### RunBlock Types

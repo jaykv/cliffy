@@ -1,7 +1,7 @@
-## Generated environ on 2025-01-12 09:41:13.052758
+## Generated environ on 2025-01-13 23:46:39.911656
+from typing import Optional, Any
 import subprocess
 import typer
-from typing import Optional, Any
 import os
 
 default_env_var = 'hello'

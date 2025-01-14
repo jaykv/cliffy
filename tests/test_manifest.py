@@ -3,13 +3,13 @@ from cliffy.commanders.typer import TyperCommander
 from cliffy.manifest import (
     CLIManifest,
     Command,
-    CommandArg,
+    CommandParam,
     CommandConfig,
     CommandTemplate,
     PostRunBlock,
     PreRunBlock,
     RunBlock,
-    SimpleCommandArg,
+    SimpleCommandParam,
 )
 import pytest
 
@@ -23,7 +23,7 @@ def test_greedy_command_expand():
             "homes.buy": Command(help="buy home", run=RunBlock("print('buying home')")),
             "shops.buy": Command(help="buy shop", run=RunBlock("print('buying shop')")),
             "(*).list": Command(
-                args=[SimpleCommandArg({"--limit|-l": "int"})],
+                params=[SimpleCommandParam({"--limit|-l": "int"})],
                 run=RunBlock('"""Get a list of {(*)}"""\nprint(f"listing {(*)}")'),
             ),
         },
@@ -45,7 +45,7 @@ def test_greedy_command_expand():
 #     commands={
 #         "homes": Command(help="manage homes"),
 #         "shops": Command(help="manage shops"),
-#         "(*).list": Command(args=[{"--limit|-l": "int"}],
+#         "(*).list": Command(params=[{"--limit|-l": "int"}],
 #           run="\"\"\"Get a list of {(*)}\"\"\"\nprint(f\"listing {(*)}\")")
 #     }
 #     )
@@ -58,7 +58,7 @@ def test_greedy_command_expand():
 #     assert "limit" in cmdr.cli
 
 
-def test_command_arg_parsing():
+def test_command_param_parsing():
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -67,17 +67,16 @@ def test_command_arg_parsing():
             "greet": Command(
                 name="greet",
                 help="Greet someone",
-                args=[
+                params=[
                     # Test Argument kind
-                    CommandArg(name="name", type="str", required=True, help="Name to greet"),
+                    CommandParam(name="name", type="str", required=True, help="Name to greet"),
                     # Test Option kind
-                    CommandArg(
-                        name="greeting",
-                        is_option=True,
+                    CommandParam(
+                        name="--greeting",
                         type="str",
                         default='"Hello"',
                         help="Custom greeting",
-                        short="g",
+                        short="-g",
                     ),
                 ],
                 run=RunBlock('print(f"{greeting} {name}!")'),
@@ -94,21 +93,19 @@ def test_command_arg_parsing():
     assert 'greeting: str = typer.Option("Hello", "--greeting", "-g", help="Custom greeting")' in cmdr.cli
 
 
-def test_command_arg_with_global_args():
+def test_command_param_with_global_params():
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
         help="Test CLI",
-        global_args=[
-            CommandArg(
-                name="verbose", is_option=True, type="bool", default=False, help="Enable verbose output", short="v"
-            )
+        global_params=[
+            CommandParam(name="--verbose", type="bool", default=False, help="Enable verbose output", short="-v")
         ],
         commands={
             "test": Command(
                 name="test",
                 help="Test command",
-                args=[CommandArg(name="input", type="str", required=True, help="Input to process")],
+                params=[CommandParam(name="input", type="str", required=True, help="Input to process")],
                 run=RunBlock("print(input)"),
             )
         },
@@ -117,13 +114,13 @@ def test_command_arg_with_global_args():
     cmdr = TyperCommander(manifest=manifest)
     cmdr.generate_cli()
 
-    # Verify global Option arg
+    # Verify global Option param
     assert 'verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")' in cmdr.cli
     # Verify command Argument
     assert 'input: str = typer.Argument(..., help="Input to process")' in cmdr.cli
 
 
-def test_command_arg_mixed_with_dict():
+def test_command_param_mixed_with_dict():
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -132,9 +129,9 @@ def test_command_arg_mixed_with_dict():
             "list": Command(
                 name="list",
                 help="List items",
-                args=[
-                    CommandArg(name="page", is_option=True, type="int", default=1, help="Page number"),
-                    SimpleCommandArg({"--limit|-l": "int = 10"}),  # Dict-style arg
+                params=[
+                    CommandParam(name="--page", type="int", default=1, help="Page number"),
+                    SimpleCommandParam({"--limit|-l": "int = 10"}),  # Dict-style param
                 ],
                 run=RunBlock("print(f'Page {page}, Limit {limit}')"),
             )
@@ -144,13 +141,13 @@ def test_command_arg_mixed_with_dict():
     cmdr = TyperCommander(manifest=manifest)
     cmdr.generate_cli()
 
-    # Verify CommandArg Option
+    # Verify CommandParam Option
     assert 'page: int = typer.Option(1, help="Page number")' in cmdr.cli
-    # Verify dict-style arg
+    # Verify dict-style param
     assert 'limit: int = typer.Option(10, "--limit", "-l")' in cmdr.cli
 
 
-def test_command_arg_required_option():
+def test_command_param_required_option():
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -159,7 +156,7 @@ def test_command_arg_required_option():
             "config": Command(
                 name="config",
                 help="Configure settings",
-                args=[CommandArg(name="token", is_option=True, type="str", required=True, help="API token")],
+                params=[CommandParam(name="--token", type="str", required=True, help="API token")],
                 run=RunBlock("print(f'Token: {token}')"),
             )
         },
@@ -459,17 +456,17 @@ def test_command_template_config_merge_empty_command_config():
     assert 'epilog="Template Epilog"' in generated_cli
 
 
-def test_command_arg_short_without_option():
-    """Test that short flag can only be used with is_option=True"""
+def test_command_param_short_without_option():
+    """Test that short flag can only be used with -- prefixed name"""
     with pytest.raises(ValidationError) as exc_info:
-        CommandArg(
+        CommandParam(
             name="name",
             type="str",
-            short="n",  # Invalid: short flag without is_option=True
+            short="-n",  # Invalid: short flag without --name
             required=True,
             help="Name to greet",
         )
-    assert "short can only be used when `is_option` is True" in str(exc_info.value)
+    assert "short can only be used when" in str(exc_info.value)
 
 
 def test_invalid_template_reference():
@@ -493,7 +490,7 @@ def test_invalid_template_reference():
     assert "Template non_existent undefined in command_templates" in str(exc_info.value)
 
 
-def test_invalid_command_arg_type():
+def test_invalid_command_param_type():
     """Test that invalid argument type raises error"""
     with pytest.raises(ValidationError) as exc_info:
         CLIManifest(
@@ -503,8 +500,8 @@ def test_invalid_command_arg_type():
             commands={
                 "greet": Command(
                     help="Greet command",
-                    args=[
-                        CommandArg(
+                    params=[
+                        CommandParam(
                             name="count",
                             type=0.1,  # Invalid type # type: ignore
                             required=True,
@@ -517,8 +514,8 @@ def test_invalid_command_arg_type():
     assert "type" in str(exc_info.value)
 
 
-def test_invalid_simple_command_arg():
-    """Test that invalid SimpleCommandArg structure raises error"""
+def test_invalid_simple_command_param():
+    """Test that invalid SimpleCommandParam structure raises error"""
     with pytest.raises(ValidationError) as exc_info:
         CLIManifest(
             name="test",
@@ -527,7 +524,7 @@ def test_invalid_simple_command_arg():
             commands={
                 "list": Command(
                     help="List items",
-                    args=[SimpleCommandArg({"invalid format"})],  # Invalid format # type: ignore
+                    params=[SimpleCommandParam({"invalid format"})],  # Invalid format # type: ignore
                     run=RunBlock("print('listing')"),
                 )
             },

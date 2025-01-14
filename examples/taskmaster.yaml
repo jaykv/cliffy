@@ -41,7 +41,7 @@ types:
 
 commands:
   project.add:
-    args: [name: ProjectName]
+    params: [name: ProjectName]
     run: |
       data = load_data()
       if name not in data["projects"]:
@@ -62,7 +62,7 @@ commands:
           print("No projects found.")
 
   project.remove:
-    args: [name: ProjectName]
+    params: [name: ProjectName]
     run: |
       data = load_data()
       if name in data["projects"]:
@@ -74,7 +74,7 @@ commands:
           print(f"Project '{name}' not found.")
 
   task.add:
-    args: [project: ProjectName, name: TaskName, due_date: DueDate, priority: Priority]
+    params: [project: ProjectName, name: TaskName, due_date: DueDate, priority: Priority]
     run: |
       data = load_data()
       if project not in data["projects"]:
@@ -92,7 +92,7 @@ commands:
       print(f"Task '{name}' added to project '{project}' successfully.")
 
   task.list:
-    args: [project: ProjectName]
+    params: [project: ProjectName]
     run: |
       data = load_data()
       tasks = data["tasks"]
@@ -116,7 +116,7 @@ commands:
           print("No tasks found.")
 
   task.complete:
-    args: [project: ProjectName, name: TaskName]
+    params: [project: ProjectName, name: TaskName]
     run: |
       data = load_data()
       for task in data["tasks"]:
@@ -128,7 +128,7 @@ commands:
       print(f"Task '{name}' in project '{project}' not found.")
 
   task.remove:
-    args: [project: ProjectName, name: TaskName]
+    params: [project: ProjectName, name: TaskName]
     run: |
       data = load_data()
       data["tasks"] = [task for task in data["tasks"] if task["project"] != project or task["name"] != name]

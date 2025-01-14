@@ -63,7 +63,7 @@ commands:
 
   bump: 
     help: Bump the package version
-    args:
+    params:
     - --major: VersionPart
     - --minor: VersionPart
     - --patch: VersionPart

@@ -1,7 +1,7 @@
-## Generated db on 2025-01-12 09:41:13.048012
+## Generated db on 2025-01-13 23:46:39.906348
+from typing import Optional, Any
 import subprocess
 import typer
-from typing import Optional, Any
 from rich.console import Console
 console = Console()
 
@@ -39,6 +39,7 @@ def main(
 
 
 def create(name: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True)):
+    console.print("Running pre-run hook", style="green")
     """Create a new database"""
     console.print(f"Creating database {name}", style="green")
 

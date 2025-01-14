@@ -8,16 +8,16 @@ from pydantic import BaseModel
 
 
 from .manifest import (
-    ArgBlock,
+    ParamBlock,
     CLIManifest,
     Command,
-    CommandArg,
+    CommandParam,
     CommandConfig,
-    GenericCommandArg,
+    GenericCommandParam,
     PostRunBlock,
     PreRunBlock,
     RunBlock,
-    SimpleCommandArg,
+    SimpleCommandParam,
     RunBlockList,
 )
 from .parser import Parser
@@ -104,8 +104,8 @@ class Commander:
                 if not template:
                     raise ValueError(f"Template {command.template} undefined in command_templates")
 
-                if template.args:
-                    command.args = template.args + (command.args or [])
+                if template.params:
+                    command.params = template.params + (command.params or [])
                 if template.config:
                     merged = template.config.model_dump(exclude_unset=True) | (
                         command.config.model_dump(exclude_unset=True) if command.config else {}
@@ -257,28 +257,28 @@ class Commander:
         if lazy_command.post_run:
             lazy_command.post_run.root = lazy_command.post_run.root.replace("{(*)}", group)
 
-        if lazy_command.args:
-            if isinstance(lazy_command.args, GenericCommandArg):
-                lazy_command.args.root = lazy_command.args.root.replace("{(*)}", group)
-            elif isinstance(lazy_command.args, list):
-                lazy_parsed_args: list[ArgBlock] = []
-                for arg in lazy_command.args:
-                    if isinstance(arg, GenericCommandArg):
-                        lazy_parsed_args.append(GenericCommandArg(arg.root.replace("{(*)}", group)))
-                    if isinstance(arg, CommandArg):
-                        if arg.help:
-                            arg.help = arg.help.replace("{(*)}", group)
-                        if arg.default:
-                            arg.default = arg.default.replace("{(*)}", group)
-                        if arg.short:
-                            arg.short = arg.short.replace("{(*)}", group)
-                        lazy_parsed_args.append(arg)
-                    if isinstance(arg, SimpleCommandArg):
-                        new_arg = SimpleCommandArg(
-                            {k.replace("{(*)}", group): v.replace("{(*)}", group) for k, v in arg.root.items()}
+        if lazy_command.params:
+            if isinstance(lazy_command.params, GenericCommandParam):
+                lazy_command.params.root = lazy_command.params.root.replace("{(*)}", group)
+            elif isinstance(lazy_command.params, list):
+                lazy_parsed_params: list[ParamBlock] = []
+                for param in lazy_command.params:
+                    if isinstance(param, GenericCommandParam):
+                        lazy_parsed_params.append(GenericCommandParam(param.root.replace("{(*)}", group)))
+                    if isinstance(param, CommandParam):
+                        if param.help:
+                            param.help = param.help.replace("{(*)}", group)
+                        if param.default:
+                            param.default = param.default.replace("{(*)}", group)
+                        if param.short:
+                            param.short = param.short.replace("{(*)}", group)
+                        lazy_parsed_params.append(param)
+                    if isinstance(param, SimpleCommandParam):
+                        new_param = SimpleCommandParam(
+                            {k.replace("{(*)}", group): v.replace("{(*)}", group) for k, v in param.root.items()}
                         )
-                        lazy_parsed_args.append(new_arg)
-                lazy_command.args = lazy_parsed_args
+                        lazy_parsed_params.append(new_param)
+                lazy_command.params = lazy_parsed_params
         return lazy_command
 
 

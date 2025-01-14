@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=cliffy_schema.json
 
-manifestVersion: v2 # optional (Default will be the latest)
+manifestVersion: v3 # optional (Default will be the latest)
 name: db
 version: 0.1.0
 help: Database CLI
@@ -16,7 +16,7 @@ imports: |
 
 commands:
   create|mk:
-    args: &db_args
+    params: &db_args
       - name: DatabaseName
     run: |
       """Create a new database"""
@@ -24,7 +24,7 @@ commands:
     pre_run: |
       console.print("Running pre-run hook", style="green")
   delete|rm:
-    args: *db_args
+    params: *db_args
     run: |
       """Delete a database"""
       sure = typer.confirm("Are you really really really sure?")
@@ -36,7 +36,7 @@ commands:
     """List databases"""
     print("Listing all databases")
   view|v: 
-    args:
+    params:
     - <<: *db_args
     - table: TableName
     run: |

@@ -5,16 +5,16 @@ from datetime import datetime
 import sys
 
 
-class GenericCommandArg(RootModel):
+class GenericCommandParam(RootModel):
     root: str = Field(
-        json_schema_extra={"title": "Generic Command Arg\nGets appended to the command params signature."}
+        json_schema_extra={"title": "Generic Command Param\nGets appended to the command params signature."}
     )
 
 
-class SimpleCommandArg(RootModel):
+class SimpleCommandParam(RootModel):
     root: dict[str, str] = Field(
         json_schema_extra={
-            "title": "Simple Command Arg\nBuild args with key as the arg name and value as the type and default vals, i.e. `verbose: bool = typer.Option(...)`"
+            "title": "Simple Command Param\nBuild params with key as the param name and value as the type and default vals, i.e. `verbose: bool = typer.Option(...)`"
         },
         min_length=1,
         max_length=1,
@@ -27,42 +27,36 @@ class SimpleCommandArg(RootModel):
         return self.root.items()
 
 
-class CommandArg(BaseModel):
+class CommandParam(BaseModel):
     """
-    Defines the structure of a command argument. It is used
-    within the `args` field of a `Command` object.
+    Defines the structure of a command parameter. It is used
+    within the `params` field of a `Command` object.
 
-    By default, arguments are treated as positional arguments. To define an option, set `is_option` to True.
+    By default, parameters are treated as positional arguments. To specify an option, prefix the name with `--` to indicate flag.
     """
 
-    name: str = Field(..., description="Argument name.")
+    name: str = Field(..., description="Parameter name. Prefix with `--` to indicate an option.")
     type: str = Field(
         ...,
-        description="Argument type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section).",
+        description="Parameter type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section).",
     )
-    is_option: bool = Field(
-        default=False,
-        description="Whether the argument is an option. Options are prefixed with '--'. Defaults to False.",
-    )
-    default: Any = Field(default=None, description="Default argument value.")
-    help: str = Field(default="", description="Argument description.")
+    default: Any = Field(default=None, description="Default parameter value.")
+    help: str = Field(default="", description="Parameter description.")
     short: str = Field(default="", description="Short option alias. i.e. '-v' for verbose.")
-    required: bool = Field(default=False, description="Whether the argument is required.")
+    required: bool = Field(default=False, description="Whether the parameter is required.")
 
     @field_validator("short", mode="after")
     @classmethod
     def short_only_with_option(cls, v: str, info: ValidationInfo) -> str:
-        if v and not info.data.get("is_option"):
-            raise ValueError("short can only be used when `is_option` is True.")
+        if v and not info.data.get("name", "").startswith("--"):
+            raise ValueError("short can only be used when name is prefixed as flag: `--`.")
         return v
 
-    class Config:
-        json_schema_extra = {
-            "dependencies": {"short": ["is_option"]},
-        }
+    def is_option(self) -> bool:
+        return self.name.strip().startswith("--")
 
 
-ArgBlock = Union[CommandArg, SimpleCommandArg, GenericCommandArg]
+ParamBlock = Union[CommandParam, SimpleCommandParam, GenericCommandParam]
 VarBlock = Union[str, dict[str, None]]
 
 
@@ -136,16 +130,16 @@ class RunBlockList(RootModel):
 class Command(BaseModel):
     """
     Defines a single command within the CLI. It specifies the command's execution logic,
-    arguments, and configuration.
+    parameters, and configuration.
     """
 
     run: Union[RunBlock, RunBlockList] = Field(
         default=RunBlock(root=""),
     )
     help: str = Field(default="", description="A description of the command, displayed in the help output.")
-    args: list[ArgBlock] = Field(
+    params: list[ParamBlock] = Field(
         default=[],
-        description="A list of arguments for the command.\nThere are three ways to define an arg: \n(generic) 1. A string as arg definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the arg name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 args syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `is_option` (False by default), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
+        description="A list of parameters for the command.\nThere are three ways to define a param: \n(generic) 1. A string as param definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the param name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 params syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
     )
     template: str = Field(
         default="",
@@ -179,13 +173,13 @@ CommandBlock = Union[Command, RunBlock, RunBlockList]
 class CommandTemplate(BaseModel):
     """
     Defines a reusable template for command definitions.  Templates allow you to define
-    common arguments, pre-run/post-run scripts, and configuration options that can be
+    common parameters, pre-run/post-run scripts, and configuration options that can be
     applied to multiple commands.
     """
 
-    args: list[ArgBlock] = Field(
+    params: list[ParamBlock] = Field(
         default=[],
-        description="A list of arguments for the command template.  These arguments will be applied to any command that uses this template.",
+        description="A list of parameters for the command template.  These parameters will be applied to any command that uses this template.",
     )
     pre_run: PreRunBlock = Field(
         default=PreRunBlock(root=""),
@@ -202,7 +196,7 @@ class CommandTemplate(BaseModel):
 
 
 class CLIManifest(BaseModel):
-    manifestVersion: str = "v2"
+    manifestVersion: str = "v3"
     name: str = Field(..., description="The name of the CLI, used when invoking from command line.")
     version: str = Field(..., description="CLI version")
     help: str = Field("", description="Brief description of the CLI")
@@ -239,11 +233,11 @@ class CLIManifest(BaseModel):
     types: dict[str, str] = Field(
         default_factory=dict,
         description="A mapping containing any shared type definitions. "
-        "These types can be referenced by name in the args section to provide type annotations "
-        "for params and options defined in the args section.",
+        "These types can be referenced by name in the params section to provide type annotations "
+        "for args and options defined in the params section.",
     )
 
-    global_args: list[ArgBlock] = Field(default=[], description="Arguments applied to all commands")
+    global_params: list[ParamBlock] = Field(default=[], description="Parameters applied to all commands")
 
     command_templates: dict[str, CommandTemplate] = Field(
         default_factory=dict, description="Reusable command templates"
@@ -267,13 +261,17 @@ class CLIManifest(BaseModel):
 
     @field_validator("manifestVersion", mode="after")
     @classmethod
-    def is_v2(cls, value: str) -> str:
+    def is_v3(cls, value: str) -> str:
         if value.strip() == "v1":
             raise ValueError(
-                "v1 schema is deprecated with cliffy >= 0.4.0. Please upgrade the manifest to the v2 schema."
+                "v1 schema is deprecated with cliffy >= 0.4.0. Please upgrade the manifest to the v3 schema."
             )
-        if value.strip() != "v2":
-            raise ValueError(f"Unrecognized manifest version {value}. Latest is v2.")
+        if value.strip() == "v2":
+            raise ValueError(
+                "v2 schema is deprecated with cliffy >= 0.5.0. Please upgrade the manifest to the v3 schema."
+            )
+        if value.strip() != "v3":
+            raise ValueError(f"Unrecognized manifest version {value}. Latest is v3.")
         return value
 
     @classmethod
@@ -343,14 +341,14 @@ types:
   Filename: str = typer.Argument(..., help="Name of the file to process")
   Verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
 
-{"" if json_schema else cls.get_field_description("global_args")}
-global_args:
+{"" if json_schema else cls.get_field_description("global_params")}
+global_params:
   - verbose: Verbose
 
 {"" if json_schema else cls.get_field_description("command_templates")}
 command_templates:
   with_confirmation:
-    args:
+    params:
       - "yes": bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt")
     pre_run: |
       if not yes:
@@ -360,7 +358,7 @@ command_templates:
 commands:
   hello:
     help: Greet the user
-    args:
+    params:
       - name: str = typer.Option("World", "--name", "-n", help="Name to greet")
     run: |
       print(f"Hello, {{name}}!")
@@ -368,7 +366,7 @@ commands:
 
   file.process:
     help: Process a file
-    args:
+    params:
       - filename: Filename
     run: |
       data = load_data()
@@ -382,7 +380,7 @@ commands:
   delete|rm:
     help: Delete a file
     template: with_confirmation
-    args: [filename: Filename]
+    params: [filename: Filename]
     run: |
       if verbose:
         print(f"Deleting {{filename}}")
@@ -423,7 +421,7 @@ functions: []
 
 types: {{}}
 
-global_args: []
+global_params: []
 
 command_templates: {{}}
 
