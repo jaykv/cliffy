@@ -116,8 +116,7 @@ class Parser:
         default_val = param.default
 
         # only wrap strings for CommandParam, leave simple params as-is
-        should_wrap_default = isinstance(param, CommandParam) and param.type == "str"
-        if default_val and should_wrap_default:
+        if default_val is not None and isinstance(param, CommandParam) and param.type == "str":
             # wrap default_val in quotes if it's a string and not wrapped already
             default_val = '"{}"'.format(default_val.replace('"', r"\""))
 
