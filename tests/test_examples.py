@@ -66,6 +66,11 @@ if not RICH_INSTALLED:
 
 if platform.system() == "Windows":
     del CLI_TESTS["template"]
+    if "todo" in CLI_LOADS:
+        CLI_LOADS.remove("todo")
+
+    if "todo" in CLI_BUILDS:
+        CLI_BUILDS.remove("todo")
 
 
 def setup_module():
