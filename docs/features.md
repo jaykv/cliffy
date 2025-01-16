@@ -197,7 +197,7 @@ Use the `cli dev` command to actively monitor a manifest for changes and automat
 
 ## IDE Integration
 
-#### Schema validation and autocomplete
+### Schema validation and autocomplete
 
 To get real-time feedback while developing your CLI, install the [YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) and setup by either:
 
