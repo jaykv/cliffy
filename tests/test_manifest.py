@@ -69,7 +69,7 @@ def test_command_param_parsing():
                 help="Greet someone",
                 params=[
                     # Test Argument kind
-                    CommandParam(name="name", type="str", required=True, help="Name to greet"),
+                    CommandParam(name="name", type="str", default="blabla", required=True, help="Name to greet"),
                     # Test Option kind
                     CommandParam(
                         name="--greeting",
@@ -77,6 +77,14 @@ def test_command_param_parsing():
                         default='"Hello"',
                         help="Custom greeting",
                         short="-g",
+                    ),
+                    # Test option kind with empty string default
+                    CommandParam(
+                        name="--default",
+                        type="str",
+                        default="",
+                        help="Default val",
+                        short="-d",
                     ),
                 ],
                 run=RunBlock('print(f"{greeting} {name}!")'),
@@ -88,9 +96,10 @@ def test_command_param_parsing():
     cmdr.generate_cli()
 
     # Verify Argument kind parsing
-    assert 'name: str = typer.Argument(..., help="Name to greet")' in cmdr.cli
+    assert 'name: str = typer.Argument("blabla", help="Name to greet")' in cmdr.cli
     # Verify Option kind parsing
-    assert 'greeting: str = typer.Option("Hello", "--greeting", "-g", help="Custom greeting")' in cmdr.cli
+    assert 'greeting: str = typer.Option("\\"Hello\\"", "--greeting", "-g", help="Custom greeting")' in cmdr.cli
+    assert 'default: str = typer.Option("", "--default", "-d", help="Default val")' in cmdr.cli
 
 
 def test_command_param_with_global_params():

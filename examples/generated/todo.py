@@ -1,7 +1,7 @@
-## Generated todo on 2025-01-16 00:50:17.233852
+## Generated todo on 2025-01-16 04:52:17.506751
+import typer
 import subprocess
 from typing import Optional, Any
-import typer
 import sqlite3
 from pathlib import Path
 from tabulate import tabulate
@@ -37,7 +37,7 @@ def main(
     pass
 
 
-def create(name: str = typer.Option(..., prompt=True, confirmation_prompt=True)):
+def create(name: str):
     db_path = Path(f"{name}.db")
     conn = sqlite3.connect(db_path)
     conn.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY, task TEXT NOT NULL, done BOOLEAN NOT NULL)")
@@ -94,5 +94,3 @@ cli.command("complete", help="Mark a task as complete",)(complete)
 
 if __name__ == "__main__":
     cli()
-
-# Rendered todo CLI v1.0.0 ~

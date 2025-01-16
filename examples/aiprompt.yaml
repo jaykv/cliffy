@@ -1,0 +1,197 @@
+name: aiprompt
+version: "1.0.0"
+help: "Generated with Claude. Command-line interface for interacting with OpenAI's APIs."
+
+requires:
+  - "openai>=1.0.0"
+  - "rich>=13.0.0"
+  - "keyring>=24.0.0"
+
+imports: |
+  import openai
+  import keyring
+  import json
+  from rich.console import Console
+  from rich.markdown import Markdown
+  from rich.table import Table
+  from typing import Optional, List
+  from pathlib import Path
+  from datetime import datetime
+
+functions: |
+  def load_api_key():
+      key = keyring.get_password("aiprompt", "openai_api_key")
+      if not key:
+          raise typer.BadParameter("API key not found. Please set it using 'aiprompt config set-key'")
+      return key
+  
+  def format_chat_response(response):
+      console = Console()
+      content = response.choices[0].message.content
+      console.print(Markdown(content))
+      
+  def format_completion_response(response):
+      console = Console()
+      content = response.choices[0].text
+      console.print(content)
+
+global_params:
+  - name: "--verbose"
+    type: "bool"
+    help: "Enable verbose output"
+    default: False
+
+commands:
+  "config.set-key":
+    help: "Set OpenAI API key"
+    params:
+      - name: "api_key"
+        type: "str"
+        help: "Your OpenAI API key"
+        required: true
+    run: |
+      keyring.set_password("aiprompt", "openai_api_key", api_key)
+      typer.echo("API key saved successfully!")
+
+  chat:
+    help: "Start a chat completion with GPT models"
+    params:
+      - name: "prompt"
+        type: "str"
+        help: "The prompt to send to the model"
+        required: true
+      - name: "--model"
+        type: "str"
+        help: "GPT model to use"
+        default: "gpt-3.5-turbo"
+      - name: "--temperature"
+        type: "float"
+        help: "Sampling temperature (0-2)"
+        default: 0.7
+      - name: "--max-tokens"
+        type: "int"
+        help: "Maximum tokens in response"
+        default: 1000
+    run: |
+      client = openai.OpenAI(api_key=load_api_key())
+      response = client.chat.completions.create(
+          model=model,
+          messages=[{"role": "user", "content": prompt}],
+          temperature=temperature,
+          max_tokens=max_tokens
+      )
+      format_chat_response(response)
+
+  complete:
+    help: "Generate text completions"
+    params:
+      - name: "prompt"
+        type: "str"
+        help: "The prompt to complete"
+        required: true
+      - name: "--model"
+        type: "str"
+        help: "Model to use"
+        default: "gpt-3.5-turbo-instruct"
+      - name: "--temperature"
+        type: "float"
+        help: "Sampling temperature (0-2)"
+        default: 0.7
+      - name: "--max-tokens"
+        type: "int"
+        help: "Maximum tokens in response"
+        default: 500
+    run: |
+      client = openai.OpenAI(api_key=load_api_key())
+      response = client.completions.create(
+          model=model,
+          prompt=prompt,
+          temperature=temperature,
+          max_tokens=max_tokens
+      )
+      format_completion_response(response)
+
+  "chat.stream":
+    help: "Start a streaming chat completion"
+    params:
+      - name: "prompt"
+        type: "str"
+        help: "The prompt to send to the model"
+        required: true
+      - name: "--model"
+        type: "str"
+        help: "GPT model to use"
+        default: "gpt-3.5-turbo"
+      - name: "--temperature"
+        type: "float"
+        help: "Sampling temperature (0-2)"
+        default: 0.7
+    run: |
+      console = Console()
+      client = openai.OpenAI(api_key=load_api_key())
+      stream = client.chat.completions.create(
+          model=model,
+          messages=[{"role": "user", "content": prompt}],
+          temperature=temperature,
+          stream=True
+      )
+      for chunk in stream:
+          if chunk.choices[0].delta.content:
+              console.print(chunk.choices[0].delta.content, end="")
+      console.print()
+
+  "chat.file":
+    help: "Send a file's content as a chat prompt"
+    params:
+      - name: "file"
+        type: "Path"
+        help: "Path to the input file"
+        required: true
+      - name: "--model"
+        type: "str"
+        help: "GPT model to use"
+        default: "gpt-3.5-turbo"
+      - name: "--system-prompt"
+        type: "str"
+        help: "Optional system prompt"
+        default: ""
+    run: |
+      client = openai.OpenAI(api_key=load_api_key())
+      messages = []
+      
+      if system_prompt:
+          messages.append({"role": "system", "content": system_prompt})
+          
+      with open(file, 'r') as f:
+          content = f.read()
+          messages.append({"role": "user", "content": content})
+      
+      response = client.chat.completions.create(
+          model=model,
+          messages=messages
+      )
+      format_chat_response(response)
+  models:
+    help: "List available OpenAI models"
+    params:
+      - name: "--type"
+        type: "str"
+        help: "Filter models by type (chat, completion, embedding, etc.)"
+        default: ""
+    run: |
+      console = Console()
+      client = openai.OpenAI(api_key=load_api_key())
+      models = client.models.list()
+      
+      table = Table(title="Available OpenAI Models")
+      table.add_column("ID", style="cyan")
+      table.add_column("Created", style="green")
+      table.add_column("Owner", style="blue")
+      
+      for model in sorted(models.data, key=lambda x: x.created):
+          if type and type.lower() not in model.id.lower():
+              continue
+          created_date = datetime.fromtimestamp(model.created).strftime('%Y-%m-%d')
+          table.add_row(model.id, created_date, model.owned_by)
+      
+      console.print(table)

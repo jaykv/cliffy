@@ -96,11 +96,11 @@ class Parser:
             )
         """
         parsed_param_type = f"{param_name}: {param_type} = typer.{typer_cls}"
-        if not default_val:
+        if default_val is None:
             # Required param needs ...
             parsed_param_type += "(..." if is_required else "(None"
         else:
-            parsed_param_type += f"({default_val.strip()}"
+            parsed_param_type += f"({default_val}"
 
         if aliases and typer_cls == "Option":
             if param_name.startswith("--"):
@@ -120,113 +120,51 @@ class Parser:
         parsed_param_type += "),"
         return parsed_param_type
 
-    def parse_param(self, param_name: str, param_type: str) -> str:
-        """
-        Parse a single command parameter, determining its type, required status, and formatting.
+    def parse_param(self, param: Union[CommandParam, GenericCommandParam, SimpleCommandParam]) -> str:
+        if isinstance(param, GenericCommandParam):
+            return f"{param.root}, "
 
-        Processes a parameter by extracting its characteristics such as required status, default value,
-        and type. Handles parameter aliases, option/argument classification, and type resolution.
+        typer_cls = "Option" if param.is_option() else "Argument"
+        norm_param_name = self.normalize_param_name(param.name)
+        param_type = param.type
 
-        Args:
-            param_name (str): The name of the parameter to parse.
-            param_type (str): The type definition of the parameter.
+        if isinstance(param, SimpleCommandParam) and "typer." in param.raw_type:
+            return f"{norm_param_name.strip()}: {param_type.strip()}, "
 
-        Returns:
-            str: A formatted parameter definition for use in command parsing.
-
-        Notes:
-            - Strips trailing '!' to indicate required parameters
-            - Replaces dashes with underscores in parameter names
-            - Supports parameter aliases for options
-            - Resolves parameter types from a predefined manifest
-            - Handles default values and optional/required status
-        """
-        is_required = self.is_param_required(param_type)
-        default_val = self.get_default_param_val(param_type)
-        param_typer_cls = "Option" if self.is_param_option(param_name) else "Argument"
-        arg_aliases: list[str] = []
-
-        # extract default val before parsing it
-        if "=" in param_type:
-            param_type = param_type.split("=")[0].strip()
-
-        # lstrip - before parsing it
-        if self.is_param_option(param_name):
-            param_name, arg_aliases = self.capture_param_aliases(param_name)
-
-        # rstrip ! before parsing it
-        if is_required:
-            param_type = param_type[:-1]
-
-        # replace - with _ for arg name
-        param_name = param_name.replace("-", "_")
-
-        # check for a type def that matches param_type
         if param_type in self.manifest.types:
-            return f"{param_name}: {self.manifest.types[param_type]},"
+            return f"{norm_param_name}: {self.manifest.types[param_type]},"
+
+        aliases = [param.short] if param.short else None
+
+        if isinstance(param, CommandParam):
+            # wrap default_val in quotes if it's a string and not wrapped already
+            default_val = (
+                f'"{param.default.replace('"', r"\"")}"'
+                if param.type == "str" and param.default is not None
+                else param.default
+            )
+        else:
+            # for simple, assume it's already wrapped
+            default_val = param.default
 
         return self.build_param_type(
-            param_name,
-            param_type,
-            typer_cls=param_typer_cls,
-            aliases=arg_aliases,
+            param_name=norm_param_name,
+            param_type=param_type,
+            typer_cls=typer_cls,
+            aliases=aliases,
             default_val=default_val,
-            is_required=is_required,
+            is_required=param.required,
+            help=param.help,
         )
 
     def parse_params(self, command: Command) -> str:
-        """
-        Parse command parameters for a given command, combining global and command-specific parameters.
-
-        Processes a list of command parameters, handling different parameter types including CommandParam,
-        GenericCommandParam, and SimpleCommandParam. Generates a formatted string representation of parameters
-        suitable for command definition.
-
-        Args:
-            command (Command): The command whose parameters are to be parsed.
-
-        Returns:
-            str: A formatted string of parsed command parameters, or an empty string if no parameters exist.
-
-        Notes:
-            - Combines global parameters with command-specific parameters
-            - Supports different parameter types with varying parsing strategies
-            - Handles parameter aliases, help text, default values, and required status
-            - Strips trailing whitespace and comma from the final parameter string
-        """
         if not command.params:
             return ""
 
-        parsed_command_params = ""
         combined_command_params = self.manifest.global_params + command.params
-        for param in combined_command_params:
-            if isinstance(param, CommandParam):
-                aliases = [param.short] if param.short else None
-
-                parsed_command_params += (
-                    self.build_param_type(
-                        param_name=param.name,
-                        param_type=param.type,
-                        typer_cls="Option" if param.is_option() else "Argument",
-                        help=param.help,
-                        aliases=aliases,
-                        default_val=str(param.default) if param.default is not None else None,
-                        is_required=param.required,
-                    )
-                    + " "
-                )
-            elif isinstance(param, GenericCommandParam):
-                parsed_command_params += f"{param}, "
-            elif isinstance(param, SimpleCommandParam):
-                param_name, param_type = next(iter(param.root.items()))
-
-                if "typer." in param_type:
-                    parsed_command_params += f"{param_name.strip()}: {param_type.strip()}, "
-                else:
-                    parsed_command_params += f"{self.parse_param(param_name.strip(), param_type.strip())} "
-
-        # strip the extra ", "
-        return parsed_command_params[:-2]
+        parsed_command_params = "".join(f"{self.parse_param(param)} " for param in combined_command_params)
+        # strip the extra ", " if exists
+        return parsed_command_params.strip().rstrip(",")
 
     def get_parsed_config(self, command: Command) -> str:
         """
@@ -250,6 +188,9 @@ class Parser:
 
         configured_options = command.config.model_dump(exclude_unset=True)
         return self.to_args(configured_options)
+
+    def normalize_param_name(self, name: str) -> str:
+        return name.lstrip("-").replace("-", "_")
 
     def get_command_func_name(self, command: Command) -> str:
         """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""

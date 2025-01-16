@@ -14,12 +14,11 @@ Build feature-rich Python CLIs  _quickly_.
     # hello.yaml
     name: hello
     version: 0.1.0
+    help: Hello world!
 
     commands:
-    shell: 
-        help: Print hello in shell
-        run: $echo "hello from shell"
-    python: print("hello from python")
+      shell: $echo "hello from shell"
+      python: print("hello from python")
     ```
 
     2. Load CLI
@@ -42,16 +41,16 @@ Build feature-rich Python CLIs  _quickly_.
     name: todo
     version: 1.0.0
     requires:
-    - tabulate  # For pretty table output
-    - rich      # For colored terminal output
+       - tabulate  # For pretty table output
+       - rich      # For colored terminal output
     imports: |
-    import sqlite3
-    from pathlib import Path
-    from tabulate import tabulate
-    from rich import print
+      import sqlite3
+      from pathlib import Path
+      from tabulate import tabulate
+      from rich import print
 
     commands:
-    create:
+      create:
         help: Create a new database with tasks table
         params:
         - name: str = typer.Option(..., prompt=True, confirmation_prompt=True)
@@ -67,7 +66,7 @@ Build feature-rich Python CLIs  _quickly_.
         conn.close()
         print(f"✨ Created database {db_path} with tasks table")
 
-    tasks:
+      tasks:
         help: List tasks in database
         params: [name: str!]
         run: |
@@ -77,7 +76,7 @@ Build feature-rich Python CLIs  _quickly_.
         conn.close()
         print(tabulate(tasks, headers=['ID', 'Task', 'Done'], tablefmt='grid'))
 
-    add:
+      add:
         help: Add a new task
         params: [name: str!, task: str!]
         run: |
@@ -87,7 +86,7 @@ Build feature-rich Python CLIs  _quickly_.
         conn.close()
         print(f"📝 Added task: {task}")
 
-    complete:
+      complete:
         help: Mark a task as complete
         params: [name: str!, id: int!]
         run: |
@@ -109,6 +108,7 @@ For more examples, check [examples](examples/) directory.
 * Test your CLIs with built-in test runner
 * Use Jinja2 template syntax for dynamic command generation
 * Reusable command templates
+* LLM-friendly schema- see [custom prompt](features#llm-friendly-prompt)
 
 **Similar frameworks**
 
