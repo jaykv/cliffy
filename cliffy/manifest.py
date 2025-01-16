@@ -6,6 +6,7 @@ import sys
 
 LATEST_SCHEMA_VERSION = "v3"
 
+
 class GenericCommandParam(RootModel):
     root: str = Field(
         json_schema_extra={"title": "Generic Command Param\nGets appended to the command params signature."}
