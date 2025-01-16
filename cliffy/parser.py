@@ -1,5 +1,5 @@
 ## Command parser
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from pybash.transformer import transform as transform_bash
 
@@ -19,28 +19,6 @@ class Parser:
 
     def __init__(self, manifest: CLIManifest) -> None:
         self.manifest = manifest
-
-    def is_param_required(self, param_type: str) -> bool:
-        return (
-            param_type.strip().endswith("!")
-            if "=" not in param_type
-            else param_type.split("=")[0].strip().endswith("!")
-        )
-
-    def is_param_option(self, param_name: str) -> bool:
-        return param_name.startswith("-")
-
-    def get_default_param_val(self, param_type: str) -> str:
-        return param_type.split("=")[1].strip() if "=" in param_type else ""
-
-    def capture_param_aliases(self, param_name: str) -> Tuple[str, list[str]]:
-        if "|" not in param_name:
-            return param_name.lstrip("-"), []
-
-        base_param_name = param_name.split("|")[0].lstrip("-").strip()
-        aliases = param_name.split("|")[1:]
-
-        return base_param_name, aliases
 
     def parse_run_block(self, script: Union[RunBlock, RunBlockList]) -> str:
         norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
