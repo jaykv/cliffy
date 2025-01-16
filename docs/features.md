@@ -2,6 +2,9 @@
 
 Cliffy provides a wide range of features to help you build powerful and flexible command-line interfaces. This guide will explore some of the key features with examples.
 
+!!! note
+  All of Typer's features are available for use- see Typer docs https://typer.tiangolo.com/
+
 ## Dependencies
 
 You can specify Python package dependencies for the CLI using the `requires` section. For example:
@@ -104,6 +107,34 @@ This allows you to integrate shell commands into your CLI. Internally, shell com
 
 In special cases, you may want to trigger the unsafe `shell=True` in the subprocess calls. For those times, you can use the `>` prefix instead. [Beware!](https://docs.python.org/3.10/library/subprocess.html#security-considerations)
 
+## Global params
+
+Define `global_params` to add common arguments/options across ALL commands.
+
+```yaml
+global_params:
+  - name: "--verbose"
+    type: "bool"
+    default: false
+    help: "Enable verbose output"
+
+commands:
+  hello:
+    run: |
+      if verbose:
+        print("Verbose mode enabled")
+      print("Hello!")
+  goodbye:
+    run: |
+      if verbose:
+        print("Verbose mode enabled")
+      print("Goodbye!")
+```
+
+When either command is executed with `--verbose`, the corresponding `if verbose:` block within the run script will be executed.
+
+Note how the verbose variable is available directly within the command's script. No special handling is needed. It's treated like a normal parameter.
+
 ## Command Templates
 
 You can define reusable command templates in the `command_templates` section. For example:
@@ -135,6 +166,15 @@ commands:
 
 This allows you to reuse common argument definitions and pre/post run logic across multiple commands.
 
+!!! note
+  Command script execution is performed in the following order:
+
+  1. Template pre-run
+  2. Command pre-run
+  3. Command run
+  4. Command post-run
+  5. Template post-run
+
 ## Tests
 
 The `tests` section allows you to define test cases for your commands. For example:
@@ -147,8 +187,13 @@ tests:
 
 These tests can then be run with `cli test`. 
 
-Explore the [Schema](schema.md) for concrete definition of CLI configuration and manifest fields.
+## Hot-reload
 
+Use the `cli dev` command to actively monitor a manifest for changes and automatically reload. Highly recommended for CLI manifest development.
+
+!!! example
+  - `cli dev examples/hello.yaml`
+  - `cli dev examples/hello.yaml --run-cli hello` (reload on change and run `hello` command)
 
 ## IDE Integration
 

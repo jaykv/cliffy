@@ -5,15 +5,13 @@
 ![GitHub](https://img.shields.io/github/license/jaykv/cliffy)
 [![docs](https://img.shields.io/badge/docs-8A2BE2)](https://jaykv.github.io/cliffy)
 
-**cliffy** simplifies the creation, management, and deployment of CLIs. Define your CLI's structure and behavior in a YAML manifest, and let cliffy handle the rest.
+Build feature-rich CLIs _quickly_.
 
 ## Features
-* Write CLIs with YAML manifests
-* Manage CLIs- load, test, update, list, and remove
-* Built-in shell and Python scripting support
-* Supports Jinja2 templating
-* Hot-reload CLIs on manifest changes for easier development
-* Build CLIs into self-contained, single-file portable zipapps for sharing
+* ⚡ Generate Python CLIs with a simple YAML manifest
+* 📦 Package your CLI into a single executable that runs anywhere
+* 🔄 Hot-reload changes instantly during development with built-in testing
+* 🎨 Mix Python and shell commands naturally with built-in scripting support
 
 ### Load
 
@@ -42,63 +40,93 @@ Parses `hello.yaml` to generate a Typer CLI and load it into the running Python 
 
 ![hello-demo](docs/images/hello.png)
 
-For more examples, check [examples](examples/) directory.
-
 ### Build
 
-1. Define a manifest
+Simple todo CLI with sqlite3 + tabulate.
+
+1. Define the manifest
 ```yaml
-# requires.yaml
-name: requires
-version: 0.1.0
-
+# todo.yaml
+name: todo
+version: 1.0.0
 requires:
-  - requests >= 2.30.0
-  - six
-
-imports:
-  - import six
+  - tabulate  # For pretty table output
+  - rich      # For colored terminal output
+imports: |
+  import sqlite3
+  from pathlib import Path
+  from tabulate import tabulate
+  from rich import print
 
 commands:
-  shell: $echo "hello from shell"
-  python: print("hello from python")
-  py: |
-    if six.PY2:
-        print("python 2")
-    if six.PY3:
-        print("python 3")
+  create:
+    help: Create a new database with tasks table
+    params:
+      - name: str = typer.Option(..., prompt=True, confirmation_prompt=True)
+    run: |
+      db_path = Path(f"{name}.db")
+      conn = sqlite3.connect(db_path)
+      conn.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY, task TEXT NOT NULL, done BOOLEAN NOT NULL)")
+
+      # insert example tasks
+      conn.execute("INSERT INTO tasks (task, done) VALUES ('Fight for your right!', 0)")
+      conn.execute("INSERT INTO tasks (task, done) VALUES ('To party!', 1)")
+      conn.commit()
+      conn.close()
+      print(f"✨ Created database {db_path} with tasks table")
+
+  tasks:
+    help: List tasks in database
+    params: [name: str!]
+    run: |
+      conn = sqlite3.connect(f"{name}.db")
+      cursor = conn.execute("SELECT * FROM tasks")
+      tasks = cursor.fetchall()
+      conn.close()
+      print(tabulate(tasks, headers=['ID', 'Task', 'Done'], tablefmt='grid'))
+
+  add:
+    help: Add a new task
+    params: [name: str!, task: str!]
+    run: |
+      conn = sqlite3.connect(f"{name}.db")
+      conn.execute("INSERT INTO tasks (task, done) VALUES (?, 0)", (task,))
+      conn.commit()
+      conn.close()
+      print(f"📝 Added task: {task}")
+
+  complete:
+    help: Mark a task as complete
+    params: [name: str!, id: int!]
+    run: |
+      conn = sqlite3.connect(f"{name}.db")
+      conn.execute("UPDATE tasks SET done = 1 WHERE id = ?", (id,))
+      conn.commit()
+      conn.close()
+      print(f"🎉 Marked task {id} as complete")
 ```
 
-2. Build CLI
-```
-$ cli build requires.yaml -o dist
-```
+![todo-demo](docs/images/demo.gif)
 
-Builds a portable zipapp containing the CLI and its package requirements.
-
-3. Run CLI
-```
-./dist/requires -h
-```
+For more examples, check [examples](examples/) directory.
 
 ## Usage
 `cli <command>`
 
-
 | Command | Description |
 |---|---|
-| init \<cli name> | Generate a template CLI manifest for a new CLI |
-| load \<manifest> | Add a new CLI based on the manifest |
-| render \<manifest> | View generated CLI script for a manifest |
-| list, ls | Output a list of loaded CLIs |
-| update \<cli name> | Reload a loaded CLI |
-| remove \<cli name>, rm \<cli name> | Remove a loaded CLI |
-| run \<manifest> -- \<args> | Runs a CLI manifest command in isolation|
-| build \<cli name or manifest> | Build a CLI manifest or a loaded CLI into a self-contained zipapp |
-| info \<cli name> | Display CLI metadata |
-| dev \<manifest> | Start hot-reloader for a manifest for active development |
-| test \<manifest> | Run tests defined in a manifest |
-| validate \<manifest> | Validate the syntax and structure of a CLI manifest |
+| `init <cli name>`| Generate a template CLI manifest for a new CLI |
+| `load <manifest>` | Add a new CLI based on the manifest |
+| `render <manifest>` | View generated CLI script for a manifest |
+| `list, ls` | Output a list of loaded CLIs |
+| `update <cli name>`| Reload a loaded CLI |
+| `remove <cli name>, rm <cli name>` | Remove a loaded CLI |
+| `run <manifest> -- \<args>`| Runs a CLI manifest command in isolation|
+| `build <cli name or manifest>` | Build a CLI manifest or a loaded CLI into a self-contained zipapp |
+| `info <cli name>` | Display CLI metadata |
+| `dev <manifest>` | Start hot-reloader for a manifest for active development |
+| `test <manifest>` | Run tests defined in a manifest |
+| `validate <manifest>` | Validate the syntax and structure of a CLI manifest |
 
 ## How it works
 1. Define CLI manifests in YAML files
@@ -118,11 +146,12 @@ Cliffy can be installed using either pip or uv package managers.
 or 
 
 * `pip install cliffy` to use the default help output.
+* `cli init mycli`
 
 ### With uv
-* `uvx cliffy --help`
-* Load: `uvx cliffy load examples/hello.yaml`
-* Run: `uvx --from cliffy hello`
+* Init: `uvx cliffy init mycli`
+* Load: `uvx cliffy load mycli.yaml`
+* Run: `uvx --from cliffy mycli -h`
 
 ## Manifest template
 Generated by `cli init`. For a barebones template, run `cli init --raw`

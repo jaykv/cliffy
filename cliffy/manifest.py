@@ -4,6 +4,7 @@ from .helper import wrap_as_comment
 from datetime import datetime
 import sys
 
+LATEST_SCHEMA_VERSION = "v3"
 
 class GenericCommandParam(RootModel):
     root: str = Field(
@@ -218,7 +219,7 @@ class CommandTemplate(BaseModel):
 
 
 class CLIManifest(BaseModel):
-    manifestVersion: str = "v3"
+    manifestVersion: str = LATEST_SCHEMA_VERSION
     name: str = Field(..., description="The name of the CLI, used when invoking from command line.")
     version: str = Field(..., description="CLI version")
     help: str = Field("", description="Brief description of the CLI")
@@ -293,7 +294,7 @@ class CLIManifest(BaseModel):
                 "v2 schema is deprecated with cliffy >= 0.5.0. Please upgrade the manifest to the v3 schema."
             )
         if value.strip() != "v3":
-            raise ValueError(f"Unrecognized manifest version {value}. Latest is v3.")
+            raise ValueError(f"Unrecognized manifest version {value}. Latest is {LATEST_SCHEMA_VERSION}.")
         return value
 
     @classmethod
@@ -334,7 +335,7 @@ class CLIManifest(BaseModel):
         manifest = ""
         if json_schema:
             manifest += "# yaml-language-server: $schema=cliffy_schema.json\n"
-        manifest += f"""manifestVersion: v2
+        manifest += f"""manifestVersion: {LATEST_SCHEMA_VERSION}
 
 {"" if json_schema else cls.get_field_description("name")}
 name: {cli_name}
@@ -455,7 +456,7 @@ tests:
         manifest = ""
         if json_schema:
             manifest += "# yaml-language-server: $schema=cliffy_schema.json\n"
-        manifest += f"""manifestVersion: v2
+        manifest += f"""manifestVersion: {LATEST_SCHEMA_VERSION}
 
 name: {cli_name}
 version: 0.1.0

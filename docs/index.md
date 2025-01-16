@@ -1,8 +1,18 @@
+---
+hide:
+  - path
+  - toc.title
+---
+
+<style>
+.md-content .md-typeset h1 { display: none; }
+</style>
+
+# Cliffy
+
 ![Cliffy logo](images/logo.svg)
 
-# Welcome to Cliffy Documentation
-
-Cliffy is a powerful CLI framework that simplifies the creation of command-line interfaces using YAML-defined CLI manifests.
+Build feature-rich Python CLIs  _quickly_.
 
 !!! example "Simplest example"
     1. Define a manifest
@@ -30,53 +40,83 @@ Cliffy is a powerful CLI framework that simplifies the creation of command-line 
 
     For more examples, check [examples](examples/) directory.
 
+!!! example "Build into single-file executable"
+    Simple todo CLI with sqlite3 + tabulate.
 
-!!! example "Build example"
-    Also easy to build CLI into a single-file executable.
-
-    1. Define a manifest
     ```yaml
-    # requires.yaml
-    name: requires
-    version: 0.1.0
-
+    # todo.yaml
+    name: todo
+    version: 1.0.0
     requires:
-    - requests >= 2.30.0
-    - six
-
-    imports:
-    - import six
+    - tabulate  # For pretty table output
+    - rich      # For colored terminal output
+    imports: |
+    import sqlite3
+    from pathlib import Path
+    from tabulate import tabulate
+    from rich import print
 
     commands:
-    shell: $echo "hello from shell"
-    python: print("hello from python")
-    py: |
-        if six.PY2:
-            print("python 2")
-        if six.PY3:
-            print("python 3")
+    create:
+        help: Create a new database with tasks table
+        params:
+        - name: str = typer.Option(..., prompt=True, confirmation_prompt=True)
+        run: |
+        db_path = Path(f"{name}.db")
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY, task TEXT NOT NULL, done BOOLEAN NOT NULL)")
+
+        # insert example tasks
+        conn.execute("INSERT INTO tasks (task, done) VALUES ('Fight for your right!', 0)")
+        conn.execute("INSERT INTO tasks (task, done) VALUES ('To party!', 1)")
+        conn.commit()
+        conn.close()
+        print(f"✨ Created database {db_path} with tasks table")
+
+    tasks:
+        help: List tasks in database
+        params: [name: str!]
+        run: |
+        conn = sqlite3.connect(f"{name}.db")
+        cursor = conn.execute("SELECT * FROM tasks")
+        tasks = cursor.fetchall()
+        conn.close()
+        print(tabulate(tasks, headers=['ID', 'Task', 'Done'], tablefmt='grid'))
+
+    add:
+        help: Add a new task
+        params: [name: str!, task: str!]
+        run: |
+        conn = sqlite3.connect(f"{name}.db")
+        conn.execute("INSERT INTO tasks (task, done) VALUES (?, 0)", (task,))
+        conn.commit()
+        conn.close()
+        print(f"📝 Added task: {task}")
+
+    complete:
+        help: Mark a task as complete
+        params: [name: str!, id: int!]
+        run: |
+        conn = sqlite3.connect(f"{name}.db")
+        conn.execute("UPDATE tasks SET done = 1 WHERE id = ?", (id,))
+        conn.commit()
+        conn.close()
+        print(f"🎉 Marked task {id} as complete")
     ```
 
-    1. Build CLI
-    ```
-    $ cli build requires.yaml -o dist
-    ```
+    ![todo-demo](images/demo.gif)
 
-    A portable [zipapp](https://docs.python.org/3/library/zipapp.html) is generated containing the CLI and its dependencies.
+For more examples, check [examples](examples/) directory.
 
-    2. Run CLI
-    ```
-    ./dist/requires -h
-    ```
+### Why cliffy
+* Mix Python and shell commands naturally
+* Hot-reload changes as you develop
+* Package your CLI as a single executable with `cli build`
+* Test your CLIs with built-in test runner
+* Use Jinja2 template syntax for dynamic command generation
+* Reusable command templates
 
-
-- [Getting Started](getting-started.md)
-- [Features](features.md)
-- [Schema](schema.md)
-- [Examples](https://github.com/jaykv/cliffy/tree/main/examples)
-
-
-## Similar frameworks
+**Similar frameworks**
 
 - [Bashly](https://github.com/DannyBen/bashly) - An awesome YAML to Bash CLI builder
 - [Fire](https://github.com/google/python-fire) - Python objects to CLI builder

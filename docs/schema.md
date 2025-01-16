@@ -18,7 +18,7 @@ The `CLIManifest` model defines the structure of a CLI manifest file. It include
 - `imports`: A string block or list of strings containing any module imports. These can be used to import any python modules that the CLI depends on.
 - `functions`: A list of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter.
 - `types`: A mapping containing any shared type definitions. These types can be referenced by name in the args section to provide type annotations for params and options defined in the args section.
-- `global_args`: Arguments applied to all commands.
+- `global_params`: Parameters applied to all commands.
 - `command_templates`: Reusable command templates.
 - `commands`: A mapping containing the command definitions for the CLI. Each command should have a unique key- which can be either a group command or nested subcommands. Nested subcommands are joined by '.' in between each level. Aliases for commands can be separated in the key by '|'. A special '(*)' wildcard can be used to spread the subcommand to all group-level commands.
 - `cli_options`: Additional CLI configuration options.

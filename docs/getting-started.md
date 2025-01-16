@@ -9,17 +9,25 @@ To get started with Cliffy, you'll need to install it using pip:
 ```bash
 $ pip install cliffy
 $ cli --help
+$ cli init mycli
+$ cli load mycli.yaml
+$ mycli -h
 ```
 
 You can also use uv to run cliffy directly with:
 ```bash
 $ uvx cliffy --help
+$ uvx cliffy init mycli
+$ uvx cliffy load mycli.yaml
+$ uvx --from cliffy mycli -h
 ```
 
 ## Creating Your First CLI
 
-Let's create a simple "hello" CLI. Create a file named `hello.yaml` with the following content:
+Let's create a simple "hello" CLI with `$ cli init hello --raw`.
 
+You should now have a hello.yaml file. Open it and replace the manifest with:
+s
 ```yaml
 name: hello
 version: 0.1.0

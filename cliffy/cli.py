@@ -111,7 +111,7 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
     run_cli(T.cli.name, T.cli.code, cli_args)
 
 
-@click.argument("cli_name", type=str, default="cliffy")
+@click.argument("cli_name", type=str, default="mycli")
 @click.option("--render", is_flag=True, show_default=True, default=False, help="Print template to terminal directly")
 @click.option(
     "--raw",
@@ -251,7 +251,7 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
 
     - cli dev examples/hello.yaml --run-cli hello
     """
-    out(f"Watching {manifest} for changes\n", fg="magenta")
+    out(f"🔄 Watching {manifest} for changes...\n", fg="magenta")
     Reloader.watch(manifest, run_cli, run_cli_args)
 
 
