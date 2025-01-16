@@ -59,6 +59,22 @@ def test_greedy_command_expand():
 
 
 def test_command_param_parsing():
+    """
+    Test the parsing of command parameters with various configurations.
+    
+    This test function validates the generation of CLI parameters for a 'greet' command, 
+    including argument and option parsing with different parameter types and default values.
+    
+    The test covers three main scenarios:
+    1. An argument parameter with a default value
+    2. An option parameter with a string default value
+    3. An option parameter with an empty string default value
+    
+    Verifies that:
+    - Argument parameters are correctly generated with default values
+    - Option parameters are created with correct names, short flags, and default values
+    - Typer-specific parameter generation matches expected syntax
+    """
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -103,6 +119,19 @@ def test_command_param_parsing():
 
 
 def test_command_param_with_global_params():
+    """
+    Test the inclusion of global parameters in a CLI manifest.
+    
+    This test verifies that global parameters are correctly integrated into the CLI generation process, specifically checking:
+    1. The presence of a global verbose option with correct type, default value, and help text
+    2. The inclusion of a command-specific required argument
+    
+    Parameters:
+        None
+    
+    Raises:
+        AssertionError: If the generated CLI does not include the expected global parameter or command argument
+    """
     manifest = CLIManifest(
         name="test",
         version="0.1.0",

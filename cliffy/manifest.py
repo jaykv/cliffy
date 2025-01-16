@@ -27,42 +27,118 @@ class SimpleCommandParam(RootModel):
         return iter(self.root)
 
     def items(self) -> ItemsView[str, str]:  # type: ignore[override]
+        """
+        Return an items view of the underlying dictionary.
+        
+        Returns:
+            ItemsView[str, str]: A view of the dictionary's key-value pairs
+        """
         return self.root.items()
 
     @cached_property
     def raw_name(self) -> str:
+        """
+        Retrieve the raw parameter name from the command parameter dictionary.
+        
+        Returns:
+            str: The first key from the root dictionary, stripped of leading and trailing whitespaces.
+        """
         return next(iter(self.root)).strip()
 
     @property
     def raw_type(self) -> str:
+        """
+        Retrieve the raw type definition for the command parameter.
+        
+        Returns:
+            str: The type definition associated with the parameter's name in the root dictionary.
+        """
         return self.root[self.raw_name]
 
     @property
     def name(self) -> str:
+        """
+        Extracts the primary name from a command parameter, handling optional pipe-separated aliases.
+        
+        Returns:
+            str: The primary name of the command parameter, removing any alternative names.
+        
+        Example:
+            - For 'input|i', returns 'input'
+            - For 'config', returns 'config'
+        """
         return self.raw_name.split("|")[0] if "|" in self.raw_name else self.raw_name
 
     @property
     def type(self) -> str:
+        """
+        Extracts the type from the raw type string, removing any default value or required marker.
+        
+        Parameters:
+            self (SimpleCommandParam): The command parameter instance
+        
+        Returns:
+            str: The parsed type of the command parameter, stripped of default value and required marker
+        """
         parsed_type = self.raw_type.split("=")[0].strip() if "=" in self.raw_type else self.raw_type
         return parsed_type.rstrip("!")
 
     @property
     def required(self) -> bool:
+        """
+        Determines whether the command parameter is required based on its type annotation.
+        
+        Returns:
+            bool: True if the parameter type ends with an exclamation mark (!), indicating it is a required parameter; False otherwise.
+        """
         return self.raw_type.endswith("!")
 
     @property
     def default(self) -> Optional[str]:
+        """
+        Retrieve the default value for a command parameter if specified.
+        
+        Returns:
+            Optional[str]: The default value of the parameter if defined, otherwise None.
+            
+        Examples:
+            - For parameter 'name=John', returns 'John'
+            - For parameter 'name!', returns None
+        """
         return self.raw_type.split("=")[1].strip() if "=" in self.raw_type else None
 
     @property
     def short(self) -> Optional[str]:
+        """
+        Retrieve the short alias for a command parameter if available.
+        
+        Returns:
+            Optional[str]: The short alias (single character) for the parameter, 
+                           or None if no short alias is defined.
+        
+        Example:
+            For a parameter defined as "verbose|v", returns "v"
+            For a parameter without a short alias, returns None
+        """
         return self.raw_name.split("|")[1] if "|" in self.raw_name else None
 
     def is_option(self) -> bool:
+        """
+        Determines whether the command parameter is a command-line option based on its name.
+        
+        Returns:
+            bool: True if the parameter name starts with a dash ('-'), indicating it is a command-line option; False otherwise.
+        """
         return self.raw_name.startswith("-")
 
     @property
     def help(self) -> str:
+        """
+        Returns an empty help text for the command parameter.
+        
+        Returns:
+            str: An empty string representing no help text.
+        """
         return ""
 
 
@@ -103,6 +179,12 @@ class CommandParam(BaseModel):
         return v
 
     def is_option(self) -> bool:
+        """
+        Determines whether the command parameter is a command-line option.
+        
+        Returns:
+            bool: True if the parameter name starts with '--', indicating it is a command-line option; False otherwise.
+        """
         return self.name.strip().startswith("--")
 
 

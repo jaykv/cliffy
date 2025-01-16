@@ -202,6 +202,22 @@ class Commander:
         self.cli += "\n"
 
     def add_functions(self) -> None:
+        """
+        Add functions to the CLI code based on the manifest's function definitions.
+        
+        Handles different input types for functions:
+        - If no functions are defined, method returns early
+        - If functions is a string, appends it directly to CLI code
+        - If functions is a list, transforms each function using transform_bash() and appends to CLI code
+        
+        Ensures a blank line is added after function definitions for code readability.
+        
+        Parameters:
+            None
+        
+        Returns:
+            None
+        """
         if not self.manifest.functions:
             return
         if isinstance(self.manifest.functions, str):
@@ -212,6 +228,17 @@ class Commander:
         self.cli += "\n"
 
     def add_command(self, command: Command) -> None:
+        """
+        Add a command to a specific group based on its name.
+        
+        This method handles adding commands to subgroups by parsing the command's name. If the command name contains a dot ('.'), it extracts the group name and adds the command as a subcommand to the corresponding group.
+        
+        Parameters:
+            command (Command): The command to be added to a group.
+        
+        Raises:
+            KeyError: If the extracted group name is not found in the existing groups.
+        """
         if "." in command.name:
             group = command.name.split(".")[:-1][-1]
             self.add_sub_command(command, self.groups[group])

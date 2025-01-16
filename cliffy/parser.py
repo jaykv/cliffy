@@ -18,9 +18,34 @@ class Parser:
     __slots__ = ("manifest",)
 
     def __init__(self, manifest: CLIManifest) -> None:
+        """
+        Initialize a Parser instance with a CLI manifest.
+        
+        Parameters:
+            manifest (CLIManifest): The manifest containing command definitions and types for the CLI application.
+        """
         self.manifest = manifest
 
     def parse_run_block(self, script: Union[RunBlock, RunBlockList]) -> str:
+        """
+        Parse a run block or run block list into an indented script string.
+        
+        Converts a RunBlock or RunBlockList to a normalized script, transforms bash commands,
+        and returns an indented multi-line string representation.
+        
+        Parameters:
+            script (Union[RunBlock, RunBlockList]): The script block to parse, which can be
+                either a single RunBlock or a list of RunBlocks.
+        
+        Returns:
+            str: A formatted, indented script string with each line indented by 4 spaces.
+        
+        Raises:
+            ValueError: If the normalized script is not a string.
+        
+        Example:
+            parser.parse_run_block(run_block)  # Returns indented script string
+        """
         norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
         if not isinstance(norm_script, str):
             raise ValueError(f"Invalid script type: {type(norm_script)}")
@@ -49,8 +74,10 @@ class Parser:
     ) -> str:
         """
         Builds a type-annotated parameter definition for Typer CLI command.
-
-        Args:
+        
+        Constructs a parameter type definition with support for various Typer CLI configuration options.
+        
+        Parameters:
             param_name (str): Name of the parameter to be defined.
             param_type (str): Type annotation for the parameter.
             typer_cls (str): Typer class to use (e.g., "Option", "Argument").
@@ -59,10 +86,10 @@ class Parser:
             is_required (bool, default=False): Whether the parameter is mandatory.
             help (str, optional): Help text describing the parameter.
             extra_params (str, optional): Additional Typer parameter configurations.
-
+        
         Returns:
             str: A formatted parameter type definition for Typer CLI command generation.
-
+        
         Example:
             # Generates: username: str = typer.Option("", "--username", help="User login")
             build_param_type(
@@ -99,6 +126,28 @@ class Parser:
         return parsed_param_type
 
     def parse_param(self, param: Union[CommandParam, GenericCommandParam, SimpleCommandParam]) -> str:
+        """
+        Parse a command parameter and generate its Typer CLI parameter definition.
+        
+        Handles different types of command parameters (GenericCommandParam, SimpleCommandParam, CommandParam) 
+        and converts them into a formatted parameter string for Typer CLI.
+        
+        Parameters:
+            param (Union[CommandParam, GenericCommandParam, SimpleCommandParam]): 
+                The command parameter to parse and convert.
+        
+        Returns:
+            str: A formatted Typer CLI parameter definition with trailing comma.
+        
+        Behavior:
+            - For GenericCommandParam, returns the root value
+            - Determines parameter type as Option or Argument based on is_option()
+            - Normalizes parameter name
+            - Handles type mapping from manifest types
+            - Supports parameter aliases
+            - Handles default value wrapping for string types
+            - Generates parameter type definition using build_param_type method
+        """
         if isinstance(param, GenericCommandParam):
             return f"{param.root}, "
 
@@ -136,6 +185,21 @@ class Parser:
         )
 
     def parse_params(self, command: Command) -> str:
+        """
+        Parse and format parameters for a given command, combining global and command-specific parameters.
+        
+        Parameters:
+            command (Command): The command whose parameters are to be parsed.
+        
+        Returns:
+            str: A formatted string of parsed parameters, combining global and command-specific parameters.
+                 Returns an empty string if no parameters are defined.
+        
+        Notes:
+            - Combines global parameters from the manifest with command-specific parameters
+            - Uses `parse_param` to convert each parameter to its string representation
+            - Strips any trailing whitespace or comma from the final parameter string
+        """
         if not command.params:
             return ""
 
@@ -168,10 +232,44 @@ class Parser:
         return self.to_args(configured_options)
 
     def normalize_param_name(self, name: str) -> str:
+        """
+        Normalize a parameter name by removing leading dashes and replacing remaining dashes with underscores.
+        
+        Parameters:
+            name (str): The original parameter name to be normalized.
+        
+        Returns:
+            str: A normalized parameter name suitable for use as a Python identifier.
+        
+        Example:
+            >>> parser.normalize_param_name('--input-file')
+            'input_file'
+            >>> parser.normalize_param_name('-v')
+            'v'
+        """
         return name.lstrip("-").replace("-", "_")
 
     def get_command_func_name(self, command: Command) -> str:
-        """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""
+        """
+        Convert a command name to a valid Python function name.
+        
+        Transforms command names by replacing special characters with underscores to create a valid identifier. Supports command names with dots, dashes, and pipe characters.
+        
+        Parameters:
+            command (Command): The command object containing the name to be converted.
+        
+        Returns:
+            str: A normalized function name derived from the command name.
+        
+        Raises:
+            ValueError: If the command name contains non-alphanumeric characters after removing special characters.
+        
+        Examples:
+            - "a" → "a"
+            - "a.b" → "a_b"
+            - "a-b" → "a_b"
+            - "a|b" → "a_b"
+        """
         if not command.name.replace(".", "").replace("-", "").replace("_", "").replace("|", "").isalnum():
             raise ValueError(f"Invalid command name: {command.name}")
         return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
