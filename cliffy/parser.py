@@ -113,17 +113,13 @@ class Parser:
             return f"{norm_param_name}: {self.manifest.types[param_type]},"
 
         aliases = [param.short] if param.short else None
+        default_val = param.default
 
-        if isinstance(param, CommandParam):
+        # only wrap strings for CommandParam, leave simple params as-is
+        should_wrap_default = isinstance(param, CommandParam) and param.type == "str"
+        if default_val and should_wrap_default:
             # wrap default_val in quotes if it's a string and not wrapped already
-            default_val = '"{}"'.format(
-                param.default.replace('"', r"\"")
-                if param.type == "str" and param.default is not None
-                else param.default
-            )
-        else:
-            # for simple, assume it's already wrapped
-            default_val = param.default
+            default_val = '"{}"'.format(default_val.replace('"', r"\""))
 
         return self.build_param_type(
             param_name=norm_param_name,
