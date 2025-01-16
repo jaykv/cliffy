@@ -9,7 +9,7 @@ from typing_extensions import Self
 from cliffy.commander import generate_cli
 from cliffy.commanders.typer import TyperCommander
 from cliffy.helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
-from cliffy.manifest import IncludeManifest, CLIManifest
+from cliffy.manifest import LATEST_SCHEMA_VERSION, IncludeManifest, CLIManifest
 from cliffy.merger import cliffy_merger
 
 
@@ -27,7 +27,7 @@ class Transformer:
     ) -> None:
         self.manifest_io = manifest_io
         self.command_config = self.load_manifest(manifest_io)
-        self.manifest_version = self.command_config.pop("manifestVersion", "v3")
+        self.manifest_version = self.command_config.pop("manifestVersion", LATEST_SCHEMA_VERSION)
         if self.command_config.get("includes"):
             self.includes_config = self.resolve_includes()
             cliffy_merger.merge(self.command_config, self.includes_config)

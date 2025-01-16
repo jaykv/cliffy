@@ -1,6 +1,6 @@
-site_name: Cliffy
+site_name: ""
 nav:
-  - Home: index.md
+  - Cliffy: index.md
   - Getting Started: getting-started.md
   - Features: features.md
   - Schema: schema.md
@@ -26,6 +26,8 @@ theme:
     code: Roboto Mono
   features:
     - content.code.copy
+    - navigation.top
+    - navigation.indexes
 plugins:
   - search
   - literate-nav
