@@ -27,7 +27,7 @@ $ uvx --from cliffy mycli -h
 Let's create a simple "hello" CLI with `$ cli init hello --raw`.
 
 You should now have a hello.yaml file. Open it and replace the manifest with:
-s
+
 ```yaml
 name: hello
 version: 0.1.0

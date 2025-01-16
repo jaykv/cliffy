@@ -1,9 +1,3 @@
----
-hide:
-  - path
-  - toc.title
----
-
 <style>
 .md-content .md-typeset h1 { display: none; }
 </style>
@@ -108,7 +102,7 @@ Build feature-rich Python CLIs  _quickly_.
 
 For more examples, check [examples](examples/) directory.
 
-### Why cliffy
+## Why cliffy
 * Mix Python and shell commands naturally
 * Hot-reload changes as you develop
 * Package your CLI as a single executable with `cli build`

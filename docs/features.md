@@ -3,7 +3,7 @@
 Cliffy provides a wide range of features to help you build powerful and flexible command-line interfaces. This guide will explore some of the key features with examples.
 
 !!! note
-  All of Typer's features are available for use- see Typer docs https://typer.tiangolo.com/
+  Refer to [Typer docs](https://typer.tiangolo.com/tutorial/parameter-types/) for docs on crafting custom paramater types.
 
 ## Dependencies
 
