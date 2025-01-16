@@ -5,9 +5,7 @@ version: 0.1.0
 help: Hello world!
 
 commands:
-  shell: 
-    help: Print hello in shell
-    run: $echo "hello from shell"
+  shell: $echo "hello from shell"
   python: print("hello from python")
 
 tests:

@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import Any, ItemsView, Iterator, Optional, Union
 from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
 from .helper import wrap_as_comment
@@ -27,6 +28,42 @@ class SimpleCommandParam(RootModel):
 
     def items(self) -> ItemsView[str, str]:  # type: ignore[override]
         return self.root.items()
+
+    @cached_property
+    def raw_name(self) -> str:
+        return next(iter(self.root)).strip()
+
+    @property
+    def raw_type(self) -> str:
+        return self.root[self.raw_name]
+
+    @property
+    def name(self) -> str:
+        return self.raw_name.split("|")[0] if "|" in self.raw_name else self.raw_name
+
+    @property
+    def type(self) -> str:
+        parsed_type = self.raw_type.split("=")[0].strip() if "=" in self.raw_type else self.raw_type
+        return parsed_type.rstrip("!")
+
+    @property
+    def required(self) -> bool:
+        return self.raw_type.endswith("!")
+
+    @property
+    def default(self) -> Optional[str]:
+        return self.raw_type.split("=")[1].strip() if "=" in self.raw_type else None
+
+    @property
+    def short(self) -> Optional[str]:
+        return self.raw_name.split("|")[1] if "|" in self.raw_name else None
+
+    def is_option(self) -> bool:
+        return self.raw_name.startswith("-")
+
+    @property
+    def help(self) -> str:
+        return ""
 
 
 class CommandParam(BaseModel):
@@ -66,17 +103,6 @@ class CommandParam(BaseModel):
         return v
 
     def is_option(self) -> bool:
-        """
-        Determines whether the command parameter represents a command-line option.
-
-        Returns:
-            bool: True if the parameter name starts with '--', indicating it is a command-line option; False otherwise.
-
-        Examples:
-            - '--verbose' returns True
-            - 'input' returns False
-            - ' --debug ' returns True (whitespace is stripped before checking)
-        """
         return self.name.strip().startswith("--")
 
 
@@ -248,9 +274,9 @@ class CLIManifest(BaseModel):
         description="String block or list of strings containing any module imports. "
         "These can be used to import any python modules that the CLI depends on.",
     )
-    functions: list[str] = Field(
+    functions: Union[str, list[str]] = Field(
         default=[],
-        description="List of helper function definitions. "
+        description="String block or list of helper function definitions. "
         "These functions should be defined as strings that can be executed by the Python interpreter.",
     )
 

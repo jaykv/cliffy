@@ -350,13 +350,20 @@
             "title": "Imports"
         },
         "functions": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                }
+            ],
             "default": [],
-            "description": "List of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter.",
-            "items": {
-                "type": "string"
-            },
-            "title": "Functions",
-            "type": "array"
+            "description": "String block or list of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter.",
+            "title": "Functions"
         },
         "types": {
             "additionalProperties": {

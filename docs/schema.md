@@ -16,7 +16,7 @@ The `CLIManifest` model defines the structure of a CLI manifest file. It include
 - `includes`: A list of external CLI manifests to include. Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest, and finally, deep merges the merged manifest with this manifest.
 - `vars`: A mapping defining manifest variables that can be referenced in any other blocks. Environments variables can be used in this section with `${some_env_var}` for dynamic parsing. Supports jinja2 formatted expressions as values. Interpolate defined vars in other blocks jinja2-styled `{{ var_name }}`.
 - `imports`: A string block or list of strings containing any module imports. These can be used to import any python modules that the CLI depends on.
-- `functions`: A list of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter.
+- `functions`: A string block or list of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter.
 - `types`: A mapping containing any shared type definitions. These types can be referenced by name in the args section to provide type annotations for params and options defined in the args section.
 - `global_params`: Parameters applied to all commands.
 - `command_templates`: Reusable command templates.

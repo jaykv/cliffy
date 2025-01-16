@@ -204,9 +204,11 @@ class Commander:
     def add_functions(self) -> None:
         if not self.manifest.functions:
             return
-
-        for func in self.manifest.functions:
-            self.cli += f"{transform_bash(func)}\n"
+        if isinstance(self.manifest.functions, str):
+            self.cli += self.manifest.functions + "\n"
+        elif isinstance(self.manifest.functions, list):
+            for func in self.manifest.functions:
+                self.cli += f"{transform_bash(func)}\n"
         self.cli += "\n"
 
     def add_command(self, command: Command) -> None:

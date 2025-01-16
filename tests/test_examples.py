@@ -19,8 +19,8 @@ try:
 except ImportError:
     RICH_INSTALLED = False
 
-CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster"}
-CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster"}
+CLI_LOADS = {"hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster", "todo"}
+CLI_BUILDS = {"hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster", "todo"}
 CLI_MANIFEST_BUILDS = {"hello", "db", "pydev", "template", "town", "requires", "environ", "penv", "taskmaster"}
 CLI_LOAD_FAILS = {"requires"}
 CLI_BUILD_FAILS = {"requires"}
@@ -59,9 +59,18 @@ if not RICH_INSTALLED:
     CLI_LOAD_FAILS.add("db")
     CLI_BUILD_FAILS.add("db")
     del CLI_TESTS["db"]
+    CLI_LOADS.remove("todo")
+    CLI_BUILDS.remove("todo")
+    CLI_LOAD_FAILS.add("todo")
+    CLI_BUILD_FAILS.add("todo")
 
 if platform.system() == "Windows":
     del CLI_TESTS["template"]
+    if "todo" in CLI_LOADS:
+        CLI_LOADS.remove("todo")
+
+    if "todo" in CLI_BUILDS:
+        CLI_BUILDS.remove("todo")
 
 
 def setup_module():

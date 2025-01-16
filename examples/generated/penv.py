@@ -1,7 +1,7 @@
-## Generated penv on 2025-01-13 23:46:39.918541
-from typing import Optional, Any
-import subprocess
+## Generated penv on 2025-01-16 04:52:16.704649
 import typer
+import subprocess
+from typing import Optional, Any
 import os
 from pathlib import Path
 from shutil import rmtree
@@ -50,7 +50,7 @@ def rm(name: str = typer.Argument(...)):
 
 cli.command("rm", help="Remove a venv",)(rm)
 
-def go(name: str = typer.Argument(...), interpreter: str = typer.Option("python", "--interpreter", "-i")):
+def go(name: str = typer.Argument(...), interpreter : str = typer.Option("python", "--interpreter ", "-i")):
     if venv_exists(name):
         print(f"~ sourcing {name}")
     else:
