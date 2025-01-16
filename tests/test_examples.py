@@ -59,6 +59,10 @@ if not RICH_INSTALLED:
     CLI_LOAD_FAILS.add("db")
     CLI_BUILD_FAILS.add("db")
     del CLI_TESTS["db"]
+    CLI_LOADS.remove("todo")
+    CLI_BUILDS.remove("todo")
+    CLI_LOAD_FAILS.add("todo")
+    CLI_BUILD_FAILS.add("todo")
 
 if platform.system() == "Windows":
     del CLI_TESTS["template"]
