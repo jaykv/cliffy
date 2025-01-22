@@ -1,0 +1,26 @@
+name: ai_generate
+version: "1.0.0"
+help: "CLI AI generation using pydantic-ai"
+
+requires:
+  - "pydantic-ai>=0.0.19"
+
+functions: |
+  class GeneratePrompt(AIModel):
+      prompt: str
+
+  def generate_content(prompt: str):
+      gen = GeneratePrompt(prompt=prompt)
+      return gen()
+
+commands:
+  "ai.generate":
+    help: "Generate text with pydantic-ai"
+    params:
+      - name: "prompt"
+        type: "str"
+        help: "Content prompt"
+        required: true
+    run: |
+      result = generate_content(prompt)
+      print(result)

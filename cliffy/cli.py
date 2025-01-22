@@ -328,6 +328,7 @@ def validate(manifest: TextIO) -> None:
 
 
 # register commands
+Loader.register_manifest("cliffy/ai_generate.yaml")
 load_command = cli.command("load")(load)
 build_command = cli.command("build")(build)
 dev_command = cli.command("dev")(dev)
