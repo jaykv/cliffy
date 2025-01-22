@@ -3,10 +3,14 @@ check: format lint test clean
 SOURCE_FILES=cliffy tests
 
 install:
-	pip install -e .
+	uv sync --frozen --all-extras --group dev --group docs
+
+sync:
+	uv sync --all-extras --group dev --group docs
 
 test:
-	pytest -vv --capture=tee-sys
+	uv run coverage run -m pytest -vv --capture=tee-sys -n auto
+	@uv run coverage report
 
 clean:
 	rm -rf build/ dist/ *.egg-info .*_cache test-builds test-manifest-builds
@@ -14,20 +18,23 @@ clean:
 	find . -name '__pycache__' -exec rm -rf {} +
 
 package: clean
-	python -m build
+	uv build
 
 publish: package
-	twine upload dist/*
+	uv publish
 
 format:
-	ruff format --exclude=cliffy/clis ${SOURCE_FILES}
-	ruff check ${SOURCE_FILES} --fix
+	uv run ruff format --exclude=cliffy/clis ${SOURCE_FILES}
+	uv run ruff check ${SOURCE_FILES} --fix
 
 lint:
-	ruff format --check --diff ${SOURCE_FILES} --exclude=cliffy/clis
-	ruff check ${SOURCE_FILES}
-	mypy cliffy --strict
-	mypy tests
+	uv run ruff format --check --diff ${SOURCE_FILES} --exclude=cliffy/clis
+	uv run ruff check ${SOURCE_FILES}
+	uv run mypy cliffy --strict
+	uv run mypy tests
+
+docs-serve:
+	uv run mkdocs serve
 
 shell:
 	source .venv/bin/activate

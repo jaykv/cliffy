@@ -3,6 +3,9 @@
 
 name: Python library with poetry
 
+env:
+  COLUMNS: 120
+  
 on:
   push:
     paths:
