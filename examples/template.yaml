@@ -19,7 +19,7 @@ commands:
       Runs hello command by default based on GLOBAL_VAR.
     template: common_params
     run:
-    - $ echo "{{GLOBAL_VAR}} f{local_arg} --f{local_arg_2}"
+      - $ echo "{{GLOBAL_VAR}} f{local_arg} --f{local_arg_2}"
     config:
       deprecated: True
       context_settings:

@@ -1,6 +1,6 @@
-## Generated template on 2025-01-16 04:52:17.251876
-import typer
+## Generated template on 2025-01-21 22:35:02.291436
 import subprocess
+import typer
 from typing import Optional, Any
 GLOBAL_VAR = 'hello'
 
@@ -24,7 +24,7 @@ def main(
 
 
 def hello(local_arg: str = typer.Argument(...), local_arg_2: str = typer.Option("")):
-    subprocess.run(["hello",f"""{local_arg}""","--" + f"""{local_arg_2}"""])
+    subprocess.run(["echo","hello " + f"""{local_arg}""" + " --" + f"""{local_arg_2}"""])
 
 
 cli.command("hello", help="Demo. global var and command args usage. Runs hello command by default based on GLOBAL_VAR.", context_settings={'help_option_names': ['-h', '--helpme']}, deprecated=True)(hello)
