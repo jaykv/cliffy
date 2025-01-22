@@ -33,8 +33,8 @@ CLI_TESTS = {
         {"args": "home s test123 --money 123", "resp": "selling home test123 for $123.00"},
     ],
     "template": [
-        {"args": "hello shell", "resp": "hello from shell"},
-        {"args": "hello python", "resp": "hello from python"},
+        {"args": "hello shell --local-arg-2 test", "resp": "hello shell --test"},
+        {"args": "hello python --local-arg-2 test2", "resp": "hello python --test2"},
     ],
     "environ": [
         {"args": "hello", "resp": "hello"},
