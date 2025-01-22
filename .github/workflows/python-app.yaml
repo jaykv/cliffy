@@ -58,11 +58,9 @@ jobs:
       if: ${{ matrix.extras }}
     - name: Code quality
       run: |
-        source $VENV
         uv run make lint
     - name: Test with pytest
       run: |
-        source $VENV
         uv run make test
     - name: Minimize uv cache
       run: uv cache prune --ci
