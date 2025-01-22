@@ -214,6 +214,8 @@ def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, py
 
         if result.exit_code != 0:
             out(result.stdout)
+            if result.exception:
+                out(str(result.exception))
             out_err(f"~ {cli_name} build failed")
             continue
 

@@ -1,6 +1,6 @@
-## Generated aiprompt on 2025-01-16 04:52:16.406589
-import typer
+## Generated aiprompt on 2025-01-21 22:35:01.444009
 import subprocess
+import typer
 from typing import Optional, Any
 import openai
 import keyring

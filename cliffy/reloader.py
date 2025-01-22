@@ -22,7 +22,7 @@ class Reloader(FileSystemEventHandler):
         super().__init__()
 
     def on_modified(self, event: FileSystemEvent) -> None:
-        if event.is_directory or not event.src_path.endswith(self.manifest_path):
+        if event.is_directory or not str(event.src_path).endswith(self.manifest_path):
             return
 
         if not isinstance(event, FileModifiedEvent):
@@ -41,7 +41,7 @@ class Reloader(FileSystemEventHandler):
     def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
         event_handler = cls(manifest_path, run_cli, run_cli_args)
         observer = Observer()
-        observer.schedule(event_handler, path=Path(manifest_path).parent, recursive=False)
+        observer.schedule(event_handler, path=str(Path(manifest_path).parent), recursive=False)
         observer.start()
 
         try:

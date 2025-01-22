@@ -1,6 +1,6 @@
 from functools import cached_property
 from typing import Any, ItemsView, Iterator, Optional, Union
-from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, ValidationInfo
 from .helper import wrap_as_comment
 from datetime import datetime
 import sys
@@ -306,8 +306,7 @@ class CLIManifest(BaseModel):
 
     tests: list[Union[str, dict[str, str]]] = Field(default=[], description="Test cases for commands")
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
     @field_validator("manifestVersion", mode="after")
     @classmethod
