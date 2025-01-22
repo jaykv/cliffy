@@ -2,7 +2,6 @@ name: Python library with uv
 
 env:
   COLUMNS: 120
-  UV_CACHE_DIR: /tmp/.uv-cache
   
 on:
   push:
@@ -30,26 +29,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
     - name: Install uv
       uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Load cached venv
-      id: cache
-      uses: actions/cache@v4
-      with:
-        path: /tmp/.uv-cache
-        key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}-${{ steps.setup-python.outputs.python-version }}-${{ matrix.extras }}
-    - name: Install dependencies
-      run: uv sync
-      if: ${{ steps.cache.outputs.cache-hit != 'true' && matrix.extras == false }}
-    - name: Install dependencies
-      run: uv sync --all-extras
-      if: ${{ steps.cache.outputs.cache-hit != 'true' && matrix.extras }}
+        enable-cache: true
+        cache-suffix: ${{ matrix.extras }}
     - name: Install library
       run: uv sync
       if: ${{ matrix.extras == false }}
