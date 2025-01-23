@@ -77,6 +77,7 @@ def delete_temp_files() -> None:
         with contextlib.suppress(Exception):
             file.close()
             os.unlink(file.name)
+    TEMP_FILES.clear()
 
 
 def indent_block(block: str, spaces: int = 4) -> str:
