@@ -10,6 +10,8 @@ from cliffy.manifest import (
     PreRunBlock,
     RunBlock,
     SimpleCommandParam,
+    RunBlockList,
+    IncludeManifest,
 )
 import pytest
 
@@ -581,3 +583,104 @@ def test_invalid_simple_command_param():
             },
         )
     assert "validation error" in str(exc_info.value).lower()
+
+
+def test_run_block_list_operations():
+    run_blocks = RunBlockList(
+        root=[RunBlock(root="print('first')"), RunBlock(root="print('second')"), RunBlock(root="print('third')")]
+    )
+
+    assert len(run_blocks.root) == 3
+    assert run_blocks[0].root == "print('first')"
+    assert run_blocks.to_script() == "print('first')\nprint('second')\nprint('third')"
+
+
+def test_manifest_version_validation():
+    with pytest.raises(ValueError) as exc_info:
+        CLIManifest(manifestVersion="v4", name="test", version="1.0.0", help="Test CLI", commands={})
+    assert "Unrecognized manifest version" in str(exc_info.value)
+
+
+def test_cli_manifest_get_field_description():
+    desc = CLIManifest.get_field_description("name", as_comment=False)
+    assert desc == "The name of the CLI, used when invoking from command line."
+
+    commented_desc = CLIManifest.get_field_description("name", as_comment=True)
+    assert commented_desc.startswith("#")
+
+
+def test_cli_manifest_invalid_name_template():
+    with pytest.raises(ValueError) as exc_info:
+        CLIManifest.get_template("invalid-name", json_schema=False)
+    assert "CLI name must be a valid Python identifier" in str(exc_info.value)
+
+
+def test_include_manifest_merge():
+    include = IncludeManifest(
+        requires=["requests>=2.0.0"],
+        commands={"test": Command(help="Test command", run=RunBlock("print('test')"))},
+        vars={"api_key": "${API_KEY}"},
+        imports=["import requests"],
+        functions=["def test(): pass"],
+        types={"ApiKey": "str"},
+        cli_options={"rich_help": "True"},
+        tests=["test: assert True"],
+    )
+    assert len(include.commands) == 1
+    assert include.requires == ["requests>=2.0.0"]
+    assert include.vars["api_key"] == "${API_KEY}"
+
+
+def test_include_manifest_empty():
+    include = IncludeManifest()
+    assert include.requires == []
+
+
+def test_command_template_empty_blocks():
+    template = CommandTemplate()
+    assert template.pre_run.root == ""
+    assert template.post_run.root == ""
+    assert template.params == []
+    assert template.config is None
+
+
+def test_var_block_validation():
+    manifest = CLIManifest(
+        name="test",
+        version="1.0.0",
+        help="Test CLI",
+        commands={},
+        vars={
+            "string_var": "simple string",
+            "dict_var": {"key": None},
+            "env_var": "${TEST_ENV}",
+            "template_var": "{{ other_var }}",
+        },
+    )
+    assert isinstance(manifest.vars["string_var"], str)
+    assert isinstance(manifest.vars["dict_var"], dict)
+
+
+def test_command_param_type_validation():
+    manifest = CLIManifest(
+        name="test",
+        version="1.0.0",
+        help="Test CLI",
+        commands={
+            "test": Command(
+                help="Test command",
+                params=[CommandParam(name="--custom", type="CustomType", help="Custom type param")],
+                run=RunBlock("print('test')"),
+            )
+        },
+        types={"CustomType": "str"},
+    )
+    assert manifest.commands["test"].params[0].type == "CustomType"
+
+
+def test_get_raw_template():
+    raw_template = CLIManifest.get_raw_template("test", False)
+    assert "#" not in raw_template
+
+    raw_template_with_schema = CLIManifest.get_raw_template("test", True)
+    assert "# yaml-language-server:" in raw_template_with_schema

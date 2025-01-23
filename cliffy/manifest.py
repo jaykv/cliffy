@@ -518,7 +518,7 @@ class IncludeManifest(BaseModel):
     can be merged with other manifests.
     """
 
-    requires: list[str]
+    requires: list[str] = []
     commands: dict[str, CommandBlock] = {}
     vars: dict[str, VarBlock] = {}
     imports: Union[str, list[str]] = []

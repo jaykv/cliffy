@@ -57,7 +57,7 @@ def test_table_creation():
     assert table.columns == []
     assert table.rows == []
     if hasattr(table, "styles"):
-        assert table.styles == []
+        assert getattr(table, "styles") == []
 
 
 def test_table_add_column():
@@ -65,7 +65,7 @@ def test_table_add_column():
     table.add_column("Name", style="red")
     assert table.columns
     if hasattr(table, "styles"):
-        assert table.styles == ["red"]
+        assert getattr(table, "styles") == ["red"]
 
 
 def test_table_add_row():

@@ -304,7 +304,7 @@ def test_dev_command_invalid_file_permissions():
 def test_update_command():
     runner = CliRunner()
     manifest_content = """
-    name: test-cli
+    name: test-cli-update
     version: 5.0.1
     commands:
         hello:
@@ -313,7 +313,7 @@ def test_update_command():
     """
 
     manifest_content_update = """
-    name: test-cli
+    name: test-cli-update
     version: 5.0.2
     commands:
         world:
@@ -327,14 +327,14 @@ def test_update_command():
         result = runner.invoke(load_command, ["test.yaml"])
         assert result.exit_code == 0
 
-        cli_metadata = get_metadata("test-cli")
+        cli_metadata = get_metadata("test-cli-update")
         assert cli_metadata and cli_metadata.version == "5.0.1"
 
         with open("test.yaml", "w") as f:
             f.write(manifest_content_update)
 
-        result = runner.invoke(update_command, ["test-cli"])
+        result = runner.invoke(update_command, ["test-cli-update"])
         assert result.exit_code == 0
 
-        cli_metadata = get_metadata("test-cli")
+        cli_metadata = get_metadata("test-cli-update")
         assert cli_metadata and cli_metadata.version == "5.0.2"

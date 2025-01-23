@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=cliffy_schema.json
+
+name: nestedcli
+version: 0.1.0
+commands:
+  group1.subgroup.command1: $ echo "hello"
+  group1.subgroup.command2: $ echo "world"
+  group2.command3: $ echo "foo"
