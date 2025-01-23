@@ -8,7 +8,7 @@ from click.types import _is_file_like
 
 from cliffy.tester import ShellScript, Tester
 
-from .rich import click, Console, print_rich_table
+from cliffy.rich import click, Console, print_rich_table  # type: ignore
 
 from .builder import build_cli, build_cli_from_manifest, run_cli
 from .helper import (
