@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cliffy"
-version = "0.5.2"
+version = "0.5.3"
 description = "$ cli load from.yaml"
 authors = [{ name = "Jay", email = "jay.github0@gmail.com" }]
 readme = "README.md"
