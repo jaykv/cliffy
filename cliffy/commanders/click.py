@@ -76,8 +76,6 @@ def cli():
 
     def define_groups(self) -> None:
         for group in self.groups.values():
-            if group.is_root():
-                continue
             parsed_help = group.help.replace("\n", "") if group.help else ""
             self.cli += f"""
 @click.group()

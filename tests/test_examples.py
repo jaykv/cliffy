@@ -52,6 +52,7 @@ CLI_TESTS = {
         {"args": "group1 subgroup command1", "resp": "hello"},
         {"args": "group1 subgroup command2", "resp": "world"},
         {"args": "group2 command3", "resp": "foo"},
+        {"args": "command4", "resp": "bar"},
     ],
 }
 CLI_WITH_MANIFEST_TESTS = ["hello", "taskmaster"]

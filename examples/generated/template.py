@@ -1,7 +1,7 @@
-## Generated template on 2025-01-21 22:35:02.291436
+## Generated template on 2025-01-24 13:22:44.339893
 import subprocess
-import typer
 from typing import Optional, Any
+import typer
 GLOBAL_VAR = 'hello'
 
 
@@ -33,7 +33,7 @@ def debug(local_arg: str = typer.Argument(...), local_arg_2: str = typer.Option(
     print(f"arg1: {local_arg}, arg2: --{local_arg_2}")
 
 
-cli.command("debug", help="",)(debug)
+cli.command("debug", )(debug)
 
 if __name__ == "__main__":
     cli()

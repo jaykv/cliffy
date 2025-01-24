@@ -1,7 +1,7 @@
-## Generated environ on 2025-01-21 22:35:01.737034
+## Generated environ on 2025-01-24 13:22:43.893773
 import subprocess
-import typer
 from typing import Optional, Any
+import typer
 import os
 
 default_env_var = 'hello'
@@ -29,25 +29,25 @@ def read(env_var: str = typer.Argument(...)):
     subprocess.run(["echo",f"""{os.environ[env_var]}"""])
 
 
-cli.command("read", help="",)(read)
+cli.command("read", )(read)
 
 def hello():
     subprocess.run(["echo","hello"])
 
 
-cli.command("hello", help="",)(hello)
+cli.command("hello", )(hello)
 
 def bye():
     subprocess.run(["echo",f"""{os.environ['ENVIRON_BYE_TEXT']}"""])
 
 
-cli.command("bye", help="",)(bye)
+cli.command("bye", )(bye)
 
 def hello_bye():
     subprocess.run(["echo","hello","bye"])
 
 
-cli.command("hello-bye", help="",)(hello_bye)
+cli.command("hello-bye", )(hello_bye)
 
 if __name__ == "__main__":
     cli()

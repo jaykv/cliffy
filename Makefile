@@ -39,7 +39,7 @@ shell:
 	source .venv/bin/activate
 
 generate-clis: 
-	pip install requests "six<1.0.0" rich
+	pip install requests "six<1.0.0" rich keyring
 	cli load examples/*.yaml
 	cp cliffy/clis/*.py examples/generated/
 
@@ -47,7 +47,7 @@ generate-all: generate-clis generate-schema generate-cleanup
 	@echo "~ done"
 
 generate-cleanup:
-	pip uninstall -y requests six rich
+	pip uninstall -y requests six rich keyring
 	cli rm-all
 
 generate-schema:

@@ -1,7 +1,7 @@
-## Generated db on 2025-01-21 22:35:01.728607
+## Generated db on 2025-01-24 13:22:43.887264
 import subprocess
-import typer
 from typing import Optional, Any
+import typer
 from rich.console import Console
 console = Console()
 
@@ -44,7 +44,7 @@ def create(name: str = typer.Option(..., prompt="What is the name of the databas
     console.print(f"Creating database {name}", style="green")
 
 
-cli.command("create", help="",)(create)
+cli.command("create", )(create)
 
 cli.command("mk", hidden=True, epilog="Alias for create")(create)
 
@@ -57,7 +57,7 @@ def delete(name: str = typer.Option(..., prompt="What is the name of the databas
         console.print(f"Back to safety!", style="green")
 
 
-cli.command("delete", help="",)(delete)
+cli.command("delete", )(delete)
 
 cli.command("rm", hidden=True, epilog="Alias for delete")(delete)
 
@@ -66,7 +66,7 @@ def list():
     print("Listing all databases")
 
 
-cli.command("list", help="",)(list)
+cli.command("list", )(list)
 
 cli.command("ls", hidden=True, epilog="Alias for list")(list)
 
@@ -75,7 +75,7 @@ def view(name: str = typer.Option(..., prompt="What is the name of the database?
     console.print(f"Viewing {table} table for {name} DB")
 
 
-cli.command("view", help="",)(view)
+cli.command("view", )(view)
 
 cli.command("v", hidden=True, epilog="Alias for view")(view)
 

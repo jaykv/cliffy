@@ -70,7 +70,7 @@ def test_build_groups():
         },
     )
     commander = TyperCommander(manifest)
-    assert len(commander.groups) == 3
+    assert len(commander.groups) == 2
     assert "group1" in commander.groups
     assert "group2" in commander.groups
     assert "Group 1 help" in commander.groups["group1"].help
@@ -187,7 +187,7 @@ def test_build_groups_with_complex_hierarchy():
         },
     )
     commander = TyperCommander(manifest)
-    assert len(commander.groups) == 4
+    assert len(commander.groups) == 3
     assert "group1.subgroup" in commander.groups
     assert "group2" in commander.groups
     assert "group1" in commander.groups

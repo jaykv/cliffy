@@ -7,3 +7,4 @@ commands:
   group1.subgroup.command1: $ echo "hello"
   group1.subgroup.command2: $ echo "world"
   group2.command3: $ echo "foo"
+  command4: $ echo "bar"

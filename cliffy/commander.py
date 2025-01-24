@@ -42,14 +42,11 @@ class BaseGroup(BaseModel):
         """Returns valid Python variable name for group app"""
         return self.name.replace(".", "_") + "_app"
 
-    def is_root(self) -> bool:
-        return self.name == "__root__"
-
 
 class Groups(BaseModel):
     """Root container for all groups"""
 
-    root: dict[str, BaseGroup] = {"__root__": BaseGroup(name="__root__", short_name="cli", commands=[])}
+    root: dict[str, BaseGroup] = {}
 
     def __iter__(self) -> Iterator[str]:  # type: ignore[override]
         return iter(self.root)
@@ -88,12 +85,8 @@ class Groups(BaseModel):
         self.root[group_name] = BaseGroup(name=group_name, short_name=short_name, parent_group=parent_group)
         return group_name
 
-    def process_command(self, command: Command) -> None:
-        if "." not in command.name:
-            group_name = "__root__"
-        else:
-            group_name = self.add_group_by_full_path(command.name)
-
+    def add_command_to_group(self, command: Command) -> None:
+        group_name = self.add_group_by_full_path(command.name)
         self.root[group_name].commands.append(command)
 
 
@@ -110,6 +103,7 @@ class Commander(ABC):
         "base_imports",
         "aliases_by_commands",
         "commands",
+        "root_group",
     )
 
     def __init__(self, manifest: CLIManifest) -> None:
@@ -118,6 +112,7 @@ class Commander(ABC):
         self.cli: str = ""
         self.greedy: list[Command] = []
         self.groups = Groups()
+        self.root_group = BaseGroup(name="__root__", short_name="cli", commands=[])
 
         for name, command in self.manifest.commands.items():
             if isinstance(command, Command) and not command.name:
@@ -168,7 +163,10 @@ class Commander(ABC):
                 command.aliases += command_parts[1:]
                 self.aliases_by_commands[command_parts[0]] = command_parts[1:]
 
-            self.groups.process_command(command)
+            if "." in command.name:
+                self.groups.add_command_to_group(command)
+            else:
+                self.root_group.commands.append(command)
 
         # loop again to check for group help
         # TODO: probably should be a separate manifest field i.e. group_config
@@ -179,8 +177,6 @@ class Commander(ABC):
 
     def add_subcommands(self) -> None:
         for group in self.groups.values():
-            if group.is_root():
-                continue
             self.add_group(group)
             for subcommand in group.commands:
                 self.add_sub_command(subcommand, group)
@@ -198,7 +194,7 @@ class Commander(ABC):
         self.add_main_block()
 
     def add_root_commands(self) -> None:
-        for root_command in self.groups["__root__"].commands:
+        for root_command in self.root_group.commands:
             self.add_root_command(root_command)
 
     def add_imports(self) -> None:
@@ -243,8 +239,6 @@ class Commander(ABC):
         for greedy_command in self.greedy:
             if greedy_command.name.startswith("(*)"):
                 for group in self.groups.values():
-                    if group.is_root():
-                        continue
                     self.add_lazy_command(greedy_command, group)
 
     def add_lazy_command(self, greedy_command: Command, group: BaseGroup) -> None:
