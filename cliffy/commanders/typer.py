@@ -84,12 +84,13 @@ def main("""
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""
+        empty_or_help = f'help="{parsed_help}",' if parsed_help else ""
 
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_params(command)}):
 {self.parser.parse_command_run(command)}
 
-cli.command("{parsed_command_name}", help="{parsed_help}",{parsed_command_config})({parsed_command_func_name})
+cli.command("{parsed_command_name}", {empty_or_help}{parsed_command_config})({parsed_command_func_name})
 """
 
         for alias in command.aliases:
@@ -99,10 +100,9 @@ cli.command("{alias}", hidden=True, epilog="Alias for {parsed_command_name}")({p
 
     def add_group(self, group: BaseGroup) -> None:
         """Add a group to the CLI with proper nesting"""
-        parent_var = group.parent.var_name if group.parent else "cli"
-
+        parent_group = group.parent_group.var_name if group.parent_group else "cli"
         self.cli += f"""{group.var_name} = typer.Typer()
-{parent_var}.add_typer({group.var_name}, name="{group.name}", help="{group.help}")
+{parent_group}.add_typer({group.var_name}, name="{group.short_name}", help="{group.help}")
 """
 
     def add_sub_command(self, command: Command, group: BaseGroup) -> None:
@@ -111,12 +111,13 @@ cli.command("{alias}", hidden=True, epilog="Alias for {parsed_command_name}")({p
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""
+        empty_or_help = f'help="{parsed_help}",' if parsed_help else ""
 
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_params(command)}):
 {self.parser.parse_command_run(command)}
 
-{group.var_name}.command("{parsed_command_name}", help="{parsed_help}",{parsed_command_config})({parsed_command_func_name})
+{group.var_name}.command("{parsed_command_name}", {empty_or_help}{parsed_command_config})({parsed_command_func_name})
 """
 
         for alias in command.aliases:

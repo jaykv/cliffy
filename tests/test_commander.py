@@ -68,7 +68,7 @@ def test_build_groups():
         },
     )
     commander = TyperCommander(manifest)
-    assert len(commander.groups) == 2
+    assert len(commander.groups) == 3
     assert "group1" in commander.groups
     assert "group2" in commander.groups
     assert len(commander.groups["group1"].commands) == 2
@@ -162,13 +162,12 @@ def test_setup_command_aliases_with_group_commands():
         },
     )
     commander = TyperCommander(manifest)
-    group1_command = next(cmd for cmd in commander.groups["group1"].commands)
-    group2_command = next(cmd for cmd in commander.groups["group2"].commands)
+    group1_command = next(iter(commander.groups["group1"].commands))
+    group2_command = next(iter(commander.groups["group2"].commands))
     assert group1_command.aliases == ["alias1", "alias2"]
     assert group2_command.aliases == ["alias3"]
 
 
-@pytest.mark.xfail
 def test_build_groups_with_complex_hierarchy():
     manifest = CLIManifest(
         name="mycli",
@@ -181,10 +180,11 @@ def test_build_groups_with_complex_hierarchy():
         },
     )
     commander = TyperCommander(manifest)
-    assert len(commander.groups) == 3
-    assert "group1" in commander.groups
+    assert len(commander.groups) == 4
+    assert "group1.subgroup" in commander.groups
     assert "group2" in commander.groups
-    assert "subgroup" in commander.groups
+    assert "group1" in commander.groups
+    assert commander.groups["group1.subgroup"].parent_group == commander.groups["group1"]
 
 
 def test_add_lazy_command_multiple_groups():
