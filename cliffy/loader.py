@@ -35,7 +35,7 @@ class Loader:
 
     @staticmethod
     def get_cli_path(cli_name: str) -> str:
-        return f"{CLIFFY_CLI_DIR}/{cli_name}.py"
+        return f"{CLIFFY_CLI_DIR}/{cli_name.replace('-', '_')}.py"
 
     @staticmethod
     def get_cli_script_path(cli_name: str) -> str:
@@ -45,7 +45,7 @@ class Loader:
     def get_cli_script(cli_name: str) -> str:
         return f"""#!{PYTHON_EXECUTABLE}
 import sys
-from cliffy.clis.{cli_name} import cli
+from cliffy.clis.{cli_name.replace("-", "_")} import cli
 
 if __name__ == '__main__':
     sys.exit(cli())"""

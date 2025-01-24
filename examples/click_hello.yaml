@@ -1,0 +1,9 @@
+name: clickhello
+version: 0.1.0
+use_click: true
+
+help: Hello World with Click!
+commands:
+  hello | hl: $ echo "world"
+
+

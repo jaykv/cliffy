@@ -1,7 +1,7 @@
-## Generated aiprompt on 2025-01-21 22:35:01.444009
+## Generated aiprompt on 2025-01-24 13:22:43.676184
 import subprocess
-import typer
 from typing import Optional, Any
+import typer
 import openai
 import keyring
 import json
@@ -31,6 +31,8 @@ def main(
 ):
     pass
 
+config_app = typer.Typer()
+chat_app = typer.Typer()
 def load_api_key():
     key = keyring.get_password("aiprompt", "openai_api_key")
     if not key:
@@ -95,7 +97,6 @@ def models(verbose: bool = typer.Option(False, help="Enable verbose output"), ty
 
 
 cli.command("models", help="List available OpenAI models",)(models)
-config_app = typer.Typer()
 cli.add_typer(config_app, name="config", help="")
 
 def config_set_key(verbose: bool = typer.Option(False, help="Enable verbose output"), api_key: str = typer.Argument(..., help="Your OpenAI API key")):
@@ -104,8 +105,7 @@ def config_set_key(verbose: bool = typer.Option(False, help="Enable verbose outp
 
 
 config_app.command("set-key", help="Set OpenAI API key",)(config_set_key)
-chat_app = typer.Typer()
-cli.add_typer(chat_app, name="chat", help="Start a chat completion with GPT models")
+cli.add_typer(chat_app, name="chat", help="")
 
 def chat_stream(verbose: bool = typer.Option(False, help="Enable verbose output"), prompt: str = typer.Argument(..., help="The prompt to send to the model"), model: str = typer.Option("gpt-3.5-turbo", help="GPT model to use"), temperature: float = typer.Option(0.7, help="Sampling temperature (0-2)")):
     console = Console()

@@ -62,15 +62,19 @@ def test_build_groups():
         help="",
         version="0.1.0",
         commands={
-            "group1.command1": RunBlock("echo hello"),
-            "group1.command2": RunBlock("echo world"),
-            "group2.command3": RunBlock("echo foo"),
+            "group1": Command(help="Group 1 help"),
+            "group2": Command(help="Group 2 help"),
+            "group1.command1": RunBlock("$ echo hello"),
+            "group1.command2": RunBlock("$ echo world"),
+            "group2.command3": RunBlock("$ echo foo"),
         },
     )
     commander = TyperCommander(manifest)
     assert len(commander.groups) == 2
     assert "group1" in commander.groups
     assert "group2" in commander.groups
+    assert "Group 1 help" in commander.groups["group1"].help
+    assert "Group 2 help" in commander.groups["group2"].help
     assert len(commander.groups["group1"].commands) == 2
     assert len(commander.groups["group2"].commands) == 1
 
@@ -146,9 +150,9 @@ def test_from_greedy_make_lazy_command_with_params():
     commander = TyperCommander(CLIManifest(name="mycli", help="", version="0.1.0", commands={}))
 
     lazy_command = commander.from_greedy_make_lazy_command(greedy_command, "test")
-    assert lazy_command.params[0].help == "Help for test"
-    assert lazy_command.params[1].root == {"name": "test"}
-    assert lazy_command.params[2].root == "--test-flag"
+    assert lazy_command.params[0].help == "Help for test"  # type: ignore
+    assert lazy_command.params[1].root == {"name": "test"}  # type: ignore
+    assert lazy_command.params[2].root == "--test-flag"  # type: ignore
 
 
 def test_setup_command_aliases_with_group_commands():
@@ -162,19 +166,21 @@ def test_setup_command_aliases_with_group_commands():
         },
     )
     commander = TyperCommander(manifest)
-    group1_command = next(cmd for cmd in commander.groups["group1"].commands)
-    group2_command = next(cmd for cmd in commander.groups["group2"].commands)
+    group1_command = next(iter(commander.groups["group1"].commands))
+    group2_command = next(iter(commander.groups["group2"].commands))
     assert group1_command.aliases == ["alias1", "alias2"]
     assert group2_command.aliases == ["alias3"]
 
 
-@pytest.mark.xfail
 def test_build_groups_with_complex_hierarchy():
     manifest = CLIManifest(
         name="mycli",
         help="",
         version="0.1.0",
         commands={
+            "group1": Command(help="Group 1 help"),
+            "group2": Command(help="Group 2 help"),
+            "group1.subgroup": Command(help="Group 1 Subgroup help"),
             "group1.subgroup.command1": RunBlock("echo hello"),
             "group1.subgroup.command2": RunBlock("echo world"),
             "group2.command3": RunBlock("echo foo"),
@@ -182,9 +188,13 @@ def test_build_groups_with_complex_hierarchy():
     )
     commander = TyperCommander(manifest)
     assert len(commander.groups) == 3
-    assert "group1" in commander.groups
+    assert "group1.subgroup" in commander.groups
     assert "group2" in commander.groups
-    assert "subgroup" in commander.groups
+    assert "group1" in commander.groups
+    assert commander.groups["group1.subgroup"].parent_group == commander.groups["group1"]
+    assert "Group 1 help" in commander.groups["group1"].help
+    assert "Group 2 help" in commander.groups["group2"].help
+    assert "Group 1 Subgroup help" in commander.groups["group1.subgroup"].help
 
 
 def test_add_lazy_command_multiple_groups():

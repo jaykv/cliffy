@@ -297,6 +297,12 @@
             "title": "Help",
             "type": "string"
         },
+        "use_click": {
+            "default": false,
+            "description": "Generate CLI to Click instead of Typer",
+            "title": "Use Click",
+            "type": "boolean"
+        },
         "requires": {
             "default": [],
             "description": "List of Python package dependencies for the CLI.Supports requirements specifier syntax.",

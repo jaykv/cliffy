@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from typing_extensions import Self
 
 from cliffy.commander import generate_cli
+from cliffy.commanders.click import ClickCommander
 from cliffy.commanders.typer import TyperCommander
 from cliffy.helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
 from cliffy.manifest import LATEST_SCHEMA_VERSION, IncludeManifest, CLIManifest
@@ -43,7 +44,8 @@ class Transformer:
             self.validate_cli_requires()
 
         if isinstance(self.manifest, CLIManifest):
-            self.cli = generate_cli(self.manifest, commander_cls=TyperCommander)
+            commander_cls = ClickCommander if self.manifest.use_click else TyperCommander
+            self.cli = generate_cli(self.manifest, commander_cls=commander_cls)
 
     def validate_cli_requires(self) -> None:
         if not self.manifest.requires:

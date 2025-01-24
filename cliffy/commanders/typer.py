@@ -1,6 +1,6 @@
 import datetime
 
-from cliffy.commander import Commander, Group
+from cliffy.commander import Commander, BaseGroup
 from cliffy.manifest import CLIManifest, Command
 
 
@@ -84,12 +84,13 @@ def main("""
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""
+        empty_or_help = f'help="{parsed_help}",' if parsed_help else ""
 
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_params(command)}):
 {self.parser.parse_command_run(command)}
 
-cli.command("{parsed_command_name}", help="{parsed_help}",{parsed_command_config})({parsed_command_func_name})
+cli.command("{parsed_command_name}", {empty_or_help}{parsed_command_config})({parsed_command_func_name})
 """
 
         for alias in command.aliases:
@@ -97,34 +98,37 @@ cli.command("{parsed_command_name}", help="{parsed_help}",{parsed_command_config
 cli.command("{alias}", hidden=True, epilog="Alias for {parsed_command_name}")({parsed_command_func_name})
 """
 
-    def add_group(self, group: Group) -> None:
-        self.cli += f"""{group.name}_app = typer.Typer()
-cli.add_typer({group.name}_app, name="{group.name}", help="{group.help}")
+    def define_groups(self) -> None:
+        for group in self.groups.values():
+            parsed_help = group.help.replace("\n", "") if group.help else ""
+            empty_or_help = f'help="{parsed_help}",' if parsed_help else ""
+            self.cli += f"""{group.var_name} = typer.Typer({empty_or_help})
 """
 
-    def add_sub_command(self, command: Command, group: Group) -> None:
-        """
-        Add a sub-command to a Typer CLI group.
+    def add_group(self, group: BaseGroup) -> None:
+        """Add a group to the CLI with proper nesting"""
+        parent_group = group.parent_group.var_name if group.parent_group else "cli"
+        self.cli += f"""{parent_group}.add_typer({group.var_name}, name="{group.short_name}", help="{group.help}")
+"""
 
-        Args:
-            command (Command): The command to be added as a sub-command
-            group (Group): The group to which the sub-command belongs
-        """
+    def add_sub_command(self, command: Command, group: BaseGroup) -> None:
+        """Add a sub-command to a group"""
         parsed_command_func_name = self.parser.get_command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""
+        empty_or_help = f'help="{parsed_help}",' if parsed_help else ""
+
         self.cli += f"""
 def {parsed_command_func_name}({self.parser.parse_params(command)}):
 {self.parser.parse_command_run(command)}
 
-{group.name}_app.command("{parsed_command_name}", help="{parsed_help}","""
-        self.cli += f"""{parsed_command_config})({parsed_command_func_name})
+{group.var_name}.command("{parsed_command_name}", {empty_or_help}{parsed_command_config})({parsed_command_func_name})
 """
 
         for alias in command.aliases:
             self.cli += f"""
-{group.name}_app.command("{alias}", hidden=True, epilog="Alias for {parsed_command_name}")({parsed_command_func_name})
+{group.var_name}.command("{alias}", hidden=True, epilog="Alias for {parsed_command_name}")({parsed_command_func_name})
 """
 
     def add_main_block(self) -> None:

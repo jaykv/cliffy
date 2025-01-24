@@ -249,8 +249,8 @@ class CLIManifest(BaseModel):
     manifestVersion: str = LATEST_SCHEMA_VERSION
     name: str = Field(..., description="The name of the CLI, used when invoking from command line.")
     version: str = Field(..., description="CLI version")
-    help: str = Field("", description="Brief description of the CLI")
-
+    help: str = Field(default="", description="Brief description of the CLI")
+    use_click: bool = Field(default=False, description="Generate CLI to Click instead of Typer")
     requires: list[str] = Field(
         default=[],
         description="List of Python package dependencies for the CLI.Supports requirements specifier syntax.",

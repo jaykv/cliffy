@@ -18,8 +18,8 @@ try:
 except ImportError:
     RICH_INSTALLED = False
 
-CLI_NAME_BUILDS = ["hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster", "todo"]
-CLI_MANIFEST_BUILDS = ["pydev", "requires", "penv", "taskmaster"]
+CLI_NAME_BUILDS = ["hello", "db", "pydev", "template", "town", "environ", "penv", "taskmaster", "todo", "nested-cli"]
+CLI_MANIFEST_BUILDS = ["pydev", "requires", "penv", "taskmaster", "nested-cli"]
 CLI_LOAD_FAILS = ["requires"]
 CLI_BUILD_FAILS = ["requires"]
 CLI_TESTS = {
@@ -47,6 +47,12 @@ CLI_TESTS = {
         {"args": "ls", "resp": "Listing all databases"},
         {"args": "mk --name test", "resp": "Creating database test"},
         {"args": "v --name test --table test", "resp": "Viewing test table for test DB"},
+    ],
+    "nested-cli": [
+        {"args": "group1 subgroup command1", "resp": "hello"},
+        {"args": "group1 subgroup command2", "resp": "world"},
+        {"args": "group2 command3", "resp": "foo"},
+        {"args": "command4", "resp": "bar"},
     ],
 }
 CLI_WITH_MANIFEST_TESTS = ["hello", "taskmaster"]

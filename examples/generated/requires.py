@@ -1,7 +1,7 @@
-## Generated requires on 2025-01-21 22:35:02.030665
+## Generated requires on 2025-01-24 13:22:44.115986
 import subprocess
-import typer
 from typing import Optional, Any
+import typer
 import six
 
 
@@ -27,13 +27,13 @@ def bash():
     subprocess.run(["echo","hello from bash"])
 
 
-cli.command("bash", help="",)(bash)
+cli.command("bash", )(bash)
 
 def python():
     print("hello from python")
 
 
-cli.command("python", help="",)(python)
+cli.command("python", )(python)
 
 def py():
     if six.PY2:
@@ -42,7 +42,7 @@ def py():
         print("python 3")
 
 
-cli.command("py", help="",)(py)
+cli.command("py", )(py)
 
 if __name__ == "__main__":
     cli()
