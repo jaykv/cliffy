@@ -110,7 +110,6 @@ class Commander(ABC):
         "base_imports",
         "aliases_by_commands",
         "commands",
-        "groups",
     )
 
     def __init__(self, manifest: CLIManifest) -> None:
