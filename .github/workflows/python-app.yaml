@@ -45,15 +45,15 @@ jobs:
       run: |
         uv run make lint
     - name: Test with pytest
-      if: github.ref != 'refs/heads/main' || matrix.python-version != "3.13"
+      if: github.ref != 'refs/heads/main' || matrix.python-version != '3.13'
       run: |
         uv run make test
     - name: Test with pytest + coverage
-      if: github.ref == 'refs/heads/main' && matrix.python-version == "3.13"
+      if: github.ref == 'refs/heads/main' && matrix.python-version == '3.13'
       run: |
         uv run make test-cov
     - name: Coverage report
-      if: github.ref == 'refs/heads/main' && matrix.python-version == "3.13"
+      if: github.ref == 'refs/heads/main' && matrix.python-version == '3.13'
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
