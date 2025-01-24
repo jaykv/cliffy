@@ -3,7 +3,7 @@
 Cliffy provides a wide range of features to help you build powerful and flexible command-line interfaces. This guide will explore some of the key features with examples.
 
 !!! note
-  Refer to [Typer docs](https://typer.tiangolo.com/tutorial/parameter-types/) for docs on crafting custom paramater types.
+    Refer to [Typer docs](https://typer.tiangolo.com/tutorial/parameter-types/) for docs on crafting custom paramater types.
 
 ## Dependencies
 
@@ -167,13 +167,13 @@ commands:
 This allows you to reuse common argument definitions and pre/post run logic across multiple commands.
 
 !!! note
-  Command script execution is performed in the following order:
+    Command script execution is performed in the following order:
 
-  1. Template pre-run
-  2. Command pre-run
-  3. Command run
-  4. Command post-run
-  5. Template post-run
+    1. Template pre-run
+    2. Command pre-run
+    3. Command run
+    4. Command post-run
+    5. Template post-run
 
 ## Tests
 
@@ -191,9 +191,9 @@ These tests can then be run with `cli test`.
 
 Use the `cli dev` command to actively monitor a manifest for changes and automatically reload. Highly recommended for CLI manifest development.
 
-!!! example
-  - `cli dev examples/hello.yaml`
-  - `cli dev examples/hello.yaml --run-cli hello` (reload on change and run `hello` command)
+!!! example 
+    - `cli dev examples/hello.yaml`
+    - `cli dev examples/hello.yaml --run-cli hello` (reload on change and run `hello` command)
 
 ## IDE Integration
 
