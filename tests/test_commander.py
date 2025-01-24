@@ -62,15 +62,19 @@ def test_build_groups():
         help="",
         version="0.1.0",
         commands={
-            "group1.command1": RunBlock("echo hello"),
-            "group1.command2": RunBlock("echo world"),
-            "group2.command3": RunBlock("echo foo"),
+            "group1": Command(help="Group 1 help"),
+            "group2": Command(help="Group 2 help"),
+            "group1.command1": RunBlock("$ echo hello"),
+            "group1.command2": RunBlock("$ echo world"),
+            "group2.command3": RunBlock("$ echo foo"),
         },
     )
     commander = TyperCommander(manifest)
     assert len(commander.groups) == 3
     assert "group1" in commander.groups
     assert "group2" in commander.groups
+    assert "Group 1 help" in commander.groups["group1"].help
+    assert "Group 2 help" in commander.groups["group2"].help
     assert len(commander.groups["group1"].commands) == 2
     assert len(commander.groups["group2"].commands) == 1
 
@@ -174,6 +178,9 @@ def test_build_groups_with_complex_hierarchy():
         help="",
         version="0.1.0",
         commands={
+            "group1": Command(help="Group 1 help"),
+            "group2": Command(help="Group 2 help"),
+            "group1.subgroup": Command(help="Group 1 Subgroup help"),
             "group1.subgroup.command1": RunBlock("echo hello"),
             "group1.subgroup.command2": RunBlock("echo world"),
             "group2.command3": RunBlock("echo foo"),
@@ -185,6 +192,9 @@ def test_build_groups_with_complex_hierarchy():
     assert "group2" in commander.groups
     assert "group1" in commander.groups
     assert commander.groups["group1.subgroup"].parent_group == commander.groups["group1"]
+    assert "Group 1 help" in commander.groups["group1"].help
+    assert "Group 2 help" in commander.groups["group2"].help
+    assert "Group 1 Subgroup help" in commander.groups["group1.subgroup"].help
 
 
 def test_add_lazy_command_multiple_groups():

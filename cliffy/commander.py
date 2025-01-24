@@ -171,6 +171,13 @@ class Commander(ABC):
 
             self.groups.process_command(command)
 
+        # loop again to check for group help
+        # TODO: probably should be a separate manifest field i.e. group_config
+        for command in self.commands:
+            # set group help- must be script-less command with help defined
+            if not command.run and command.help and command.name in self.groups:
+                self.groups[command.name].help = command.help
+
     def add_subcommands(self) -> None:
         for group in self.groups.values():
             if group.is_root():

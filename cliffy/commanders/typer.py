@@ -102,7 +102,9 @@ cli.command("{alias}", hidden=True, epilog="Alias for {parsed_command_name}")({p
         for group in self.groups.values():
             if group.is_root():
                 continue
-            self.cli += f"""{group.var_name} = typer.Typer()
+            parsed_help = group.help.replace("\n", "") if group.help else ""
+            empty_or_help = f'help="{parsed_help}",' if parsed_help else ""
+            self.cli += f"""{group.var_name} = typer.Typer({empty_or_help})
 """
 
     def add_group(self, group: BaseGroup) -> None:

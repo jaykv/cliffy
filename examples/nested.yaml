@@ -2,6 +2,7 @@
 
 name: nestedcli
 version: 0.1.0
+help: Demo nested command structure
 commands:
   group1.subgroup.command1: $ echo "hello"
   group1.subgroup.command2: $ echo "world"
