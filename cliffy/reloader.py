@@ -1,7 +1,7 @@
 from .transformer import Transformer
 from .loader import Loader
 from .homer import save_metadata
-from .helper import out
+from .helper import out, out_err
 from .builder import run_cli as cli_runner
 
 import time
@@ -13,7 +13,7 @@ import threading
 
 
 class Reloader(FileSystemEventHandler):
-    def __init__(self, manifest_path: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
+    def __init__(self, manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
         self.manifest_path = manifest_path
         self.run_cli = run_cli
         self.run_cli_args = run_cli_args
@@ -34,11 +34,15 @@ class Reloader(FileSystemEventHandler):
         self.last_modified = datetime.now()
 
         t = threading.Thread(target=self.reload, args=(self.manifest_path, self.run_cli, self.run_cli_args))
-        t.daemon = True
-        t.start()
+        t.setDaemon(True)
+        try:
+            t.start()
+        except RuntimeError as e:
+            # Log the error or handle it as needed
+            out_err(f"Failed to start thread: {e}")
 
     @classmethod
-    def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
+    def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
         event_handler = cls(manifest_path, run_cli, run_cli_args)
         observer = Observer()
         observer.schedule(event_handler, path=str(Path(manifest_path).parent), recursive=False)
@@ -52,12 +56,12 @@ class Reloader(FileSystemEventHandler):
         observer.join()
 
     @staticmethod
-    def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
+    def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
         manifest_io = open(manifest_path, "r")
 
         T = Transformer(manifest_io)
         Loader.load_from_cli(T.cli)
-        save_metadata(manifest_io.name, T.cli)
+        save_metadata(manifest_path, T.cli)
         out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
 
         if run_cli:

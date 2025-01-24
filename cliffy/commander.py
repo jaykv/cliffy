@@ -138,7 +138,7 @@ class Commander:
                 group_name = command.name.split(".")[:-1][-1]
 
                 if "|" in command.name:
-                    command_aliases = command.name.rsplit(".", 1)[1].split("|")
+                    command_aliases = [s.strip() for s in command.name.rsplit(".", 1)[1].split("|")]
                     command_name_sub_alias = command.name.split("|", 1)[0]
                     for alias in command_aliases[1:]:
                         command.aliases.append(alias)

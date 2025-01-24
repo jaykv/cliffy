@@ -65,7 +65,7 @@ def get_metadata_bypath(path: Path) -> CLIMetadata:
     except Exception as e:
         return CLIMetadata(
             cli_name=path.name,
-            runner_path=path.absolute().name,
+            runner_path=str(path.absolute()),
             version="error",
             loaded=datetime.now(),
             manifest=f"could not load: {e}",

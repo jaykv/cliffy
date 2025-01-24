@@ -28,22 +28,22 @@ except ImportError:
                 print(text)
 
     class Table:  # type: ignore[no-redef]
-        __slots__ = ("cols", "rows", "styles")
+        __slots__ = ("columns", "rows", "styles")
 
         def __init__(self) -> None:
-            self.cols: list[str] = []
+            self.columns: list[str] = []
             self.rows: list[list[str]] = []
             self.styles: list[str] = []
 
         def add_column(self, col: str, style: str = "") -> None:
-            self.cols.append(col)
+            self.columns.append(col)
             self.styles.append(style)
 
         def add_row(self, *row: Any) -> None:
             self.rows.append([*row])
 
         def __str__(self) -> str:
-            text = "".join([click.style(f"{col:10}", fg=self.styles.pop(0)) for col in self.cols]) + "\n"
+            text = "".join([click.style(f"{col:10}", fg=self.styles.pop(0)) for col in self.columns]) + "\n"
             for row in self.rows:
                 for col in row:
                     text += f"{col:10}"
