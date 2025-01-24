@@ -146,9 +146,9 @@ def test_from_greedy_make_lazy_command_with_params():
     commander = TyperCommander(CLIManifest(name="mycli", help="", version="0.1.0", commands={}))
 
     lazy_command = commander.from_greedy_make_lazy_command(greedy_command, "test")
-    assert lazy_command.params[0].help == "Help for test"
-    assert lazy_command.params[1].root == {"name": "test"}
-    assert lazy_command.params[2].root == "--test-flag"
+    assert lazy_command.params[0].help == "Help for test"  # type: ignore
+    assert lazy_command.params[1].root == {"name": "test"}  # type: ignore
+    assert lazy_command.params[2].root == "--test-flag"  # type: ignore
 
 
 def test_setup_command_aliases_with_group_commands():

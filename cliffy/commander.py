@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import Iterator, ItemsView, ValuesView, Optional
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 from collections import defaultdict
 
 
-from .manifest import (
+from cliffy.manifest import (
     ParamBlock,
     CLIManifest,
     Command,
@@ -19,7 +20,7 @@ from .manifest import (
     SimpleCommandParam,
     RunBlockList,
 )
-from .parser import Parser
+from cliffy.parser import Parser
 
 
 class CLI(BaseModel):
@@ -44,19 +45,11 @@ class BaseGroup(BaseModel):
     def is_root(self) -> bool:
         return self.name == "__root__"
 
-    @staticmethod
-    def to_var_name(path: str) -> str:
-        return path.replace(".", "_") + "_app"
-
 
 class Groups(BaseModel):
     """Root container for all groups"""
 
     root: dict[str, BaseGroup] = {"__root__": BaseGroup(name="__root__", short_name="cli", commands=[])}
-
-    def sort(self) -> None:
-        """Sort groups by number of dots in name"""
-        self.root = dict(sorted(self.root.items(), key=lambda item: item[0].count(".")))
 
     def __iter__(self) -> Iterator[str]:  # type: ignore[override]
         return iter(self.root)
@@ -104,7 +97,7 @@ class Groups(BaseModel):
         self.root[group_name].commands.append(command)
 
 
-class Commander:
+class Commander(ABC):
     """Generates commands based on the command config"""
 
     __slots__ = (
@@ -131,17 +124,13 @@ class Commander:
             if isinstance(command, Command) and not command.name:
                 self.manifest.commands[name].name = name  # type: ignore
 
-        # sort command by # of dots to create hierarchical structure
-        self.commands: list[Command] = sorted(
-            [
-                command if isinstance(command, Command) else Command(name=name, run=command)
-                for name, command in self.manifest.commands.items()
-            ],
-            key=lambda cmd: cmd.name.count("."),
-        )
-
         self.base_imports: set[str] = set()
         self.aliases_by_commands: dict[str, list[str]] = defaultdict(list)
+
+        self.commands: list[Command] = [
+            command if isinstance(command, Command) else Command(name=name, run=command)
+            for name, command in self.manifest.commands.items()
+        ]
         self.build_groups()
 
     def _merge_command_template(self, command: Command) -> None:
@@ -183,11 +172,8 @@ class Commander:
             self.groups.process_command(command)
 
     def add_subcommands(self) -> None:
-        self.groups.sort()
-
         for group in self.groups.values():
             if group.is_root():
-                print(f"skipping {group}")
                 continue
             self.add_group(group)
             for subcommand in group.commands:
@@ -198,6 +184,7 @@ class Commander:
         self.add_imports()
         self.add_vars()
         self.add_base_cli()
+        self.define_groups()
         self.add_functions()
         self.add_root_commands()
         self.add_subcommands()
@@ -266,24 +253,6 @@ class Commander:
         """Greedy strings must contain (*)- marked to be evaluated lazily."""
         return "(*)" in val
 
-    def add_group(self, group: BaseGroup) -> None:
-        raise NotImplementedError
-
-    def add_base_imports(self) -> None:
-        raise NotImplementedError
-
-    def add_base_cli(self) -> None:
-        raise NotImplementedError
-
-    def add_root_command(self, command: Command) -> None:
-        raise NotImplementedError
-
-    def add_sub_command(self, command: Command, group: BaseGroup) -> None:
-        raise NotImplementedError
-
-    def add_main_block(self) -> None:
-        raise NotImplementedError
-
     def from_greedy_make_lazy_command(self, greedy_command: Command, group: str) -> Command:
         """
         Convert a greedy command to a lazy command by replacing placeholders with a specific group name.
@@ -343,6 +312,34 @@ class Commander:
                         lazy_parsed_params.append(new_param)
                 lazy_command.params = lazy_parsed_params
         return lazy_command
+
+    @abstractmethod
+    def define_groups(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_group(self, group: BaseGroup) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_base_imports(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_base_cli(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_root_command(self, command: Command) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_sub_command(self, command: Command, group: BaseGroup) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_main_block(self) -> None:
+        raise NotImplementedError
 
 
 def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Commander) -> CLI:

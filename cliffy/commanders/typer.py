@@ -98,11 +98,17 @@ cli.command("{parsed_command_name}", {empty_or_help}{parsed_command_config})({pa
 cli.command("{alias}", hidden=True, epilog="Alias for {parsed_command_name}")({parsed_command_func_name})
 """
 
+    def define_groups(self) -> None:
+        for group in self.groups.values():
+            if group.is_root():
+                continue
+            self.cli += f"""{group.var_name} = typer.Typer()
+"""
+
     def add_group(self, group: BaseGroup) -> None:
         """Add a group to the CLI with proper nesting"""
         parent_group = group.parent_group.var_name if group.parent_group else "cli"
-        self.cli += f"""{group.var_name} = typer.Typer()
-{parent_group}.add_typer({group.var_name}, name="{group.short_name}", help="{group.help}")
+        self.cli += f"""{parent_group}.add_typer({group.var_name}, name="{group.short_name}", help="{group.help}")
 """
 
     def add_sub_command(self, command: Command, group: BaseGroup) -> None:
