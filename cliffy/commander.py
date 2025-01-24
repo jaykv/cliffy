@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import DefaultDict
+from typing import Optional
 
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
@@ -30,10 +30,65 @@ class CLI(BaseModel):
     requires: list[str] = []
 
 
-class Group(BaseModel):
+class BaseGroup(BaseModel):
     name: str
-    commands: list[Command]
+    commands: list[Command] = []
     help: str = ""
+    parent: Optional["BaseGroup"] = None
+    children: list["BaseGroup"] = []
+
+    @property
+    def full_path(self) -> str:
+        """Returns dot-notation full path of group"""
+        if not self.parent:
+            return self.name
+        return f"{self.parent.full_path}.{self.name}"
+
+    @property
+    def var_name(self) -> str:
+        """Returns valid Python variable name for group app"""
+        return self.full_path.replace(".", "_") + "_app"
+
+    def add_child(self, child: "BaseGroup") -> None:
+        child.parent = self
+        self.children.append(child)
+
+    def add_command(self, command: Command) -> None:
+        self.commands.append(command)
+
+
+class Groups(BaseModel):
+    """Root container for all groups"""
+
+    root: list[BaseGroup] = []
+
+    def add_group(self, group: BaseGroup, parent_path: str = "") -> None:
+        if not parent_path:
+            self.root.append(group)
+            return
+
+        parent = self.find_group(parent_path)
+        if parent:
+            parent.add_child(group)
+
+    def find_group(self, path: str) -> Optional[BaseGroup]:
+        """Find group by dot-notation path"""
+        parts = path.split(".")
+        current = None
+
+        for group in self.root:
+            if group.name == parts[0]:
+                current = group
+                break
+
+        for part in parts[1:]:
+            if not current:
+                return None
+            for child in current.children:
+                if child.name == part:
+                    current = child
+                    break
+        return current
 
 
 class Commander:
@@ -50,13 +105,13 @@ class Commander:
         "base_imports",
         "aliases_by_commands",
         "commands",
+        "groups_tree",
     )
 
     def __init__(self, manifest: CLIManifest) -> None:
         self.manifest = manifest
         self.parser = Parser(self.manifest)
         self.cli: str = ""
-        self.groups: dict[str, Group] = {}
         self.greedy: list[Command] = []
         for name, command in self.manifest.commands.items():
             if isinstance(command, Command) and not command.name:
@@ -88,75 +143,74 @@ class Commander:
                     command.aliases.append(alias)
                     self.aliases_by_commands[command.name].append(alias)
 
+    def _merge_command_template(self, command: Command) -> None:
+        """Merge command with its template if specified."""
+        if not command.template:
+            return
+
+        template = self.manifest.command_templates.get(command.template)
+        if not template:
+            raise ValueError(f"Template {command.template} undefined in command_templates")
+
+        if template.params:
+            command.params = template.params + (command.params or [])
+        if template.config:
+            merged = template.config.model_dump(exclude_unset=True) | (
+                command.config.model_dump(exclude_unset=True) if command.config else {}
+            )
+            command.config = CommandConfig(**merged)
+        if template.pre_run:
+            command.pre_run = PreRunBlock(template.pre_run.root + "\n" + (command.pre_run.root or ""))
+        if template.post_run:
+            command.post_run = PostRunBlock((command.post_run.root or "") + "\n" + template.post_run.root)
+
     def build_groups(self) -> None:
-        """
-        Organize commands into groups and process command templates and aliases.
-
-        This method performs several key operations:
-        - Separates greedy commands for later processing
-        - Merges command templates with individual commands
-        - Handles command aliases
-        - Creates command groups based on hierarchical command names
-
-        Side Effects:
-            - Populates self.greedy with greedy commands
-            - Populates self.groups with organized command groups
-            - Updates command attributes with template configurations
-            - Tracks command aliases in self.aliases_by_commands
-
-        Raises:
-            ValueError: If a referenced command template is undefined
-        """
-        groups: DefaultDict[str, list[Command]] = defaultdict(list)
+        """Build group hierarchy from command names"""
+        self.groups_tree = Groups()
         group_help_dict = {}
 
         for command in self.commands:
-            # Check for greedy commands- evaluate them at the end
             if self.is_greedy(command.name):
                 self.greedy.append(command)
                 continue
 
-            # Merge with command template
-            if command.template:
-                template = self.manifest.command_templates.get(command.template)
-                if not template:
-                    raise ValueError(f"Template {command.template} undefined in command_templates")
-
-                if template.params:
-                    command.params = template.params + (command.params or [])
-                if template.config:
-                    merged = template.config.model_dump(exclude_unset=True) | (
-                        command.config.model_dump(exclude_unset=True) if command.config else {}
-                    )
-                    command.config = CommandConfig(**merged)
-                if template.pre_run:
-                    command.pre_run = PreRunBlock(template.pre_run.root + "\n" + (command.pre_run.root or ""))
-                if template.post_run:
-                    command.post_run = PostRunBlock((command.post_run.root or "") + "\n" + template.post_run.root)
+            self._merge_command_template(command)
 
             if "." in command.name:
-                group_name = command.name.split(".")[:-1][-1]
+                path_parts = command.name.split(".")
+                current_path = []
 
-                if "|" in command.name:
-                    command_aliases = [s.strip() for s in command.name.rsplit(".", 1)[1].split("|")]
-                    command_name_sub_alias = command.name.split("|", 1)[0]
-                    for alias in command_aliases[1:]:
-                        command.aliases.append(alias)
-                        self.aliases_by_commands[command_name_sub_alias].append(alias)
+                # Create/update groups for each path segment
+                for part in path_parts[:-1]:
+                    current_path.append(part)
+                    group_path = ".".join(current_path)
 
-                    command.name = command_name_sub_alias
+                    if not self.groups_tree.find_group(group_path):
+                        new_group = BaseGroup(name=part, help=group_help_dict.get(part, ""))
+                        parent_path = ".".join(current_path[:-1])
+                        self.groups_tree.add_group(new_group, parent_path)
 
-                groups[group_name].append(command)
+                # Add command to final group
+                target_group = self.groups_tree.find_group(".".join(path_parts[:-1]))
+                if target_group:
+                    target_group.add_command(command)
             else:
-                group_name = command.name
                 group_help_dict[command.name] = command.help
 
-        for group_name, commands in groups.items():
-            self.groups[group_name] = Group(
-                name=group_name,
-                commands=commands,
-                help=group_help_dict.get(group_name, ""),
-            )
+    def add_subcommands(self) -> None:
+        """Process all groups and their commands recursively"""
+
+        def process_group(group: BaseGroup) -> None:
+            self.add_group(group)
+
+            for command in group.commands:
+                self.add_sub_command(command, group)
+
+            for child in group.children:
+                process_group(child)
+
+        for root_group in self.groups_tree.root:
+            process_group(root_group)
 
     def generate_cli(self) -> None:
         self.add_base_imports()
@@ -172,12 +226,6 @@ class Commander:
     def add_root_commands(self) -> None:
         for root_command in self.root_commands:
             self.add_root_command(root_command)
-
-    def add_subcommands(self) -> None:
-        for group in self.groups.values():
-            self.add_group(group)
-            for subcommand in group.commands:
-                self.add_sub_command(subcommand, group)
 
     def add_imports(self) -> None:
         if not self.manifest.imports:
@@ -213,29 +261,38 @@ class Commander:
 
     def add_command(self, command: Command) -> None:
         if "." in command.name:
-            group = command.name.split(".")[:-1][-1]
-            self.add_sub_command(command, self.groups[group])
+            path_parts = command.name.split(".")
+            group_path = ".".join(path_parts[:-1])
+            target_group = self.groups_tree.find_group(group_path)
+            if target_group:
+                self.add_sub_command(command, target_group)
 
-    def add_lazy_command(self, greedy_command: Command, group: str) -> None:
+    def add_greedy_commands(self) -> None:
+        """Greedy commands get lazy-loaded for each group in the hierarchy"""
+
+        def process_groups(group: BaseGroup) -> None:
+            self.add_lazy_command(greedy_command, group)
+            for child in group.children:
+                process_groups(child)
+
+        for greedy_command in self.greedy:
+            if greedy_command.name.startswith("(*)"):
+                for root_group in self.groups_tree.root:
+                    process_groups(root_group)
+
+    def add_lazy_command(self, greedy_command: Command, group: BaseGroup) -> None:
         # make it lazy and interpolate
-        lazy_command = self.from_greedy_make_lazy_command(greedy_command=greedy_command, group=group)
+        lazy_command = self.from_greedy_make_lazy_command(greedy_command=greedy_command, group=group.name)
 
         # lazy load
         self.commands.append(lazy_command)
         self.add_command(lazy_command)
 
-    def add_greedy_commands(self) -> None:
-        """Greedy commands get lazy-loaded. Only supported for group-commands currently"""
-        for greedy_command in self.greedy:
-            if greedy_command.name.startswith("(*)"):
-                for group in self.groups:
-                    self.add_lazy_command(greedy_command, group)
-
     def is_greedy(self, val: str) -> bool:
         """Greedy strings must contain (*)- marked to be evaluated lazily."""
         return "(*)" in val
 
-    def add_group(self, group: Group) -> None:
+    def add_group(self, group: BaseGroup) -> None:
         raise NotImplementedError
 
     def add_base_imports(self) -> None:
@@ -250,7 +307,7 @@ class Commander:
     def add_group_command(self, command: Command) -> None:
         raise NotImplementedError
 
-    def add_sub_command(self, command: Command, group: Group) -> None:
+    def add_sub_command(self, command: Command, group: BaseGroup) -> None:
         raise NotImplementedError
 
     def add_main_block(self) -> None:
