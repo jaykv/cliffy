@@ -11,6 +11,9 @@ sync:
 test:
 	uv run pytest --cov --cov-config=pyproject.toml -vv --capture=tee-sys -n auto
 
+test-cov:
+	uv run pytest --cov --cov-config=pyproject.toml --cov-branch --cov-report=xml -vv --capture=tee-sys -n auto
+
 clean:
 	rm -rf build/ dist/ *.egg-info .*_cache test-builds test-manifest-builds
 	find . -name '*.pyc' -type f -exec rm -rf {} +
