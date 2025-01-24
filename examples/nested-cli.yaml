@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=cliffy_schema.json
 
-name: nestedcli
+name: nested-cli
 version: 0.1.0
 help: Demo nested command structure
 commands:
