@@ -218,7 +218,7 @@ Install the [YAML embedded languages extension](https://marketplace.visualstudio
 Cliffy includes AI-powered commands to help you generate and understand CLI manifests. Access these features through the `cli ai` command group.
 
 !!! tip
-    For a list of models supported, see [https://ai.pydantic.dev/models/](https://ai.pydantic.dev/models/). You can specify the model to use for the AI commands with `--model` or `-m` option.
+    For a list of the models supported, see [https://ai.pydantic.dev/models/](https://ai.pydantic.dev/models/). You can specify the model to use for the AI commands with `--model` or `-m` option.
 
 !!! tip
     Use `--preview` to output the fully constructed prompt for debugging or review.
