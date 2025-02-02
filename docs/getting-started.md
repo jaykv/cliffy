@@ -7,7 +7,7 @@ This guide will walk you through the basics of setting up and using Cliffy to cr
 To get started with Cliffy, you'll need to install it using pip:
 
 ```bash
-$ pip install cliffy
+$ pip install cliffy  # cliffy[ai,rich] for rich CLI and AI features
 $ cli --help
 $ cli init mycli
 $ cli load mycli.yaml
@@ -21,6 +21,17 @@ $ uvx cliffy init mycli
 $ uvx cliffy load mycli.yaml
 $ uvx --from cliffy mycli -h
 ```
+
+!!! tip
+    Alternative setup for cliffy + uv with ai and rich groups.
+    ```bash
+    uv venv
+    uv pip install "cliffy[ai,rich]"
+    uv run cli -h
+    uv run cli init mycli
+    uv run cli load mycli.yaml
+    uv run mycli -h
+    ```
 
 ## Creating Your First CLI
 
