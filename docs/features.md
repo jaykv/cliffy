@@ -220,6 +220,12 @@ Cliffy includes AI-powered commands to help you generate and understand CLI mani
 !!! tip
     For a list of the models supported, see [https://ai.pydantic.dev/models/](https://ai.pydantic.dev/models/). You can specify the model to use for the AI commands with `--model` or `-m` option.
 
+    ```bash
+    # Example using a specific model
+    export OPENAI_API_KEY='your-api-key'
+    cli ai generate mycli "Create a todo app" --model gpt-4o
+    ```
+
 !!! tip
     Use `--preview` to output the fully constructed prompt for debugging or review.
 
