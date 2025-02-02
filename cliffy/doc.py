@@ -31,16 +31,25 @@ class DocGenerator:
             self._write_html(docs, output_dir)
 
     def _build_docs(self) -> CLIDoc:
+        manifest_examples: list[Example] = []
+        for ex in self.manifest.examples:
+            if isinstance(ex, str):
+                manifest_examples.append(Example(command=ex))
+            else:
+                manifest_examples.append(ex)
+
         return CLIDoc(
             name=self.manifest.name,
             version=self.manifest.version,
             help=self.manifest.help,
             commands=self._document_commands(),
-            examples=self.manifest.examples,
+            examples=manifest_examples,
         )
 
     def _document_commands(self) -> dict[str, CommandDoc]:
         documented_commands = {}
+        if isinstance(self.manifest.commands, list):
+            self.manifest.commands = {command.name: command for command in self.manifest.commands}
         for cmd_name, cmd in self.manifest.commands.items():
             cmd_name = cmd_name.replace(".", " ")
             if isinstance(cmd, (RunBlock, RunBlockList)):

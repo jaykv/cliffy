@@ -1,10 +1,7 @@
 from io import TextIOWrapper
-import os
-from typing import IO, Any, Optional, TextIO, Union, cast
+from typing import Any, TextIO, Union
 import traceback
 import sys
-from click.core import Context, Parameter
-from click.types import _is_file_like
 
 from cliffy.tester import ShellScript, Tester
 
@@ -19,6 +16,7 @@ from cliffy.helper import (
     out,
     out_err,
     write_to_file,
+    ManifestOrCLI,
 )
 from cliffy.homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from cliffy.loader import Loader
@@ -36,21 +34,6 @@ ALIASES = {
     "rm-all": "remove-all",
     "rmall": "remove-all",
 }
-
-
-class ManifestOrCLI(click.File):
-    def convert(  # type: ignore[override]
-        self, value: Union[str, "os.PathLike[str]", IO[Any]], param: Optional[Parameter], ctx: Optional[Context]
-    ) -> Union[str, IO[Any]]:
-        if _is_file_like(value):
-            return value
-
-        value = cast("Union[str, os.PathLike[str]]", value)
-
-        if isinstance(value, os.PathLike) or value.endswith("yaml"):
-            return super().convert(value, param, ctx)
-
-        return value
 
 
 def show_aliases_callback(ctx: Any, param: Any, val: bool) -> None:

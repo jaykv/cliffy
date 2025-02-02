@@ -10,7 +10,7 @@ LATEST_SCHEMA_VERSION = "v3"
 
 class Example(BaseModel):
     command: str
-    description: str
+    description: Optional[str] = None
 
 
 class GenericCommandParam(RootModel):
@@ -311,7 +311,9 @@ class CLIManifest(BaseModel):
 
     tests: list[Union[str, dict[str, str]]] = Field(default=[], description="Test cases for commands")
 
-    examples: list[Example] = Field(default=[], description="Example command usages to display in generated CLI docs.")
+    examples: list[Union[str, Example]] = Field(
+        default=[], description="Example command usages to display in generated CLI docs."
+    )
 
     @field_validator("manifestVersion", mode="after")
     @classmethod

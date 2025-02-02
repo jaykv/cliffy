@@ -1,158 +1,40 @@
 from pathlib import Path
+from typing import Optional
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import UsageLimits
-from typing_extensions import TypedDict, Annotated
 from pydantic_ai import Agent
 from pydantic_ai.models import KnownModelName
-import click
-from cliffy.helper import out
+from cliffy.rich import click
+from cliffy.helper import out, ManifestOrCLI
 from cliffy.manifest import CLIManifest
+from cliffy.transformer import Transformer
+from cliffy.homer import get_metadata
 import json
-from pydantic import Field
+from io import TextIOWrapper
 
 
-class ParamBlockDict(TypedDict):
-    name: Annotated[str, Field(default="", description="Parameter name. Prefix with `--` to indicate an option.")]
-    type: Annotated[
-        str,
-        Field(
-            default="",
-            description="Parameter type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section).",
-        ),
-    ]
-    default: Annotated[str, Field(default="", description="Default parameter value.")]
-    help: Annotated[str, Field(default="", description="Parameter description.")]
-    short: Annotated[str, Field(default="", description="Short option alias. i.e. '-v' for verbose.")]
-    required: Annotated[bool, Field(default=False, description="Whether the parameter is required.")]
-
-
-class CommandTemplateDict(TypedDict):
-    params: Annotated[
-        list[ParamBlockDict],
-        Field(
-            default=[],
-            description="A list of parameters for the command template.  These parameters will be applied to any command that uses this template.",
-        ),
-    ]
-    pre_run: Annotated[
-        str,
-        Field(
-            default="",
-            description="Script to run before the command's run and pre-run block. This script will be applied to any command that uses this template.",
-        ),
-    ]
-    post_run: Annotated[
-        str,
-        Field(
-            default="",
-            description="Script to run after the command's run and post-run block. This script will be applied to any command that uses this template.",
-        ),
-    ]
-    # config: Annotated[NotRequired[CommandConfig], Field(
-    #     default=None,
-    #     description="Additional configuration options for commands using this template. This allows customization of help text, context settings, and other Typer command parameters.",
-    # )]
-
-
-class CommandDict(TypedDict):
-    """
-    Defines a single command within the CLI. It specifies the command's execution logic,
-    parameters, and configuration.
-    """
-
-    run: Annotated[
-        str, Field(default="", description="Script to run. Parameters can be referenced directly by their name.")
-    ]
-    help: Annotated[str, Field(default="", description="A description of the command, displayed in the help output.")]
-    params: Annotated[
-        list[ParamBlockDict],
-        Field(
-            default=[],
-            description="A list of parameters for the command.\nThere are three ways to define a param: \n(generic) 1. A string as param definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the param name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 params syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
-        ),
-    ]
-    template: Annotated[
-        str,
-        Field(
-            default="",
-            description="A reference to a command template defined in the `command_templates` section of the manifest. This allows for reusable command definitions.",
-        ),
-    ]
-    pre_run: Annotated[
-        str,
-        Field(
-            default="",
-            description="Script to run before the command's run block. This can be used for setup tasks or preconditions. Parameters can be referenced directly by their name.",
-        ),
-    ]
-    post_run: Annotated[
-        str,
-        Field(
-            default="",
-            description="Script to run after the command's run block. This can be used for cleanup tasks or post-processing. Parameters can be referenced directly by their name.",
-        ),
-    ]
-    aliases: Annotated[
-        list[str],
-        Field(
-            default=[],
-            description="A list of aliases for the command. These aliases can be used to invoke the command with a different name.",
-        ),
-    ]
-    name: Annotated[
-        str,
-        Field(
-            default="",
-            description="The name of the command. This is generally derived from the key in the `commands` section of the manifest, but can be explicitly set here.",
-        ),
-    ]
-    # config: Optional[CommandConfig] = Field(
-    #     default=None,
-    #     description="An optional `CommandConfig` object that provides additional configuration options for the command, such as context settings, help text customization, and visibility.",
-    # )
-
-
-class CLIManifestAI(CLIManifest):
-    vars: list[str] = Field(default=[], description=CLIManifest.get_field_description("vars"))
-    params: list[str] = Field(default=[], description=CLIManifest.get_field_description("params"))
-    command_templates: list[CommandTemplateDict] = Field(
-        default=[], description=CLIManifest.get_field_description("command_templates")
-    )
-    examples: list[str] = Field(default=[], description=CLIManifest.get_field_description("examples"))
-    commands: list[CommandDict] = Field(default=[])
-    tests: list[str] = Field(default=[], description=CLIManifest.get_field_description("tests"))
-    global_params: list[str] = Field(default=[], description=CLIManifest.get_field_description("global_params"))
-    types: list[str] = Field(default=[])
-    imports: str = Field(default="", description=CLIManifest.get_field_description("imports"))
-    functions: list[str] = Field(default=[], description=CLIManifest.get_field_description("functions"))
-    cli_options: str = Field(default="", description=CLIManifest.get_field_description("cli_options"))
-
-
-@click.group()
+@click.group(help="AI-powered commands")
 def ai() -> None:
     pass
 
 
 @click.option("--max-tokens", type=int, help="The maximum number of tokens to generate before stopping.", default=None)
-@click.option("--model", "-m", default="anthropic:claude-3-5-sonnet-latest", show_default=True)
-@click.option("--description", "-d", required=True)
+@click.option("--model", "-m", help="LLM model to use.", default="gemini-2.0-flash-exp", show_default=True)
 @click.argument("cli_name", required=True)
-def generate(cli_name: str, description: str, model: KnownModelName, max_tokens: int):
-    SYSTEM_PROMPT = (
-        """You are a YAML manifest generator for CLIs. 
+@click.argument("description", required=True)
+def generate(cli_name: str, description: str, model: KnownModelName, max_tokens: int) -> None:
+    SYSTEM_PROMPT = f"""You are a YAML manifest generator for CLIs. 
 Here is the json schema for the YAML to generate:
-```json"""
-        + json.dumps(CLIManifest.model_json_schema())
-        + """```
-Typer is the CLI framework used for Python. 
+```json{json.dumps(CLIManifest.model_json_schema())}```
+Typer is the CLI framework used. 
+Nested commands are joined by a "."
 Due to a feature limitation, parent command cannot be triggered if they have subcommands. 
 Do not write a group command definition for the parent if it has a subcommand.
+Do not use types section at all.
 Parameters can be used in the run scripts by referencing the parameter name directly.
-
-Use Python and Typer features and imports as needed to craft the best CLI for the following listed CLI requirements. 
 Always provide `examples` section to list example commands for the CLI.
+Use Python and Typer features and imports as needed to craft the best CLI for the following listed CLI requirements. 
 """
-    )
 
     model_settings = ModelSettings(max_tokens=max_tokens) if max_tokens else None
     agent = Agent(model, system_prompt=SYSTEM_PROMPT, model_settings=model_settings)
@@ -161,12 +43,82 @@ Always provide `examples` section to list example commands for the CLI.
 
     result = agent.run_sync(description, usage_limits=usage_limits)
 
-    Path(f"{cli_name}.yaml").write_text(result.data)
+    manifest = result.data.strip().removeprefix("```yaml").removesuffix("```").strip()
+    Path(f"{cli_name}.yaml").write_text(manifest)
     out(f"+ {cli_name}.yaml")
     out("\ntoken usage:")
     out("------------")
-    out(f"Request: {result.usage().request_tokens}")
-    out(f"Response: {result.usage().response_tokens}")
+    out(f"request: {result.usage().request_tokens}")
+    out(f"response: {result.usage().response_tokens}")
 
 
-ai.command("generate")(generate)
+@click.option("--max-tokens", type=int, help="The maximum number of tokens to generate before stopping.", default=None)
+@click.option("--model", "-m", help="LLM model to use.", default="gemini-2.0-flash-exp", show_default=True)
+@click.option(
+    "--cli", type=ManifestOrCLI(), help="Loaded CLI or manifest to include in prompt as reference.", default=None
+)
+@click.argument("prompt", required=True)
+def ask(cli: Optional[ManifestOrCLI], prompt: str, model: KnownModelName, max_tokens: int) -> None:
+    SYSTEM_PROMPT = f"""You are an expert of `cliffy`- a YAML manifest to Typer CLI generator.
+
+## Cliffy Usage
+`cli <command>`
+
+| Command | Description |
+|---|---|
+| `init <cli name>`| Generate a template CLI manifest for a new CLI |
+| `load <manifest>` | Add a new CLI based on the manifest |
+| `render <manifest>` | View generated CLI script for a manifest |
+| `list, ls` | Output a list of loaded CLIs |
+| `update <cli name>`| Reload a loaded CLI |
+| `remove <cli name>, rm <cli name>` | Remove a loaded CLI |
+| `run <manifest> -- \<args>`| Runs a CLI manifest command in isolation|
+| `build <cli name or manifest>` | Build a CLI manifest or a loaded CLI into a self-contained zipapp |
+| `info <cli name>` | Display CLI metadata |
+| `dev <manifest>` | Start hot-reloader for a manifest for active development |
+| `test <manifest>` | Run tests defined in a manifest |
+| `validate <manifest>` | Validate the syntax and structure of a CLI manifest |
+
+## How it works
+1. Define CLI manifests in YAML files
+2. Run `cli` commands to load, build, and manage CLIs
+3. When loaded, cliffy parses the manifest and generates a Typer CLI that is deployed directly as a script
+4. Any code starting with `$` will translate to subprocess calls via PyBash
+5. Run loaded CLIs straight from the terminal
+6. When ready to share, run `build` to generate portable zipapps built with [Shiv](https://github.com/linkedin/shiv)
+
+Here is the model json schema for CLI manifest:
+```json{json.dumps(CLIManifest.model_json_schema())}```
+Typer is the CLI framework used. 
+Due to a feature limitation, parent command cannot be triggered if they have subcommands. 
+Do not write a group command definition for the parent if it has a subcommand.
+Parameters can be used in the run scripts by referencing the parameter name directly.
+Always provide `examples` section to list example commands for the CLI.
+Use Python and Typer features and imports as needed to craft the best CLI for the following listed CLI requirements. 
+"""
+    model_settings = ModelSettings(max_tokens=max_tokens) if max_tokens else None
+    agent = Agent(model, system_prompt=SYSTEM_PROMPT, model_settings=model_settings)
+
+    usage_limits = UsageLimits(total_tokens_limit=max_tokens) if max_tokens else None
+
+    reference = ""
+    if cli:
+        reference += "Here is the CLI manifest to use as reference:"
+        reference += "```yaml"
+        if isinstance(cli, TextIOWrapper):
+            reference += str(Transformer(cli).manifest.model_dump(mode="json"))
+        elif isinstance(cli, str):
+            metadata = get_metadata(cli)
+            reference += metadata.manifest if metadata else ""
+        reference += "```"
+
+    result = agent.run_sync(reference + prompt, usage_limits=usage_limits)
+    out(result.data)
+    out("\ntoken usage:")
+    out("------------")
+    out(f"request: {result.usage().request_tokens}")
+    out(f"response: {result.usage().response_tokens}")
+
+
+ai.command("generate", help="Generate a CLI manifest based on a description.")(generate)
+ai.command("ask", help="Ask a question about cliffy or a specific CLI manifest.")(ask)
