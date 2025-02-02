@@ -19,10 +19,24 @@ def ai() -> None:
 
 
 @click.option("--max-tokens", type=int, help="The maximum number of tokens to generate before stopping.", default=None)
-@click.option("--model", "-m", help="LLM model to use.", default="gemini-2.0-flash-exp", show_default=True)
+@click.option(
+    "--model",
+    "-m",
+    help="AI model to use. See https://ai.pydantic.dev/models/ for supported models.",
+    default="gemini-2.0-flash-exp",
+    show_default=True,
+)
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(exists=True, dir_okay=True, file_okay=False),
+    default=Path(),
+    show_default=True,
+    help="Output directory",
+)
 @click.argument("cli_name", required=True)
 @click.argument("description", required=True)
-def generate(cli_name: str, description: str, model: KnownModelName, max_tokens: int) -> None:
+def generate(cli_name: str, description: str, model: KnownModelName, max_tokens: int, output_dir: Path) -> None:
     SYSTEM_PROMPT = f"""You are a YAML manifest generator for CLIs. 
 Here is the json schema for the YAML to generate:
 ```json{json.dumps(CLIManifest.model_json_schema())}```
@@ -44,7 +58,7 @@ Use Python and Typer features and imports as needed to craft the best CLI for th
     result = agent.run_sync(description, usage_limits=usage_limits)
 
     manifest = result.data.strip().removeprefix("```yaml").removesuffix("```").strip()
-    Path(f"{cli_name}.yaml").write_text(manifest)
+    (output_dir / Path(f"{cli_name}.yaml")).write_text(manifest)
     out(f"+ {cli_name}.yaml")
     out("\ntoken usage:")
     out("------------")

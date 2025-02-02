@@ -56,21 +56,13 @@ class DocGenerator:
                 documented_commands[cmd_name] = CommandDoc(help="", params=[])
                 continue
 
-            params_doc = []
-            for param in cmd.params:
-                if isinstance(param, SimpleCommandParam):
-                    params_doc.append(
-                        f"{param.name}: {param.type}"
-                        + (f" (default: {param.default})" if param.default else "")
-                        + (f" - {param.help}" if param.help else "")
-                    )
-                elif isinstance(param, CommandParam):
-                    params_doc.append(
-                        f"{param.name}: {param.type}"
-                        + (f" (default: {param.default})" if param.default else "")
-                        + (f" - {param.help}" if param.help else "")
-                    )
-
+            params_doc = [
+                f"{param.name}: {param.type}"
+                + (f" (default: {param.default})" if param.default else "")
+                + (f" - {param.help}" if param.help else "")
+                for param in cmd.params
+                if isinstance(param, (SimpleCommandParam, CommandParam))
+            ]
             documented_commands[cmd_name] = CommandDoc(
                 help=cmd.help, params=params_doc, aliases=cmd.aliases if hasattr(cmd, "aliases") else []
             )

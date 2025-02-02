@@ -313,7 +313,9 @@ def validate(manifest: TextIO) -> None:
 
 @click.argument("cli_or_manifest", type=ManifestOrCLI())
 @click.option("--format", "-f", type=click.Choice(["md", "rst", "html"]), default="md")
-@click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
+@click.option(
+    "--output-dir", "-o", type=click.Path(exists=True, dir_okay=True, file_okay=False), help="Output directory"
+)
 def docs(cli_or_manifest: str, format: str, output_dir: str) -> None:
     """Generate documentation for a CLI"""
     if isinstance(cli_or_manifest, TextIOWrapper):
