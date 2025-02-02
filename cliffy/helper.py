@@ -8,14 +8,15 @@ from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 from tempfile import _TemporaryFileWrapper
-from typing import Any, NoReturn, Optional
+from typing import Any, NoReturn, Optional, Union, cast, IO
 
-from click import secho
+from click import secho, File
+from click.core import Context, Parameter
+from click.types import _is_file_like
 from packaging import version
 from pydantic import BaseModel
 from types import ModuleType
 from importlib.util import spec_from_file_location, module_from_spec
-
 
 CLIFFY_CLI_DIR = files("cliffy").joinpath("clis")
 CLIFFY_METADATA_DIR = files("cliffy").joinpath("metadata")
@@ -40,6 +41,21 @@ class RequirementSpec(BaseModel):
     name: str
     operator: Optional[str]
     version: Optional[str]
+
+
+class ManifestOrCLI(File):
+    def convert(  # type: ignore[override]
+        self, value: Union[str, "os.PathLike[str]", IO[Any]], param: Optional[Parameter], ctx: Optional[Context]
+    ) -> Union[str, IO[Any]]:
+        if _is_file_like(value):
+            return value
+
+        value = cast("Union[str, os.PathLike[str]]", value)
+
+        if isinstance(value, os.PathLike) or value.endswith("yaml"):
+            return super().convert(value, param, ctx)
+
+        return value
 
 
 def write_to_file(path: str, text: str, executable: bool = False) -> None:

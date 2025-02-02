@@ -13,6 +13,7 @@ Build feature-rich CLIs _quickly_.
 * 📦 Package your CLI into a single executable that runs anywhere
 * 🔄 Hot-reload changes instantly during development with built-in testing
 * 🎨 Mix Python and shell commands naturally with built-in scripting support
+* 🤖 AI-friendly with [manifest generation support](https://jaykv.github.io/cliffy/features#ai-features)
 
 ### Load
 
@@ -128,12 +129,15 @@ For more examples, check [examples](examples/) directory.
 | `dev <manifest>` | Start hot-reloader for a manifest for active development |
 | `test <manifest>` | Run tests defined in a manifest |
 | `validate <manifest>` | Validate the syntax and structure of a CLI manifest |
+| `docs <cli name or manifest>` | Generate documentation for a CLI |
+| `ai generate <cli name> <description>` | Generate a CLI manifest based on a description. |
+| `ai ask <prompt>` | Ask a question about cliffy or a specific CLI manifest. |
 
 ## How it works
 1. Define CLI manifests in YAML files
 2. Run `cli` commands to load, build, and manage CLIs
 3. When loaded, cliffy parses the manifest and generates a [Typer](https://github.com/tiangolo/typer) CLI that is deployed directly as a script
-4. Any code starting with `$` will translate to subprocess calls via [PyBash](https://github.com/cliffy-sh/pybash)
+4. Any code starting with `$` will translate to subprocess calls via [PyBash](https://github.com/jaykv/pybash)
 5. Run loaded CLIs straight from the terminal
 6. When ready to share, run `build` to generate portable zipapps built with [Shiv](https://github.com/linkedin/shiv)
 

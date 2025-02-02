@@ -3,7 +3,7 @@ from typing import Any, Optional, Union
 
 from pybash.transformer import transform as transform_bash
 
-from .manifest import (
+from cliffy.manifest import (
     CLIManifest,
     Command,
     CommandParam,

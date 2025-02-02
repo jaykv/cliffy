@@ -6,9 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterator, Optional
 
-from .commander import CLI
-from .helper import CLIFFY_METADATA_DIR, write_to_file
-from .manifest import CLIMetadata
+from cliffy.commander import CLI
+from cliffy.helper import CLIFFY_METADATA_DIR, write_to_file
+from cliffy.manifest import CLIMetadata
 
 
 def save_metadata(manifest_path: str, cli: CLI) -> None:

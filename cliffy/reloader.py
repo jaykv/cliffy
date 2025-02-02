@@ -1,8 +1,8 @@
-from .transformer import Transformer
-from .loader import Loader
-from .homer import save_metadata
-from .helper import out, out_err
-from .builder import run_cli as cli_runner
+from cliffy.transformer import Transformer
+from cliffy.loader import Loader
+from cliffy.homer import save_metadata
+from cliffy.helper import out, out_err
+from cliffy.builder import run_cli as cli_runner
 
 import time
 from datetime import datetime, timedelta

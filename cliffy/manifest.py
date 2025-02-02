@@ -1,11 +1,16 @@
 from functools import cached_property
 from typing import Any, ItemsView, Iterator, Optional, Union
-from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator, ValidationInfo
+from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
 from .helper import wrap_as_comment
 from datetime import datetime
 import sys
 
 LATEST_SCHEMA_VERSION = "v3"
+
+
+class Example(BaseModel):
+    command: str
+    description: Optional[str] = None
 
 
 class GenericCommandParam(RootModel):
@@ -293,7 +298,7 @@ class CLIManifest(BaseModel):
         default_factory=dict, description="Reusable command templates"
     )
 
-    commands: dict[str, CommandBlock] = Field(
+    commands: Union[dict[str, CommandBlock], list[Command]] = Field(
         ...,
         description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "
@@ -306,7 +311,9 @@ class CLIManifest(BaseModel):
 
     tests: list[Union[str, dict[str, str]]] = Field(default=[], description="Test cases for commands")
 
-    model_config = ConfigDict(extra="allow")
+    examples: list[Union[str, Example]] = Field(
+        default=[], description="Example command usages to display in generated CLI docs."
+    )
 
     @field_validator("manifestVersion", mode="after")
     @classmethod

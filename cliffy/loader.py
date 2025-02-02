@@ -1,8 +1,8 @@
 import contextlib
 import os
 
-from .commander import CLI
-from .helper import CLIFFY_CLI_DIR, PYTHON_BIN, PYTHON_EXECUTABLE, write_to_file
+from cliffy.commander import CLI
+from cliffy.helper import CLIFFY_CLI_DIR, PYTHON_BIN, PYTHON_EXECUTABLE, write_to_file
 
 
 class Loader:
