@@ -7,19 +7,19 @@ This guide will walk you through the basics of setting up and using Cliffy to cr
 To get started with Cliffy, you'll need to install it using pip:
 
 ```bash
-$ pip install cliffy  # cliffy[ai,rich] for rich CLI and AI features
-$ cli --help
-$ cli init mycli
-$ cli load mycli.yaml
-$ mycli -h
+pip install cliffy  # cliffy[ai,rich] for rich CLI and AI features
+cli --help
+cli init mycli
+cli load mycli.yaml
+mycli -h
 ```
 
 You can also use uv to run cliffy directly with:
 ```bash
-$ uvx cliffy --help
-$ uvx cliffy init mycli
-$ uvx cliffy load mycli.yaml
-$ uvx --from cliffy mycli -h
+uvx --with "cliffy[rich,ai]" cliffy --help
+uvx cliffy init mycli
+uvx cliffy load mycli.yaml
+uvx --from cliffy mycli -h
 ```
 
 !!! tip
@@ -60,7 +60,7 @@ This manifest defines a CLI named `hello` with a single command `hello` that tak
 To run your CLI, use the `cli run` command followed by the path to your manifest file:
 
 ```bash
-$ cli run hello.yaml -- hello --name "Your Name"
+cli run hello.yaml -- hello --name "Your Name"
 ```
 
 This will output:
@@ -74,13 +74,13 @@ Hello, Your Name!
 You can load the CLI using the `cli load` command to avoid needing to prefix `cli run hello.yaml` for each trigger:
 
 ```bash
-$ cli load hello.yaml
+cli load hello.yaml
 ```
 
 This command loads the generated CLI into the current Python environment. You can then run the CLI directly from the terminal by its name:
 
 ```bash
-$ hello -h
+hello -h
 ```
 
 ### Building CLIs
@@ -88,13 +88,13 @@ $ hello -h
 To build a CLI into a portable zipapp, you can run the `cli build` command:
 
 ```bash
-$ cli build hello.yaml -o dist
+cli build hello.yaml -o dist
 ```
 
 This command builds a portable zipapp containing the CLI and its package requirements, outputting it to the `dist` directory. You can then run the built CLI:
 
 ```bash
-$ ./dist/hello -h
+./dist/hello -h
 ```
 
 ## Next Steps
