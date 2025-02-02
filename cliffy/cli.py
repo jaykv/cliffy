@@ -10,8 +10,8 @@ from cliffy.tester import ShellScript, Tester
 
 from cliffy.rich import click, Console, print_rich_table  # type: ignore
 
-from .builder import build_cli, build_cli_from_manifest, run_cli
-from .helper import (
+from cliffy.builder import build_cli, build_cli_from_manifest, run_cli
+from cliffy.helper import (
     CLIFFY_CLI_DIR,
     age_datetime,
     exit_err,
@@ -20,11 +20,12 @@ from .helper import (
     out_err,
     write_to_file,
 )
-from .homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
-from .loader import Loader
-from .manifest import CLIManifest
-from .transformer import Transformer
-from .reloader import Reloader
+from cliffy.homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
+from cliffy.loader import Loader
+from cliffy.manifest import CLIManifest
+from cliffy.transformer import Transformer
+from cliffy.reloader import Reloader
+from cliffy.doc import DocGenerator
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 ALIASES = {
@@ -327,6 +328,24 @@ def validate(manifest: TextIO) -> None:
         out_err(f"Manifest {manifest.name} is invalid: {e}")
 
 
+@click.argument("cli_or_manifest", type=ManifestOrCLI())
+@click.option("--format", "-f", type=click.Choice(["md", "rst", "html"]), default="md")
+@click.option("--output-dir", "-o", type=click.Path(), help="Output directory")
+def docs(cli_or_manifest: str, format: str, output_dir: str) -> None:
+    """Generate documentation for a CLI"""
+    if isinstance(cli_or_manifest, TextIOWrapper):
+        T = Transformer(cli_or_manifest)
+        doc_generator = DocGenerator(T.manifest)  # type: ignore
+        doc_generator.generate(format, output_dir)
+        out(f"+ {T.cli.name}.{format}")
+    else:
+        metadata = get_metadata(cli_or_manifest)
+        if metadata:
+            doc_generator = DocGenerator(CLIManifest.model_validate(metadata.manifest))
+            doc_generator.generate(format, output_dir)
+            out(f"+ {metadata.cli_name}.{format}")
+
+
 # register commands
 load_command = cli.command("load")(load)
 build_command = cli.command("build")(build)
@@ -341,6 +360,7 @@ run_command = cli.command("run")(cliffy_run)
 update_command = cli.command("update")(update)
 test_command = cli.command("test")(test)
 validate_command = cli.command("validate")(validate)
+docs_command = cli.command("docs")(docs)
 
 # register aliases
 cli.command("add", hidden=True, epilog="Alias for load")(

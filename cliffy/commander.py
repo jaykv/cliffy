@@ -114,6 +114,8 @@ class Commander(ABC):
         self.groups = Groups()
         self.root_group = BaseGroup(name="__root__", short_name="cli", commands=[])
 
+        if isinstance(self.manifest.commands, list):
+            self.manifest.commands = {command.name: command for command in self.manifest.commands}
         for name, command in self.manifest.commands.items():
             if isinstance(command, Command) and not command.name:
                 self.manifest.commands[name].name = name  # type: ignore
