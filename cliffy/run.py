@@ -5,7 +5,8 @@ def run() -> None:
         from cliffy.ai import ai
 
         cli.add_command(ai)
-    except Exception as e:
-        print(e)
+    except Exception:
+        # print(e)
+        ...
 
     cli()  # type: ignore
