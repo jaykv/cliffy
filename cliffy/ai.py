@@ -24,7 +24,7 @@ def ai() -> None:
     "--model",
     "-m",
     help="AI model to use. See https://ai.pydantic.dev/models/ for supported models.",
-    default="gemini-2.0-flash-exp",
+    default="gemini-2.0-flash",
     show_default=True,
 )
 @click.option(
@@ -77,7 +77,7 @@ Use Python and Typer features and imports as needed to craft the best CLI for th
 
 @click.option("--preview", is_flag=True, help="Display the generated prompt before sending the request.", default=False)
 @click.option("--max-tokens", type=int, help="The maximum number of tokens to generate before stopping.", default=None)
-@click.option("--model", "-m", help="LLM model to use.", default="gemini-2.0-flash-exp", show_default=True)
+@click.option("--model", "-m", help="LLM model to use.", default="gemini-2.0-flash", show_default=True)
 @click.option(
     "--cli", type=ManifestOrCLI(), help="Loaded CLI or manifest to include in prompt as reference.", default=None
 )
