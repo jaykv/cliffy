@@ -21,7 +21,6 @@ class ClickCommander(Commander):
     def __init__(self, manifest: CLIManifest) -> None:
         super().__init__(manifest)
         self.base_imports.add("import subprocess")
-        self.base_imports.add("import rich_click as click")
         self.base_imports.add("from typing import Optional, Any")
         self.click_parser = ClickParser(manifest)
 
@@ -30,6 +29,28 @@ class ClickCommander(Commander):
         # sorted: a set has no stable order, which made the generated code differ from run to run
         for imp in sorted(self.base_imports):
             self.cli += imp + "\n"
+        self.cli += self.click_import()
+
+    def click_import(self) -> str:
+        """Import of `click`: rich-click when it is installed, plain Click otherwise.
+
+        rich-click is an optional dependency (`cliffy[rich]`), Click is not. The fallback is written on the
+        `except` line on purpose: `cli build` bundles the framework whose import starts a line, which is
+        rich-click. A manifest that asks for a rich-click feature gets the import without a fallback.
+        """
+        if self.uses_rich_click_features():
+            return "import rich_click as click\n"
+        return (
+            "try:\n"
+            "    import rich_click as click\n"
+            "except ImportError: import click  # plain help output when rich-click is not installed\n"
+        )
+
+    def uses_rich_click_features(self) -> bool:
+        """Whether a command is placed in a help panel, which only rich-click can do"""
+        configs = [command.config for command in self.commands]
+        configs += [template.config for template in self.manifest.command_templates.values()]
+        return any(config is not None and bool(config.rich_help_panel) for config in configs)
 
     def add_base_cli(self) -> None:
         self.cli += """

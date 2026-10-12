@@ -26,7 +26,9 @@ def click_parser(basic_manifest):
 def test_click_commander_initialization(click_commander):
     assert click_commander.manifest.name == "test-cli"
     assert click_commander.manifest.version == "1.0.0"
-    assert "import rich_click as click" in click_commander.base_imports
+    # rich-click is optional: the import falls back to plain click (it used to be a hard import)
+    click_commander.add_base_imports()
+    assert "try:\n    import rich_click as click\nexcept ImportError: import click" in click_commander.cli
 
 
 def test_parse_simple_param():

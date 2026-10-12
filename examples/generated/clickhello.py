@@ -1,7 +1,9 @@
 ## Generated clickhello with cliffy 0.7.0
 from typing import Optional, Any
-import rich_click as click
 import subprocess
+try:
+    import rich_click as click
+except ImportError: import click  # plain help output when rich-click is not installed
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 

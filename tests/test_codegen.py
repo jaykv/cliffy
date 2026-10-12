@@ -2,6 +2,7 @@
 # ruff: noqa: E501
 # the manifests are one-line strings on purpose: their quoting and escaping is what is being tested
 
+import itertools
 import os
 import re
 import textwrap
@@ -490,8 +491,9 @@ def test_greedy_commands(run, manifest, args, expected_output):
 @pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
 def test_generated_imports_are_sorted(generate, base):
     code = generate(base + "commands:\n  a: print(1)\n").cli.code
-    base_imports = code.splitlines()[1:4]
-    assert all(line.startswith(("import ", "from ")) for line in base_imports)
+    # the import block right after the header line. (Click's own import follows it, in a try block.)
+    base_imports = list(itertools.takewhile(lambda line: line.startswith(("import ", "from ")), code.splitlines()[1:]))
+    assert len(base_imports) >= 2
     assert base_imports == sorted(base_imports)
 
 

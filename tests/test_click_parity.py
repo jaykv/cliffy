@@ -1,5 +1,7 @@
 """The Click backend accepts what the manifest reference documents, with the meaning it has for Typer."""
 
+import subprocess
+import sys
 import textwrap
 
 import pytest
@@ -195,7 +197,6 @@ CONFIG = """
     command_templates:
       admin:
         config:
-          rich_help_panel: Admin
           epilog: from the template
     commands:
       visible: print(1)
@@ -228,16 +229,33 @@ def test_command_config_is_applied(run, use_click):
     assert "visible" in overview
     assert "secret" not in overview
     assert "Short text" in overview
-    assert "Admin" in overview
 
     assert run(CONFIG, ["secret"], use_click).output.strip() == "2"
     assert "See the new command" in run(CONFIG, ["old", "-h"], use_click).output
-    assert "eprecated" in run(CONFIG, ["old", "-h"], use_click).output
+    assert "deprecated" in run(CONFIG, ["old", "-h"], use_click).output.lower()
 
     no_args = run(CONFIG, ["reset"], use_click)
     assert "Usage:" in no_args.output
     assert "from the template" in no_args.output
     assert run(CONFIG, ["reset", "db"], use_click).output.strip() == "db"
+
+
+HELP_PANEL = "commands:\n  a:\n    config:\n      rich_help_panel: Admin\n    run: print(1)\n  b: print(2)\n"
+
+
+def test_rich_help_panel_with_typer(run):
+    assert "Admin" in run(HELP_PANEL, ["-h"], use_click=False).output
+
+
+def test_rich_help_panel_with_click_needs_rich_click(run):
+    # panels are a rich-click feature: the generated code then imports rich_click without a fallback
+    try:
+        import rich_click  # noqa: F401
+    except ImportError:
+        with pytest.raises(ImportError, match="rich_click"):
+            run(HELP_PANEL, ["-h"])
+    else:
+        assert "Admin" in run(HELP_PANEL, ["-h"]).output
 
 
 @BACKENDS
@@ -266,3 +284,84 @@ def test_type_alias_keeps_the_help_of_an_explicit_param(run, use_click):
     assert run(body, ["a"], use_click).output.strip() == "abc"
     assert run(body, ["a", "--token", "x"], use_click).output.strip() == "x"
     assert "Access token" in run(body, ["a", "-h"], use_click).output
+
+
+BLOCK_RICH_CLICK = """
+import importlib.abc
+import runpy
+import sys
+
+
+class NoRichClick(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split(".")[0] == "rich_click":
+            raise ModuleNotFoundError(f"No module named {fullname!r}", name=fullname)
+        return None
+
+
+sys.meta_path.insert(0, NoRichClick())
+script = sys.argv[1]
+sys.argv = sys.argv[1:]
+runpy.run_path(script, run_name="__main__")
+"""
+
+
+def generate_click_cli(tmp_path, body: str) -> str:
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text("name: t\nversion: '1'\nuse_click: true\n" + textwrap.dedent(body), encoding="utf-8")
+    with open(manifest_path, encoding="utf-8") as manifest_io:
+        code = Transformer(manifest_io, validate_requires=False).cli.code
+    (tmp_path / "generated.py").write_text(code, encoding="utf-8")
+    (tmp_path / "without_rich_click.py").write_text(BLOCK_RICH_CLICK, encoding="utf-8")
+    return code
+
+
+def run_without_rich_click(tmp_path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(tmp_path / "without_rich_click.py"), str(tmp_path / "generated.py"), *args],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_click_cli_runs_without_rich_click(tmp_path):
+    # the generated code imported rich_click unconditionally: without the `rich` extra no Click CLI could start
+    body = """
+        commands:
+          greet:
+            help: Greet someone
+            params:
+              - name: who
+                type: str
+                help: Person to greet
+                required: true
+              - --times|-t: int = 1
+            run: print(f"hello {who} " * times)
+    """
+    code = generate_click_cli(tmp_path, body)
+    assert "import rich_click as click" in code
+
+    ran = run_without_rich_click(tmp_path, "greet", "Ada", "-t", "2")
+    assert ran.returncode == 0, ran.stderr
+    assert ran.stdout.strip() == "hello Ada hello Ada"
+
+    helped = run_without_rich_click(tmp_path, "greet", "--help")
+    assert helped.returncode == 0, helped.stderr
+    assert "Greet someone" in helped.stdout
+    assert "╭" not in helped.stdout  # plain click output, no rich panels
+
+
+def test_click_cli_that_uses_a_rich_feature_requires_rich_click(tmp_path):
+    body = """
+        commands:
+          a:
+            config:
+              rich_help_panel: Admin
+            run: print(1)
+    """
+    code = generate_click_cli(tmp_path, body)
+    assert "except ImportError" not in code
+
+    ran = run_without_rich_click(tmp_path, "a")
+    assert ran.returncode != 0
+    assert "No module named 'rich_click'" in ran.stderr
