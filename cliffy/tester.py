@@ -3,6 +3,7 @@ from collections.abc import Generator
 from tempfile import NamedTemporaryFile
 from typing import cast
 
+from click.testing import CliRunner as ClickCliRunner
 from click.testing import Result
 from pybash import transformer
 from pydantic import BaseModel, field_validator
@@ -49,8 +50,10 @@ class Tester:
         self.module_funcs = inspect.getmembers(self.module, inspect.isfunction)
         delete_temp_files()
 
-        self.runner = CliRunner()
-        self.parser = Parser(cast(CLIManifest, self.T.manifest))
+        manifest = cast(CLIManifest, self.T.manifest)
+        # typer's runner only accepts typer apps, a CLI generated with `use_click` is a plain click group
+        self.runner: CliRunner | ClickCliRunner = ClickCliRunner() if manifest.use_click else CliRunner()
+        self.parser = Parser(manifest)
 
         self.test_pipeline: list[ShellScript | TestCase] = []
         self.total_cases = 0

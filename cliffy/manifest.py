@@ -2,9 +2,9 @@ import sys
 from collections.abc import ItemsView, Iterator
 from datetime import datetime
 from functools import cached_property
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator, model_validator
 
 from .helper import wrap_as_comment
 
@@ -253,6 +253,28 @@ class CommandTemplate(BaseModel):
     )
 
 
+class Callback(BaseModel):
+    """
+    Code that runs before the commands of the CLI, or of one command group. A callback can declare its own
+    params, which become options of the CLI (or group) itself, i.e. `mycli --verbose command`.
+    The Typer/Click context is available in the run block as `ctx`.
+    """
+
+    run: RunBlock = Field(..., description="Code to run before the invoked command. `ctx` holds the context.")
+    group: str = Field(
+        default="",
+        description="Command group the callback belongs to, i.e. `db` or `db.tables`. Leave empty for the CLI itself.",
+    )
+    params: list[ParamBlock] = Field(
+        default=[],
+        description="Params of the CLI (or group) itself, given before the command name. Same syntax as command params.",
+    )
+    invoke_without_command: bool = Field(
+        default=False,
+        description="Also run the callback when the CLI (or group) is invoked without a command, instead of showing the help.",
+    )
+
+
 class CLIManifest(BaseModel):
     manifestVersion: str = LATEST_SCHEMA_VERSION
     name: str = Field(..., description="The name of the CLI, used when invoking from command line.")
@@ -302,12 +324,19 @@ class CLIManifest(BaseModel):
     )
 
     commands: dict[str, CommandBlock] | list[Command] = Field(
-        ...,
+        default_factory=dict,
         description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "
         "Nested subcommands are joined by '.' in between each level. "
         "Aliases for commands can be separated in the key by '|'. "
         "A special '(*)' wildcard can be used to spread the subcommand to all group-level commands",
+    )
+
+    callbacks: list[Callback] = Field(
+        default=[],
+        description="Code that runs before any command of the CLI, or of one command group. "
+        "Callbacks for the same target run in the order given and their params are combined. "
+        "The built-in --version and --aliases options are kept.",
     )
 
     cli_options: dict[str, Any] = Field(default_factory=dict, description="Additional CLI configuration options")
@@ -332,6 +361,25 @@ class CLIManifest(BaseModel):
         if value.strip() != "v3":
             raise ValueError(f"Unrecognized manifest version {value}. Latest is {LATEST_SCHEMA_VERSION}.")
         return value
+
+    @model_validator(mode="after")
+    def callback_groups_exist(self) -> Self:
+        if not self.callbacks:
+            return self
+
+        names = self.commands if isinstance(self.commands, dict) else [command.name for command in self.commands]
+        groups: set[str] = set()
+        for name in names:
+            parts = name.split("|")[0].strip().split(".")
+            groups.update(".".join(parts[:depth]) for depth in range(1, len(parts)))
+
+        for callback in self.callbacks:
+            if callback.group and callback.group not in groups:
+                known = ", ".join(sorted(groups)) or "none"
+                raise ValueError(
+                    f"callback group `{callback.group}` does not match any command group (groups: {known})"
+                )
+        return self
 
     @classmethod
     def get_field_description(cls, field_name: str, as_comment: bool = True) -> str:

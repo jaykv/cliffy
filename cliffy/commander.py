@@ -8,6 +8,7 @@ from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
 from cliffy.manifest import (
+    Callback,
     CLIManifest,
     Command,
     CommandConfig,
@@ -96,6 +97,7 @@ class Commander(ABC):
     __slots__ = (
         "aliases_by_commands",
         "base_imports",
+        "callbacks_by_group",
         "cli",
         "commands",
         "greedy",
@@ -122,6 +124,10 @@ class Commander(ABC):
 
         self.base_imports: set[str] = set()
         self.aliases_by_commands: dict[str, list[str]] = defaultdict(list)
+        # callbacks keyed by group name, "" is the CLI itself
+        self.callbacks_by_group: dict[str, list[Callback]] = defaultdict(list)
+        for callback in self.manifest.callbacks:
+            self.callbacks_by_group[callback.group].append(callback)
 
         self.commands: list[Command] = [
             command if isinstance(command, Command) else Command(name=name, run=command)
@@ -314,6 +320,10 @@ class Commander(ABC):
                         lazy_parsed_params.append(new_param)
                 lazy_command.params = lazy_parsed_params
         return lazy_command
+
+    def callbacks_for(self, group: BaseGroup | None = None) -> list[Callback]:
+        """Callbacks of a group, or of the CLI itself when no group is given."""
+        return self.callbacks_by_group.get(group.name if group else "", [])
 
     @abstractmethod
     def define_groups(self) -> None:

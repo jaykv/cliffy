@@ -1,5 +1,50 @@
 {
     "$defs": {
+        "Callback": {
+            "description": "Code that runs before the commands of the CLI, or of one command group. A callback can declare its own\nparams, which become options of the CLI (or group) itself, i.e. `mycli --verbose command`.\nThe Typer/Click context is available in the run block as `ctx`.",
+            "properties": {
+                "run": {
+                    "$ref": "#/$defs/RunBlock",
+                    "description": "Code to run before the invoked command. `ctx` holds the context."
+                },
+                "group": {
+                    "default": "",
+                    "description": "Command group the callback belongs to, i.e. `db` or `db.tables`. Leave empty for the CLI itself.",
+                    "title": "Group",
+                    "type": "string"
+                },
+                "params": {
+                    "default": [],
+                    "description": "Params of the CLI (or group) itself, given before the command name. Same syntax as command params.",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/CommandParam"
+                            },
+                            {
+                                "$ref": "#/$defs/SimpleCommandParam"
+                            },
+                            {
+                                "$ref": "#/$defs/GenericCommandParam"
+                            }
+                        ]
+                    },
+                    "title": "Params",
+                    "type": "array"
+                },
+                "invoke_without_command": {
+                    "default": false,
+                    "description": "Also run the callback when the CLI (or group) is invoked without a command, instead of showing the help.",
+                    "title": "Invoke Without Command",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "run"
+            ],
+            "title": "Callback",
+            "type": "object"
+        },
         "Command": {
             "description": "Defines a single command within the CLI. It specifies the command's execution logic,\nparameters, and configuration.",
             "properties": {
@@ -459,6 +504,15 @@
             "description": "A mapping containing the command definitions for the CLI. Each command should have a unique key- which can be either a group command or nested subcommands. Nested subcommands are joined by '.' in between each level. Aliases for commands can be separated in the key by '|'. A special '(*)' wildcard can be used to spread the subcommand to all group-level commands",
             "title": "Commands"
         },
+        "callbacks": {
+            "default": [],
+            "description": "Code that runs before any command of the CLI, or of one command group. Callbacks for the same target run in the order given and their params are combined. The built-in --version and --aliases options are kept.",
+            "items": {
+                "$ref": "#/$defs/Callback"
+            },
+            "title": "Callbacks",
+            "type": "array"
+        },
         "cli_options": {
             "additionalProperties": true,
             "description": "Additional CLI configuration options",
@@ -503,8 +557,7 @@
     },
     "required": [
         "name",
-        "version",
-        "commands"
+        "version"
     ],
     "title": "CLIManifest",
     "type": "object"
