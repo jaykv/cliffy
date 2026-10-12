@@ -1,0 +1,49 @@
+name: clicky
+version: 0.1.0
+help: The same manifest format, rendered with Click
+use_click: true
+
+commands:
+  hello|hi:
+    help: Say hello
+    params:
+      - name: str!
+      - --times: int = 1
+    run: |
+      for _ in range(times):
+          print(f"hello {name}")
+
+  resize:
+    help: Explicit params work like in Typer
+    params:
+      - name: image
+        type: str
+        required: true
+        help: File to resize
+      - name: --width
+        type: int
+        short: -w
+        default: 800
+        help: Target width
+    run: print(image, width)
+
+  tag:
+    help: Raw Click decorators
+    params:
+      - "@click.option('--loud', is_flag=True, help='Shout the tags')"
+      - "@click.argument('tags', nargs=-1)"
+    run: |
+      for tag in tags:
+          print(tag.upper() if loud else tag)
+
+  db.migrate:
+    help: Groups work the same way
+    run: $ echo "migrating"
+
+tests:
+  - hello Ada --times 2: assert result.output == "hello Ada\nhello Ada\n"
+  - hi Ada: assert result.output == "hello Ada\n"
+  - resize cat.jpg -w 100: assert result.output == "cat.jpg 100\n"
+  - resize: assert result.exit_code == 2
+  - tag --loud a b: assert result.output == "A\nB\n"
+  - db migrate: assert result.exit_code == 0

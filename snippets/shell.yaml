@@ -1,0 +1,173 @@
+name: sh
+version: 0.1.0
+help: Shell commands in run scripts
+
+functions:
+  - |
+    def current_branch() -> str:
+        out = $ git rev-parse --abbrev-ref HEAD
+        return out.decode().strip()
+
+commands:
+  # --8<-- [start:basic]
+  hello: $ echo "hello from the shell"
+
+  mixed:
+    help: Mix Python and shell lines
+    params:
+      - name: str!
+    run: |
+      print("python first")
+      $ echo "then shell"
+      if name == "ada":
+          $ echo "shell lines can be indented"
+  # --8<-- [end:basic]
+
+  # --8<-- [start:interpolate]
+  say:
+    help: Pass a Python value to a shell command
+    params:
+      - message: str!
+    run: $ echo f{message} f{len(message)}
+  # --8<-- [end:interpolate]
+
+  # --8<-- [start:format]
+  price:
+    help: f{ } takes f-string format specs, also inside quotes
+    params:
+      - amount: float!
+    run: |
+      out = $ echo "total: f{amount:,.2f}"
+      print(out.decode().strip())
+  # --8<-- [end:format]
+
+  # --8<-- [start:braces]
+  whoami:
+    help: Double braces belong to Jinja unless they are inside a raw block
+    params:
+      - user: str!
+    run: |
+      {% raw %}
+      out = $ echo {{ user.title() }}
+      {% endraw %}
+      print(out.decode().strip())
+  # --8<-- [end:braces]
+
+  # --8<-- [start:capture]
+  upper:
+    help: Capture shell output in Python
+    run: |
+      out = $ echo captured
+      print(out.decode().strip().upper())
+
+  inline:
+    help: Capture inline with parentheses
+    run: print(($ echo inline).decode().strip())
+
+  words:
+    help: Capture in the middle of an expression with $( )
+    run: print(len($(echo one two three).split()), "words")
+  # --8<-- [end:capture]
+
+  # --8<-- [start:pipes]
+  sorted:
+    help: Pipes work without a shell
+    run: $ printf 'b\na\n' | sort
+
+  save:
+    help: So does redirection
+    run: |
+      $ echo "saved" > shell-demo.txt
+      $ cat shell-demo.txt
+
+  errors-to-file:
+    help: Redirect stderr on its own, together with stdout, or into a pipe
+    run: |
+      $ ls no-such-file 2> shell-demo.txt
+      $ ls . no-such-file &> shell-demo.txt
+      $ ls . no-such-file > shell-demo.txt 2>&1
+      lines = $ ls no-such-file |& wc -l
+      print(int(lines), "line of errors")
+  # --8<-- [end:pipes]
+
+  # --8<-- [start:operators]
+  chain:
+    help: "&&, || and ; decide what runs next, like in a shell"
+    run: |
+      out = $ true && echo "first worked" || echo "first failed"
+      print(out.decode().strip())
+      out = $ false || echo "fallback" ; echo "always"
+      print(out.decode().split())
+  # --8<-- [end:operators]
+
+  # --8<-- [start:layout]
+  longest:
+    help: "A trailing backslash continues a command, a # starts a comment"
+    run: |
+      $ printf '%s\n' pear fig banana \
+          | sort \
+          | tail -n 1 > shell-demo.txt  # the last one in alphabetical order
+      $ echo "a # inside quotes is text" >> shell-demo.txt
+      print(open("shell-demo.txt").read())
+  # --8<-- [end:layout]
+
+  # --8<-- [start:shell]
+  texts:
+    help: Glob patterns need a real shell
+    run: "> ls *.txt"
+  # --8<-- [end:shell]
+
+  # --8<-- [start:shell-values]
+  find:
+    help: A value in a > line is quoted for the shell
+    params:
+      - name: str!
+    run: |
+      > ls | grep -c f{name} || echo "nothing is called" f{name}
+
+  glob:
+    help: Splice a value in as shell syntax, here a glob pattern
+    params:
+      - pattern: str!
+    run: |
+      {% raw %}
+      > ls {{! pattern }}
+      {% endraw %}
+  # --8<-- [end:shell-values]
+
+  # --8<-- [start:errors]
+  careless:
+    help: A failing command does not stop the script
+    run: |
+      $ false
+      print("still running")
+
+  careful:
+    help: Check the exit status yourself
+    run: |
+      result = subprocess.run(["false"])
+      if result.returncode != 0:
+          print("command failed")
+          raise typer.Exit(code=result.returncode)
+  # --8<-- [end:errors]
+
+tests:
+  - hello: assert result.exit_code == 0
+  - mixed ada: assert "python first" in result.output
+  - say hi: assert result.exit_code == 0
+  - upper: assert result.output == "CAPTURED\n"
+  - inline: assert result.output == "inline\n"
+  - words: assert result.output == "3 words\n"
+  - price 1234.5: 'assert result.output == "total: 1,234.50\n"'
+  - whoami ada: assert result.output == "Ada\n"
+  - sorted: assert result.exit_code == 0
+  - save: assert result.exit_code == 0
+  - errors-to-file: assert result.output == "1 line of errors\n"
+  - chain: assert result.output == "first worked\n['fallback', 'always']\n"
+  - longest: assert result.output.splitlines()[0] == "pear" and "inside quotes" in result.output
+  - find "; echo injected": assert result.exit_code == 0
+  - glob "*.yaml": assert result.exit_code == 0
+  - texts: assert result.exit_code == 0
+  - careless: assert result.output == "still running\n"
+  - careful: assert result.exit_code == 1
+  - $ rm -f shell-demo.txt

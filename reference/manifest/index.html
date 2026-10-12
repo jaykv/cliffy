@@ -1,0 +1,2389 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Build Python CLIs from YAML manifests">
+      
+      
+      
+        <link rel="canonical" href="https://jaykv.github.io/cliffy/reference/manifest/">
+      
+      
+        <link rel="prev" href="../cli/">
+      
+      
+        <link rel="next" href="../examples/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Manifest reference - cliffy</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="brown" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#manifest-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="cliffy" class="md-header__button md-logo" aria-label="cliffy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M256.5 0c14.7 0 28.2 8.1 35.2 21l216 400c6.7 12.4 6.4 27.4-.8 39.5S486.6 480 472.6 480h-432c-14.1 0-27.1-7.4-34.3-19.5s-7.5-27.1-.8-39.5l216-400 2.9-4.6C231.7 6.2 243.6 0 256.5 0m-86.1 249.9 26.8 26.8c6.2 6.2 16.4 6.2 22.6 0l43.3-43.3c6-6 14.1-9.4 22.6-9.4h42.8L256.4 90.5l-86.1 159.4z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            cliffy
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Manifest reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="brown" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jaykv/cliffy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaykv/cliffy
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../installation/" class="md-tabs__link">
+          
+  
+  
+  Get started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/manifest-basics/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../cli/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../project/changelog/" class="md-tabs__link">
+          
+  
+  
+  Project
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="cliffy" class="md-nav__button md-logo" aria-label="cliffy" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M256.5 0c14.7 0 28.2 8.1 35.2 21l216 400c6.7 12.4 6.4 27.4-.8 39.5S486.6 480 472.6 480h-432c-14.1 0-27.1-7.4-34.3-19.5s-7.5-27.1-.8-39.5l216-400 2.9-4.6C231.7 6.2 243.6 0 256.5 0m-86.1 249.9 26.8 26.8c6.2 6.2 16.4 6.2 22.6 0l43.3-43.3c6-6 14.1-9.4 22.6-9.4h42.8L256.4 90.5l-86.1 159.4z"/></svg>
+
+    </a>
+    cliffy
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jaykv/cliffy" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jaykv/cliffy
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/manifest-basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifest basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Params and types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commands, groups and aliases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/templates-and-global-params/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command templates and global params
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/includes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Includes and merging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/vars-and-jinja/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vars and Jinja
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/shell-commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shell commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/backends/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Click and Typer backends
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing manifests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/dev-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hot-reload dev loop
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building executables
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/generating-docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generating docs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/editor-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Editor setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../blueprints/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blueprints and callbacks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifest reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manifest reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level keys
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Params
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Params">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#shorthand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shorthand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commandparam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CommandParam
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commandtemplate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CommandTemplate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commandconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CommandConfig
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#callback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#include-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Include files
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples gallery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/migration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/known-issues/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Known issues
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#top-level-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Top-level keys
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#params" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Params
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Params">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#shorthand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shorthand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explicit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Explicit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commandparam" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CommandParam
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commandtemplate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CommandTemplate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commandconfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CommandConfig
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#callback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Callback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#include-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Include files
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jaykv/cliffy/edit/main/docs/reference/manifest.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<!--
+  GENERATED FILE - do not edit by hand.
+  Source: scripts/docs.py. Regenerate with `make docs-generate`.
+-->
+
+<h1 id="manifest-reference">Manifest reference<a class="headerlink" href="#manifest-reference" title="Permanent link">&para;</a></h1>
+<p>Every key a manifest accepts. The tables are generated from the pydantic models in
+<code>cliffy/manifest.py</code>, the same models that produce the
+<a href="https://github.com/jaykv/cliffy/blob/main/examples/cliffy_schema.json">JSON schema</a> used for
+<a href="../../guides/editor-setup/">editor completion</a>. The notes under each table are written by hand.</p>
+<h2 id="top-level-keys">Top-level keys<a class="headerlink" href="#top-level-keys" title="Permanent link">&para;</a></h2>
+<p>The top level of a manifest file.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>manifestVersion</code></td>
+<td>string</td>
+<td><code>"v3"</code></td>
+<td>Manifest schema version. <code>v3</code> is the only version that is read; any other value is an error.</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td><strong>required</strong></td>
+<td>The name of the CLI, used when invoking from command line.</td>
+</tr>
+<tr>
+<td><code>version</code></td>
+<td>string</td>
+<td><strong>required</strong></td>
+<td>CLI version</td>
+</tr>
+<tr>
+<td><code>help</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Brief description of the CLI</td>
+</tr>
+<tr>
+<td><code>use_click</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Generate CLI to Click instead of Typer</td>
+</tr>
+<tr>
+<td><code>requires</code></td>
+<td>list of strings</td>
+<td><code>[]</code></td>
+<td>Python packages the CLI needs, as requirement specifiers such as <code>rich</code> or <code>tabulate&gt;=0.9.0</code>. Checked when the manifest is loaded and bundled by <code>cli build</code>.</td>
+</tr>
+<tr>
+<td><code>includes</code></td>
+<td>list of strings</td>
+<td><code>[]</code></td>
+<td>Paths of other manifest files to merge into this one, relative to this file. Keys set in this manifest win over included ones and lists are combined. When two included files set the same key, the first one listed wins.</td>
+</tr>
+<tr>
+<td><code>vars</code></td>
+<td>mapping of name to (string or <code>{expression}</code>)</td>
+<td><code>{}</code></td>
+<td>Variables for the manifest. Each one can be used anywhere in the file as <code>{{ name }}</code> and is also defined as a module-level Python variable in the generated CLI. A value is a string, a number, a boolean, or a Python expression written as <code>{expression}</code>. String values are Jinja2 templates: they can use other vars, and <code>env</code> gives access to environment variables.</td>
+</tr>
+<tr>
+<td><code>imports</code></td>
+<td>string or list of strings</td>
+<td><code>[]</code></td>
+<td>String block or list of strings containing any module imports. These can be used to import any python modules that the CLI depends on.</td>
+</tr>
+<tr>
+<td><code>functions</code></td>
+<td>string or list of strings</td>
+<td><code>[]</code></td>
+<td>String block or list of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter.</td>
+</tr>
+<tr>
+<td><code>types</code></td>
+<td>mapping of name to string</td>
+<td><code>{}</code></td>
+<td>A mapping containing any shared type definitions. These types can be referenced by name in the params section to provide type annotations for args and options defined in the params section. A value is a plain type such as <code>int</code>, optionally with a default (<code>int = 5</code>), or a complete definition: <code>str = typer.Option(...)</code> for Typer, a decorator such as <code>@click.option(...)</code> for Click.</td>
+</tr>
+<tr>
+<td><code>global_params</code></td>
+<td>list of <a href="#params">params</a></td>
+<td><code>[]</code></td>
+<td>Parameters applied to all commands</td>
+</tr>
+<tr>
+<td><code>command_templates</code></td>
+<td>mapping of name to <a href="#commandtemplate">CommandTemplate</a></td>
+<td><code>{}</code></td>
+<td>Reusable command templates</td>
+</tr>
+<tr>
+<td><code>commands</code></td>
+<td>mapping of name to (<a href="#command">Command</a>, string or list of strings) or list of <a href="#command">Command</a></td>
+<td><code>{}</code></td>
+<td>The commands of the CLI, keyed by name. In a key, <code>.</code> separates groups, <code>\|</code> separates aliases and a leading <code>(*)</code> adds the command to every group.</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td>list of <a href="#callback">Callback</a></td>
+<td><code>[]</code></td>
+<td>Code that runs before any command of the CLI, or of one command group. Callbacks for the same target run in the order given and their params are combined. The built-in --version and --aliases options are kept.</td>
+</tr>
+<tr>
+<td><code>cli_options</code></td>
+<td>mapping</td>
+<td><code>{}</code></td>
+<td>Additional CLI configuration options</td>
+</tr>
+<tr>
+<td><code>tests</code></td>
+<td>list of (string or mapping of name to string)</td>
+<td><code>[]</code></td>
+<td>Test cases for commands</td>
+</tr>
+<tr>
+<td><code>examples</code></td>
+<td>list of (string or <a href="#example">Example</a>)</td>
+<td><code>[]</code></td>
+<td>Example command lines of the CLI, with an optional description each. Shown at the end of the <code>--help</code> of the generated CLI and in the pages written by <code>cli docs</code>.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>name</code> and <code>version</code> are the only required keys. <code>version</code> must be a string, so quote values such as
+  <code>"1.0"</code>. <code>commands</code> can be left out for a CLI that only has <code>callbacks</code>.</li>
+<li>Unknown top-level keys are ignored.</li>
+<li><code>manifestVersion</code> can be left out. A value other than <code>v3</code> stops the load with an error that says
+  what to change. This also applies to include files and to files written in a blueprint's spec.</li>
+<li><code>vars</code> keys must be valid Python identifiers. A value is a string, a number, a boolean, or a one-key
+  mapping such as <code>{os.getcwd()}</code>, which is emitted as a Python expression. See
+  <a href="../../guides/vars-and-jinja/">Vars and Jinja</a>.</li>
+<li><code>cli_options</code> is passed as keyword arguments to <code>typer.Typer(...)</code>, or to <code>click.group(...)</code> when
+  <code>use_click</code> is set. Useful Typer values are <code>add_completion: false</code> and <code>no_args_is_help: true</code>.</li>
+<li><code>commands</code> is usually a mapping. A list of <a href="#command">Command</a> mappings that each set <code>name</code> is also
+  accepted.</li>
+<li>Each <code>tests</code> entry is either a string starting with <code>$</code> or <code>&gt;</code> (a shell step) or a one-key mapping of
+  command line to assertion code. See <a href="../../guides/testing/">Testing manifests</a>.</li>
+</ul>
+<h2 id="command">Command<a class="headerlink" href="#command" title="Permanent link">&para;</a></h2>
+<p>Defines a single command within the CLI. It specifies the command's execution logic, parameters, and configuration.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td>string or list of strings</td>
+<td><code>""</code></td>
+<td>The script to run. A string, or a list of strings that are joined with newlines. Lines starting with <code>$</code> or <code>&gt;</code> are shell commands.</td>
+</tr>
+<tr>
+<td><code>help</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>A description of the command, displayed in the help output.</td>
+</tr>
+<tr>
+<td><code>params</code></td>
+<td>list of <a href="#params">params</a></td>
+<td><code>[]</code></td>
+<td>The parameters of the command. Each entry takes one of three forms: a shorthand mapping of the param name to its type, such as <code>name: str!</code> or <code>--count: int = 1</code>; an explicit mapping with the keys <code>name</code> and <code>type</code> and optionally <code>default</code>, <code>help</code>, <code>short</code> and <code>required</code>; or a string that is copied into the generated code as written (a signature entry for Typer, a decorator for Click).</td>
+</tr>
+<tr>
+<td><code>template</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>A reference to a command template defined in the <code>command_templates</code> section of the manifest. This allows for reusable command definitions.</td>
+</tr>
+<tr>
+<td><code>pre_run</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Script to run before the command's run block. This can be used for setup tasks or preconditions.</td>
+</tr>
+<tr>
+<td><code>post_run</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Script to run after the command's run block. This can be used for cleanup tasks or post-processing.</td>
+</tr>
+<tr>
+<td><code>aliases</code></td>
+<td>list of strings</td>
+<td><code>[]</code></td>
+<td>A list of aliases for the command. These aliases can be used to invoke the command with a different name.</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>The name of the command. This is generally derived from the key in the <code>commands</code> section of the manifest, but can be explicitly set here.</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td><a href="#commandconfig">CommandConfig</a> or null</td>
+<td><code>null</code></td>
+<td>An optional <code>CommandConfig</code> object that provides additional configuration options for the command, such as context settings, help text customization, and visibility.</td>
+</tr>
+</tbody>
+</table>
+<p>A command value can also be just a string or a list of strings, which is shorthand for a mapping with
+only <code>run</code>.</p>
+<p>The key of the command carries meaning: <code>.</code> separates groups (<code>db.create</code>), <code>|</code> separates aliases
+(<code>delete|rm</code>) and a leading <code>(*)</code> adds the command to every group. See
+<a href="../../guides/commands/">Commands, groups and aliases</a>.</p>
+<p>A command that has <code>help</code> and no <code>run</code>, and whose key is the name of a group, sets the help text of
+that group.</p>
+<h2 id="params">Params<a class="headerlink" href="#params" title="Permanent link">&para;</a></h2>
+<p>Every entry of a <code>params</code> list (on a command, a template or <code>global_params</code>) takes one of three forms.</p>
+<h3 id="shorthand">Shorthand<a class="headerlink" href="#shorthand" title="Permanent link">&para;</a></h3>
+<p>A one-key mapping: the key is the name, the value is the type.</p>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Positional argument</td>
+<td><code>source: str</code></td>
+</tr>
+<tr>
+<td><code>--name</code></td>
+<td>Option</td>
+<td><code>--count: int</code></td>
+</tr>
+<tr>
+<td><code>--name|-n</code></td>
+<td>Option with a short alias</td>
+<td><code>--count|-c: int</code></td>
+</tr>
+<tr>
+<td><code>type!</code></td>
+<td>Required</td>
+<td><code>source: str!</code></td>
+</tr>
+<tr>
+<td><code>type = value</code></td>
+<td>Default value, written as a Python expression</td>
+<td><code>target: str = "out.txt"</code></td>
+</tr>
+<tr>
+<td>a name from <code>types</code></td>
+<td>Reuse a type or a full definition</td>
+<td><code>level: Level</code></td>
+</tr>
+</tbody>
+</table>
+<p>Hyphens in a name become underscores in the Python variable (<code>--dry-run</code> is <code>dry_run</code>).</p>
+<h3 id="explicit">Explicit<a class="headerlink" href="#explicit" title="Permanent link">&para;</a></h3>
+<p>A mapping with the keys of <a href="#commandparam">CommandParam</a>, which adds <code>help</code> text.</p>
+<h3 id="generic">Generic<a class="headerlink" href="#generic" title="Permanent link">&para;</a></h3>
+<p>A plain string that is copied into the generated function signature as written, for example
+<code>'lines: int = typer.Option(10, "--lines", "-n", min=1)'</code>. With the Click backend the string is a
+decorator such as <code>"@click.option('--loud', is_flag=True)"</code>.</p>
+<p>See <a href="../../guides/params/">Params and types</a> for worked examples of all three.</p>
+<h2 id="commandparam">CommandParam<a class="headerlink" href="#commandparam" title="Permanent link">&para;</a></h2>
+<p>Defines the structure of a command parameter. It is used within the <code>params</code> field of a <code>Command</code> object. By default, parameters are treated as positional arguments. To specify an option, prefix the name with <code>--</code> to indicate flag.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td><strong>required</strong></td>
+<td>Parameter name. Prefix with <code>--</code> to indicate an option.</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>string</td>
+<td><strong>required</strong></td>
+<td>Parameter type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section).</td>
+</tr>
+<tr>
+<td><code>default</code></td>
+<td>any</td>
+<td><code>null</code></td>
+<td>Default parameter value.</td>
+</tr>
+<tr>
+<td><code>help</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Parameter description.</td>
+</tr>
+<tr>
+<td><code>short</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Short option alias. i.e. '-v' for verbose.</td>
+</tr>
+<tr>
+<td><code>required</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Whether the parameter is required.</td>
+</tr>
+</tbody>
+</table>
+<p>This is the explicit form. A <code>name</code> without <code>--</code> is a positional argument, with both backends. <code>short</code>
+is written with its dash (<code>-w</code>). A <code>str</code> default is quoted for you; other defaults are emitted as
+written.</p>
+<h2 id="commandtemplate">CommandTemplate<a class="headerlink" href="#commandtemplate" title="Permanent link">&para;</a></h2>
+<p>Defines a reusable template for command definitions. Templates allow you to define common parameters, pre-run/post-run scripts, and configuration options that can be applied to multiple commands.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>params</code></td>
+<td>list of <a href="#params">params</a></td>
+<td><code>[]</code></td>
+<td>A list of parameters for the command template. These parameters will be applied to any command that uses this template.</td>
+</tr>
+<tr>
+<td><code>pre_run</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Script to run before the command's run and pre-run block. This script will be applied to any command that uses this template.</td>
+</tr>
+<tr>
+<td><code>post_run</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Script to run after the command's run and post-run block. This script will be applied to any command that uses this template.</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td><a href="#commandconfig">CommandConfig</a> or null</td>
+<td><code>null</code></td>
+<td>Additional configuration options for commands using this template. This allows customization of help text, context settings, and other Typer command parameters.</td>
+</tr>
+</tbody>
+</table>
+<p>Template <code>params</code> are placed before the command's own params. Scripts run in this order: template
+<code>pre_run</code>, command <code>pre_run</code>, command <code>run</code>, command <code>post_run</code>, template <code>post_run</code>. <code>config</code> values
+from the command override the template's. See
+<a href="../../guides/templates-and-global-params/">Command templates and global params</a>.</p>
+<h2 id="commandconfig">CommandConfig<a class="headerlink" href="#commandconfig" title="Permanent link">&para;</a></h2>
+<p>Configuration options for a Cliffy command.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>context_settings</code></td>
+<td>mapping</td>
+<td><code>{}</code></td>
+<td>Settings passed to the Click context of the command, for example <code>help_option_names</code> or <code>max_content_width</code>.</td>
+</tr>
+<tr>
+<td><code>epilog</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Text displayed after the help message.</td>
+</tr>
+<tr>
+<td><code>short_help</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Short one-line help message displayed in help overviews.</td>
+</tr>
+<tr>
+<td><code>options_metavar</code></td>
+<td>string</td>
+<td><code>"[OPTIONS]"</code></td>
+<td>Placeholder text displayed for options in help messages.</td>
+</tr>
+<tr>
+<td><code>add_help_option</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Whether to add the <code>--help</code> option automatically.</td>
+</tr>
+<tr>
+<td><code>no_args_is_help</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>If True, invoking the command without any arguments displays the help message.</td>
+</tr>
+<tr>
+<td><code>hidden</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>If True, the command is hidden from help messages and command lists.</td>
+</tr>
+<tr>
+<td><code>deprecated</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>If True, the command is marked as deprecated in help messages.</td>
+</tr>
+<tr>
+<td><code>rich_help_panel</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Name of the panel this command is listed under in rich help output.</td>
+</tr>
+</tbody>
+</table>
+<p>Only the keys you set are passed on, as keyword arguments of the <code>command()</code> decorator of Typer or
+Click. With the Click backend <code>rich_help_panel</code> needs rich-click.</p>
+<h2 id="callback">Callback<a class="headerlink" href="#callback" title="Permanent link">&para;</a></h2>
+<p>Code that runs before the commands of the CLI, or of one command group. A callback can declare its own params, which become options of the CLI (or group) itself, i.e. <code>mycli --verbose command</code>. The Typer/Click context is available in the run block as <code>ctx</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td>string</td>
+<td><strong>required</strong></td>
+<td>Code to run before the invoked command. <code>ctx</code> holds the context.</td>
+</tr>
+<tr>
+<td><code>group</code></td>
+<td>string</td>
+<td><code>""</code></td>
+<td>Command group the callback belongs to, i.e. <code>db</code> or <code>db.tables</code>. Leave empty for the CLI itself.</td>
+</tr>
+<tr>
+<td><code>params</code></td>
+<td>list of <a href="#params">params</a></td>
+<td><code>[]</code></td>
+<td>Params of the CLI (or group) itself, given before the command name. Same syntax as command params.</td>
+</tr>
+<tr>
+<td><code>invoke_without_command</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Also run the callback when the CLI (or group) is invoked without a command, instead of showing the help.</td>
+</tr>
+</tbody>
+</table>
+<p>Callbacks for the same target run in the order given. Their params are options of the CLI or group
+itself, so they go before the command name: <code>mycli --verbose db migrate</code>. A <code>group</code> must be the name of
+an existing command group. See <a href="../../blueprints/#callbacks">Callbacks</a>.</p>
+<h2 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>command</code></td>
+<td>string</td>
+<td><strong>required</strong></td>
+<td>The command line to show.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string or null</td>
+<td><code>null</code></td>
+<td>A sentence describing what the command does.</td>
+</tr>
+</tbody>
+</table>
+<p><code>examples</code> entries are shown at the end of the <code>--help</code> of the generated CLI, as
+<code>$ &lt;command&gt;  # &lt;description&gt;</code>, and in the pages written by <a href="../../guides/generating-docs/"><code>cli docs</code></a>.
+An entry can also be a plain string, which is shown without a description.</p>
+<h2 id="include-files">Include files<a class="headerlink" href="#include-files" title="Permanent link">&para;</a></h2>
+<p>Special model specifically to define the allowed named objects that can be merged with other manifests.</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>requires</code></td>
+<td>list of strings</td>
+<td><code>[]</code></td>
+<td>Merged into the <code>requires</code> of the including manifest.</td>
+</tr>
+<tr>
+<td><code>commands</code></td>
+<td>mapping of name to (<a href="#command">Command</a>, string or list of strings)</td>
+<td><code>{}</code></td>
+<td>Merged into the <code>commands</code> of the including manifest.</td>
+</tr>
+<tr>
+<td><code>vars</code></td>
+<td>mapping of name to (string or <code>{expression}</code>)</td>
+<td><code>{}</code></td>
+<td>Merged into <code>vars</code>. Available as Python variables, not as <code>{{ }}</code> placeholders.</td>
+</tr>
+<tr>
+<td><code>imports</code></td>
+<td>string or list of strings</td>
+<td><code>[]</code></td>
+<td>Merged into <code>imports</code>.</td>
+</tr>
+<tr>
+<td><code>functions</code></td>
+<td>list of strings</td>
+<td><code>[]</code></td>
+<td>Merged into <code>functions</code>. Must be a list here.</td>
+</tr>
+<tr>
+<td><code>types</code></td>
+<td>mapping of name to string</td>
+<td><code>{}</code></td>
+<td>Merged into <code>types</code>.</td>
+</tr>
+<tr>
+<td><code>cli_options</code></td>
+<td>mapping of name to string</td>
+<td><code>{}</code></td>
+<td>Merged into <code>cli_options</code>.</td>
+</tr>
+<tr>
+<td><code>tests</code></td>
+<td>list of (string or mapping of name to string)</td>
+<td><code>[]</code></td>
+<td>Appended to <code>tests</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Files listed under <code>includes</code> are validated against this smaller model. A relative path is looked up
+next to the including manifest first, then in the directory you run <code>cli</code> from. See
+<a href="../../guides/includes/">Includes and merging</a>.</p>
+
+
+
+
+
+
+
+
+  <aside class="md-source-file">
+    
+    
+    
+    
+      
+  <span class="md-source-file__fact">
+    
+      
+  <span class="md-icon" title="Contributors">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"/></svg>
+  </span>
+  <span>GitHub</span>
+
+    
+    <nav>
+      
+        <a href="https://github.com/jaykv" class="md-author" title="@jaykv">
+          
+          <img src="https://avatars.githubusercontent.com/u/18240054?v=4&size=72" alt="jaykv">
+        </a>
+      
+      
+      
+    </nav>
+  </span>
+
+    
+  </aside>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../cli/" class="md-footer__link md-footer__link--prev" aria-label="Previous: CLI reference">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                CLI reference
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../examples/" class="md-footer__link md-footer__link--next" aria-label="Next: Examples gallery">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Examples gallery
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.action.edit", "content.code.copy", "navigation.footer", "navigation.sections", "navigation.tabs", "navigation.top", "search.highlight", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,131 @@
+# --8<-- [start:meta]
+name: notes
+version: 0.1.0
+help: Keep short notes in a JSON file
+# --8<-- [end:meta]
+
+# --8<-- [start:storage]
+imports: |
+  import json
+  import os
+  from collections import Counter
+  from pathlib import Path
+
+vars:
+  default_file: notes.json
+
+functions:
+  - |
+    def notes_path() -> Path:
+        return Path(os.environ.get("NOTES_FILE", "{{ default_file }}"))
+  - |
+    def load_notes() -> list[dict]:
+        path = notes_path()
+        return json.loads(path.read_text()) if path.exists() else []
+  - |
+    def save_notes(notes: list[dict]) -> None:
+        notes_path().write_text(json.dumps(notes, indent=2))
+# --8<-- [end:storage]
+
+# --8<-- [start:types]
+types:
+  Text: str = typer.Argument(..., help="Text of the note")
+  Tag: str = typer.Option("general", "--tag", "-t", help="Tag to file the note under")
+# --8<-- [end:types]
+
+commands:
+  # --8<-- [start:add]
+  add:
+    help: Add a note
+    params:
+      - text: Text
+      - tag: Tag
+    run: |
+      notes = load_notes()
+      notes.append({"text": text, "tag": tag})
+      save_notes(notes)
+      print(f"Added note {len(notes)} [{tag}]")
+  # --8<-- [end:add]
+
+  # --8<-- [start:list]
+  list|ls:
+    help: List notes, optionally filtered by tag
+    params:
+      - --tag|-t: str = ""
+    run: |
+      for number, note in enumerate(load_notes(), start=1):
+          if not tag or note["tag"] == tag:
+              print(f"{number}. [{note['tag']}] {note['text']}")
+  # --8<-- [end:list]
+
+  # --8<-- [start:remove]
+  remove|rm:
+    help: Remove a note by its number
+    params:
+      - number: int!
+    run: |
+      notes = load_notes()
+      if not 1 <= number <= len(notes):
+          print(f"No note {number}")
+          raise typer.Exit(code=1)
+      notes.pop(number - 1)
+      save_notes(notes)
+      print(f"Removed note {number}")
+  # --8<-- [end:remove]
+
+  # --8<-- [start:tags]
+  tags:
+    help: Work with tags
+
+  tags.list:
+    help: Count notes per tag
+    run: |
+      for tag, count in sorted(Counter(note["tag"] for note in load_notes()).items()):
+          print(f"{tag} ({count})")
+
+  tags.rename:
+    help: Rename a tag on every note
+    params:
+      - old: str!
+      - new: str!
+    run: |
+      notes = load_notes()
+      for note in notes:
+          if note["tag"] == old:
+              note["tag"] = new
+      save_notes(notes)
+      print(f"Renamed {old} to {new}")
+  # --8<-- [end:tags]
+
+  # --8<-- [start:backup]
+  backup:
+    help: Copy the notes file next to itself
+    run: |
+      $ cp f{notes_path()} f{notes_path()}.bak
+      print(f"Backed up to {notes_path()}.bak")
+  # --8<-- [end:backup]
+
+# --8<-- [start:tests]
+tests:
+  - $ rm -f notes.json notes.json.bak
+  - add "buy milk" --tag home: assert result.output == "Added note 1 [home]\n"
+  - add "ship release": assert "Added note 2 [general]" in result.output
+  - list: |
+      assert "1. [home] buy milk" in result.output
+      assert "2. [general] ship release" in result.output
+  - ls -t home: assert result_text == "1. [home] buy milk"
+  - tags rename general work: assert result.exit_code == 0
+  - tags list: assert "work (1)" in result.output
+  - backup: assert "Backed up" in result.output
+  - remove 9: assert result.exit_code == 1
+  - rm 1: assert "Removed note 1" in result.output
+  - $ rm -f notes.json notes.json.bak
+# --8<-- [end:tests]
+
+# --8<-- [start:examples]
+examples:
+  - command: notes add "buy milk" --tag home
+    description: Add a note tagged home.
+  - command: notes ls --tag home
+    description: Show only the notes tagged home.
+# --8<-- [end:examples]

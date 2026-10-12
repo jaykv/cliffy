@@ -1,0 +1,21 @@
+name: hello
+version: 0.1.0
+help: Hello world!
+
+commands:
+  shell: $ echo "hello from shell"
+  python: print("hello from python")
+  greet:
+    help: Greet someone by name
+    params:
+      - name: str!
+      - --shout|-s: bool = False
+    run: |
+      message = f"Hello, {name}!"
+      print(message.upper() if shout else message)
+
+tests:
+  - shell: assert result.exit_code == 0
+  - python: assert result.output == "hello from python\n"
+  - greet Ada: assert result.output == "Hello, Ada!\n"
+  - greet Ada --shout: assert "HELLO, ADA!" in result.output
