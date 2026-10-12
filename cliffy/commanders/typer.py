@@ -48,6 +48,7 @@ def aliases_callback(value: bool):
 """
         callbacks = self.callbacks_for()
         self.functions["main"] = "callback of the CLI"
+        self.record_callback_blocks("main", callbacks)
         self.cli += f"""
 @cli.callback({self.parse_callback_options(callbacks)})
 def main({self.parse_callback_params(callbacks)}"""
@@ -118,6 +119,7 @@ cli.command({py_str(alias)}, hidden=True, epilog={alias_epilog})({parsed_command
                 callback_name = self.unique_name(
                     f"{group.var_name}_callback", source=f"callback of group `{group.name}`"
                 )
+                self.record_callback_blocks(callback_name, callbacks)
                 self.cli += f"""
 @{group.var_name}.callback({self.parse_callback_options(callbacks)})
 def {callback_name}({self.parse_callback_params(callbacks)}

@@ -67,6 +67,7 @@ def show_aliases(ctx, param, value):
 """
         callbacks = self.callbacks_for()
         self.functions["cli"] = "callback of the CLI"
+        self.record_callback_blocks("cli", callbacks)
         self.cli += """
 @click.group(context_settings=CONTEXT_SETTINGS"""
         if "invoke_without_command" not in self.manifest.cli_options:
@@ -117,6 +118,7 @@ def cli({self.parse_callback_param_names(callbacks)}):
             parsed_help = clean_help(group.help)
             callbacks = self.callbacks_for(group)
             self.functions[group.var_name] = f"callback of group `{group.name}`"
+            self.record_callback_blocks(group.var_name, callbacks)
             self.cli += f"""
 @click.group({self.parse_callback_options(callbacks)}){self.parse_callback_decorators(callbacks)}
 def {group.var_name}({self.parse_callback_param_names(callbacks)}):
@@ -182,10 +184,12 @@ def {self.alias_func_name(command, alias)}({self.click_parser.get_param_names(co
 
     def alias_func_name(self, command: Command, alias: str) -> str:
         """Name of the function that is registered under an alias: Click needs one function per command name."""
-        return self.unique_name(
+        name = self.unique_name(
             self.click_parser.get_alias_func_name(self.command_func_name(command), alias),
             source=f"command `{command.name}`",
         )
+        self.blocks[name] = self.command_blocks(command)
+        return name
 
     def add_main_block(self) -> None:
         self.cli += """

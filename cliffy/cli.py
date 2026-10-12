@@ -36,7 +36,7 @@ from cliffy.loader import Loader, LoaderError
 from cliffy.manifest import CLIManifest
 from cliffy.reloader import Reloader
 from cliffy.rich import Console, click, print_rich_table  # type: ignore
-from cliffy.tester import ShellScript, Tester
+from cliffy.tester import ASSERTION_FILE, GeneratedImportError, ShellScript, Tester
 from cliffy.transformer import Transformer
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -376,10 +376,20 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str], blueprint: str |
     default=False,
     help="exit instantly on first error or failed test.",
 )
+@click.option(
+    "--traceback",
+    "show_traceback",
+    is_flag=True,
+    default=False,
+    help="Also print the full Python traceback of a command that raises.",
+)
 @blueprint_option
-def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
+def test(manifest: str, exitfirst: bool, show_traceback: bool = False, blueprint: str | None = None) -> None:
     """Run tests defined in a manifest"""
-    tester = Tester(manifest, blueprint=blueprint)
+    try:
+        tester = Tester(manifest, blueprint=blueprint)
+    except GeneratedImportError as e:
+        exit_err(f"~ error in {manifest}: the generated code does not work\n  {e}")
     if not tester.test_pipeline:
         exit_err("Missing tests section in manifest")
     out("✨ Invoking tests ✨", nl=False)
@@ -393,36 +403,49 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
                 tester.invoke_shell(case)
             except SyntaxError as e:
                 exit_err(f"~ error in {manifest}: test step `{case.command}`, column {e.offset}: {e.msg}")
+            except Exception as e:
+                # i.e. a program that does not exist
+                exit_err(f"~ error in {manifest}: test step `{case.command}` could not be run: {type(e).__name__}: {e}")
             continue
 
         case_number += 1
 
         out(f"\n\n🪄 > {tester.T.cli.name} {case.command}\n")
+        test = tester.invoke_test(case.command, case.assert_script)
+        result = next(test)
+        out("⚗️ > \n" + result.output)
+        if raised := tester.describe_exception(case.command, result):
+            # the exception of the command, without frames of cliffy or of the generated module
+            out(raised)
+            if show_traceback and result.exc_info:
+                out("".join(traceback.format_exception(*result.exc_info)))
+        elif isinstance(result.exception, SystemExit) and result.exit_code:
+            out(f"exit code {result.exit_code}")
+
         try:
-            test = tester.invoke_test(case.command, case.assert_script)
-            result = next(test)
-            out("⚗️ > \n" + result.output)
-            if result.exception:
-                out(str(result))
+            # the assertions of the test case
             next(test, "")
             out(f"\n✅ {case_number} of {total}")
             passed += 1
-        except AssertionError:
-            _, _, tb = sys.exc_info()
-            tb_info = traceback.extract_tb(tb)
-            _, line_no, _, _ = tb_info[-1]
-            expr = case.assert_script.split("\n")[line_no - 1]
-            out(f"💔 AssertionError: (line {line_no}) > {expr}")
+        except SyntaxError as e:
+            # the assertion itself is not Python
+            lines = case.assert_script.split("\n")
+            line = lines[min(max(e.lineno or 1, 1), len(lines)) - 1].strip()
+            out(f"💔 the assertion is not valid Python, line {e.lineno}, column {e.offset}: {e.msg}\n    {line}")
             if exitfirst:
                 raise SystemExit(1) from None
-        except SyntaxError:
-            out("💔 Syntax error")
-            traceback.print_exc()
-            if exitfirst:
-                raise SystemExit(1) from None
-        except Exception:
-            out("💔 Exception")
-            traceback.print_exc()
+        except Exception as e:
+            # a failed assertion, or an assertion that raises: reported with its line of the test case
+            frames = [frame for frame in traceback.extract_tb(e.__traceback__) if frame.filename == ASSERTION_FILE]
+            line_no = frames[0].lineno if frames else None
+            lines = case.assert_script.split("\n")
+            expr = lines[line_no - 1] if line_no and line_no <= len(lines) else case.assert_script.strip()
+            where = f"(line {line_no}) > {expr}"
+            out(
+                f"💔 AssertionError: {where}"
+                if isinstance(e, AssertionError)
+                else f"💔 {type(e).__name__}: {e} {where}"
+            )
             if exitfirst:
                 raise SystemExit(1) from None
 

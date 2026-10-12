@@ -38,14 +38,23 @@ def callback_label(callback: Callback) -> str:
     return f"callback of group `{callback.group}`, run" if callback.group else "callback of the CLI, run"
 
 
+def script_text(script: RunBlock | RunBlockList) -> str:
+    """A run block as the one script it is generated from"""
+    return script.to_script() if isinstance(script, RunBlockList) else str(script.root)
+
+
 class CLI(BaseModel):
     name: str
     version: str
     code: str
     requires: list[str] = []
     blueprint: str | None = None
-    # generated function name -> where it comes from in the manifest, i.e. {"db_create": "commands.db.create"}
+    # generated function name -> where it comes from in the manifest, i.e. {"db_create": "command `db.create`"}
     functions: dict[str, str] = {}
+    # generated function name -> the scripts its body is generated from, in order, as (key in the manifest,
+    # script): {"db_create": [("pre_run", "..."), ("run", "...")]}. Lets a line of the generated code be
+    # reported as a line of the manifest.
+    blocks: dict[str, list[tuple[str, str]]] = {}
 
 
 class BaseGroup(BaseModel):
@@ -116,6 +125,7 @@ class Commander(ABC):
     __slots__ = (
         "aliases_by_commands",
         "base_imports",
+        "blocks",
         "callbacks_by_group",
         "cli",
         "command_functions",
@@ -161,6 +171,7 @@ class Commander(ABC):
         # nothing else uses: two manifest names can map to the same identifier (`db-app` and the group `db`).
         self.taken_names: set[str] = set(self.manifest.vars) | self.user_defined_names()
         self.functions: dict[str, str] = {}
+        self.blocks: dict[str, list[tuple[str, str]]] = {}
         self.command_functions: dict[str, str] = {}
         for group in self.groups.values():
             group.var = self.unique_name(to_identifier(group.name + "_app"))
@@ -206,7 +217,17 @@ class Commander(ABC):
             self.command_functions[command.name] = self.unique_name(
                 self.parser.get_command_func_name(command), source=f"command `{command.name}`"
             )
+            self.blocks[self.command_functions[command.name]] = self.command_blocks(command)
         return self.command_functions[command.name]
+
+    @staticmethod
+    def command_blocks(command: Command) -> list[tuple[str, str]]:
+        """The scripts of a command in the order `Parser.parse_command_run` writes them."""
+        scripts = [("pre_run", command.pre_run), ("run", command.run), ("post_run", command.post_run)]
+        return [(key, script_text(script)) for key, script in scripts if script or key == "run"]
+
+    def record_callback_blocks(self, function_name: str, callbacks: list[Callback]) -> None:
+        self.blocks[function_name] = [("run", script_text(callback.run)) for callback in callbacks]
 
     def _merge_command_template(self, command: Command) -> None:
         """Merge command with its template if specified."""
@@ -492,4 +513,5 @@ def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Command
         code=commander.cli,
         requires=manifest.requires,
         functions=commander.functions,
+        blocks=commander.blocks,
     )
