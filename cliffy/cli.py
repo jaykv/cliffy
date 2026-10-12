@@ -17,7 +17,7 @@ from cliffy.builder import (
     format_size,
     run_cli,
 )
-from cliffy.checker import GeneratedCodeError, check_generated_code
+from cliffy.checker import GeneratedCodeError, check_generated_code, ignored_param_settings
 from cliffy.doc import DocGenerator
 from cliffy.helper import (
     CLI_NAME_PATTERN,
@@ -466,10 +466,13 @@ def validate(manifest: TextIO, blueprint: str | None = None) -> None:
     try:
         T = Transformer(manifest, blueprint=blueprint)
         check_generated_code(T.cli)
+        warnings = ignored_param_settings(T.manifest) if isinstance(T.manifest, CLIManifest) else []
     except GeneratedCodeError as e:
         exit_err(f"Manifest {manifest.name} is invalid: the generated code does not work\n  {e}")
     except Exception as e:
         exit_err(f"Manifest {manifest.name} is invalid: {e}")
+    for warning in warnings:
+        out(f"~ warning: {warning}", fg="yellow", err=True)
     out(f"Manifest {manifest.name} is valid", fg="green")
 
 

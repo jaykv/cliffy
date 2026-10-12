@@ -617,8 +617,12 @@ def test_cli_manifest_get_field_description():
 
 def test_cli_manifest_invalid_name_template():
     with pytest.raises(ValueError) as exc_info:
-        CLIManifest.get_template("invalid-name", json_schema=False)
-    assert "CLI name must be a valid Python identifier" in str(exc_info.value)
+        CLIManifest.get_template("invalid name", json_schema=False)
+    assert "CLI name must use letters, digits" in str(exc_info.value)
+
+
+def test_cli_manifest_template_accepts_hyphenated_name():
+    assert "name: my-cli\n" in CLIManifest.get_template("my-cli", json_schema=False)
 
 
 def test_include_manifest_merge():

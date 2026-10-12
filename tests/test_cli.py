@@ -375,13 +375,13 @@ def test_init_invalid_name(isolated_fs):
     assert os.listdir(".") == []
 
 
-def test_init_template_name_error_is_not_a_traceback(isolated_fs):
+def test_init_accepts_a_hyphenated_name(isolated_fs):
     result = CliRunner().invoke(init_command, ["my-cli"])
 
-    assert result.exit_code == 1
-    assert "CLI name must be a valid Python identifier" in result.output
-    assert isinstance(result.exception, SystemExit)
-    assert os.listdir(".") == []
+    assert result.exit_code == 0, result.output
+    assert os.listdir(".") == ["my-cli.yaml"]
+    with open("my-cli.yaml") as manifest:
+        assert "name: my-cli\n" in manifest.read()
 
 
 def test_init_template_is_a_loadable_name(isolated_fs):

@@ -1,6 +1,6 @@
 # Known issues
 
-Behavior in cliffy 0.7.0 that differs from what you might expect, with the way around each. Every
+Behavior in cliffy 0.7.1 that differs from what you might expect, with the way around each. Every
 item was reproduced against this release. The guides already recommend the forms that work; this
 page explains why.
 
@@ -44,13 +44,6 @@ is a check followed by a rename or an unlink: a file that another process puts a
 in between is replaced or removed. This needs write access to the environment's `bin` directory at
 that moment.
 
-### `cli init` without `--raw` rejects names with a hyphen
-
-`cli init my-cli --raw` works, `cli init my-cli` stops with `CLI name must be a valid Python
-identifier`.
-
-**Do this instead:** create the manifest with a name such as `my_cli` and change `name:` afterwards.
-
 ## Manifests
 
 ### Includes fall back to the working directory
@@ -64,8 +57,8 @@ depending on where you are.
 ### A full Typer definition in `types` replaces the param's own settings
 
 A `types` entry with `typer.Option(...)` or `typer.Argument(...)` is the complete definition. A
-default, `help` or `short` written on a param that uses it is ignored. Plain types such as
-`Count: int` do not have this effect. See [Params and types](../guides/params.md#types).
+default, `help` or `short` written on a param that uses it is ignored, and `cli validate` warns
+about it. Plain types such as `Count: int` do not have this effect. See [Params and types](../guides/params.md#types).
 
 ## Click backend
 
