@@ -186,3 +186,54 @@ def test_get_clis(mocker: MockerFixture, tmp_path: Path):
     for cli in metadata:
         expected_metadata = CLIMetadata.model_validate_json(cli)
         assert expected_metadata in clis
+
+
+@pytest.fixture
+def metadata_dir(mocker: MockerFixture, tmp_path: Path) -> Path:
+    mocker.patch("cliffy.homer.CLIFFY_METADATA_DIR", tmp_path)
+    return tmp_path
+
+
+def save_cli(tmp_path: Path, name: str) -> None:
+    manifest_path = tmp_path / f"{name}-manifest.yaml"
+    manifest_path.write_text("name: x")
+    save_metadata(str(manifest_path), CLI(name=name, version="1", code=""))
+
+
+def test_remove_metadata_matches_name_literally(metadata_dir: Path):
+    save_cli(metadata_dir, "first")
+    save_cli(metadata_dir, "second")
+
+    # `cli rm '*'` used to delete the metadata of every CLI and leave their scripts behind
+    assert get_metadata_path("*") is None
+    remove_metadata("*")
+    remove_metadata("f?rst")
+
+    assert {cli.cli_name for cli in get_clis()} == {"first", "second"}
+
+
+def test_remove_metadata_keeps_directory_with_other_files(metadata_dir: Path):
+    save_cli(metadata_dir, "first")
+    metadata_path = get_metadata_path("first")
+    assert metadata_path
+    stray_file = Path(metadata_path).parent / ".DS_Store"
+    stray_file.write_text("")
+
+    remove_metadata("first")
+
+    assert not Path(metadata_path).exists()
+    assert stray_file.exists()
+
+
+def test_get_metadata_bypath_closes_file(metadata_dir: Path):
+    import warnings
+
+    save_cli(metadata_dir, "first")
+    metadata_path = get_metadata_path("first")
+    assert metadata_path
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        assert get_metadata_bypath(Path(metadata_path)).cli_name == "first"
+
+    assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
