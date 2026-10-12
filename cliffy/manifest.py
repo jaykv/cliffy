@@ -595,6 +595,7 @@ class CLIMetadata(BaseModel):
     loaded: datetime
     manifest: str
     requires: list[str]
+    blueprint: str | None = None
 
 
 if __name__ == "__main__":

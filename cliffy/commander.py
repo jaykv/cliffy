@@ -29,6 +29,7 @@ class CLI(BaseModel):
     version: str
     code: str
     requires: list[str] = []
+    blueprint: str | None = None
 
 
 class BaseGroup(BaseModel):

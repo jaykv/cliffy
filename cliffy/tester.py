@@ -37,9 +37,9 @@ class ShellScript(BaseModel):
 
 
 class Tester:
-    def __init__(self, manifest_path: str) -> None:
+    def __init__(self, manifest_path: str, blueprint: str | None = None) -> None:
         with open(manifest_path) as manifest_io:
-            self.T = Transformer(manifest_io)
+            self.T = Transformer(manifest_io, blueprint=blueprint)
 
         with NamedTemporaryFile(mode="w", prefix=f"{self.T.cli.name}_test_", suffix=".py", delete=False) as runner_file:
             runner_file.write(self.T.cli.code)

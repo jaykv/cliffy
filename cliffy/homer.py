@@ -32,6 +32,7 @@ def save_metadata(manifest_path: str, cli: CLI) -> None:
                     loaded=datetime.now(),
                     manifest=manifest.read(),
                     requires=cli.requires,
+                    blueprint=cli.blueprint,
                 ).model_dump(),
                 default=str,
             ),

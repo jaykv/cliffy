@@ -14,10 +14,11 @@ from cliffy.transformer import Transformer
 
 
 class Reloader(FileSystemEventHandler):
-    def __init__(self, manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
+    def __init__(self, manifest_path: str, run_cli: bool, run_cli_args: tuple, blueprint: str | None = None) -> None:
         self.manifest_path = manifest_path
         self.run_cli = run_cli
         self.run_cli_args = run_cli_args
+        self.blueprint = blueprint
         self.last_modified = datetime.now()
 
         super().__init__()
@@ -35,7 +36,10 @@ class Reloader(FileSystemEventHandler):
         self.last_modified = datetime.now()
 
         t = threading.Thread(
-            target=self.reload, args=(self.manifest_path, self.run_cli, self.run_cli_args), daemon=True
+            target=self.reload,
+            args=(self.manifest_path, self.run_cli, self.run_cli_args),
+            kwargs={"blueprint": self.blueprint},
+            daemon=True,
         )
         try:
             t.start()
@@ -44,8 +48,8 @@ class Reloader(FileSystemEventHandler):
             out_err(f"Failed to start thread: {e}")
 
     @classmethod
-    def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
-        event_handler = cls(manifest_path, run_cli, run_cli_args)
+    def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple, blueprint: str | None = None) -> None:
+        event_handler = cls(manifest_path, run_cli, run_cli_args, blueprint)
         observer = Observer()
         observer.schedule(event_handler, path=str(Path(manifest_path).parent), recursive=False)
         observer.start()
@@ -58,10 +62,10 @@ class Reloader(FileSystemEventHandler):
         observer.join()
 
     @staticmethod
-    def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
+    def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple, blueprint: str | None = None) -> None:
         manifest_io = open(manifest_path)  # noqa: SIM115
 
-        T = Transformer(manifest_io)
+        T = Transformer(manifest_io, blueprint=blueprint) if blueprint else Transformer(manifest_io)
         Loader.load_from_cli(T.cli)
         save_metadata(manifest_path, T.cli)
         out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
