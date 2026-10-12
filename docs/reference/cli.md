@@ -64,10 +64,6 @@ AI-powered commands. `generate` and `ask` require the `ai` extra: pip install 'c
 cli ai [OPTIONS] COMMAND [ARGS]...
 ```
 
-| Argument or option | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `--help` | flag | no |  | Show this message and exit. |
-
 `generate` and `ask` need the `ai` extra (`pip install "cliffy[ai]"`). Both send the manifest JSON
 schema to the model as part of the prompt and print token usage when they finish. `llms-txt` needs no
 extra and calls no model.
@@ -91,7 +87,6 @@ cli ai ask [OPTIONS] PROMPT
 | `--max-tokens` | integer range | no |  | Maximum number of tokens in a model response. |
 | `-m`, `--model` | text | no |  | Model to use, as `provider:model`. See https://pydantic.dev/docs/ai/models/overview/. Defaults to a model of the first provider with an API key set, else google:gemini-flash-latest. |
 | `--cli` | file | no |  | Loaded CLI or manifest to include in the prompt as reference. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 `--preview` prints the prompt and exits without calling a model.
 
@@ -113,7 +108,6 @@ cli ai generate [OPTIONS] CLI_NAME DESCRIPTION
 | `--retries` | integer range | no | `2` | How often to send an invalid manifest back to the model to be fixed. |
 | `-f`, `--force` | flag | no |  | Overwrite the manifest file if it exists. |
 | `-o`, `--output-dir` | directory | no | `.` | Output directory |
-| `--help` | flag | no |  | Show this message and exit. |
 
 The reply of the model is validated before the manifest is written, and sent back with the reason when
 it is not a manifest cliffy can load. `--preview` prints the prompt and exits without calling a model.
@@ -125,10 +119,6 @@ Print the bundled cliffy documentation as llms.txt. Needs no model.
 ```text
 cli ai llms-txt [OPTIONS]
 ```
-
-| Argument or option | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `--help` | flag | no |  | Show this message and exit. |
 
 Prints the documentation that is bundled with the installed cliffy as one text file, in the
 [llms.txt](https://llmstxt.org/) layout. It needs no model, no API key and no `ai` extra, so it works
@@ -150,10 +140,6 @@ Work with blueprints: custom YAML specs that map onto a CLI
 cli blueprint [OPTIONS] COMMAND [ARGS]...
 ```
 
-| Argument or option | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `--help` | flag | no |  | Show this message and exit. |
-
 A blueprint lets a YAML file use its own keys instead of `commands` and `params`, and maps them onto a
 CLI. See [Blueprints](../blueprints.md).
 
@@ -166,10 +152,6 @@ cli blueprint list [OPTIONS]
 ```
 
 Alias: `cli blueprints`
-
-| Argument or option | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `--help` | flag | no |  | Show this message and exit. |
 
 Lists the blueprints that installed packages register under the `cliffy.blueprints` entry point group.
 A blueprint in a `.py` file or referenced as `module:Class` works without being listed.
@@ -191,7 +173,6 @@ cli blueprint schema [OPTIONS] BLUEPRINT
 |---|---|---|---|---|
 | `BLUEPRINT` | text | yes |  | Blueprint reference: a `.py` file, `module:Class` or the name of an installed blueprint. |
 | `-o`, `--output` | file | no |  | Write the schema to a file |
-| `--help` | flag | no |  | Show this message and exit. |
 
 ```console
 $ cli blueprint schema examples/blueprints/tasks.py -o tasks.schema.json
@@ -216,7 +197,6 @@ cli build [OPTIONS] [CLI_OR_MANIFESTS]...
 | `-o`, `--output-dir` | directory | no |  | Output dir |
 | `-p`, `--python` | text | no |  | Interpreter for the #! line of a zipapp or a script, added after the #!. [default: /usr/bin/env python3 for a zipapp, /usr/bin/env -S uv run --script for a script] |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Builds one file to hand to someone else. `--target` chooses what kind:
 
@@ -272,7 +252,6 @@ cli dev [OPTIONS] MANIFEST [RUN_CLI_ARGS]...
 | `[RUN_CLI_ARGS]...` | text | no |  | Arguments for the generated CLI when `--run-cli` is set. |
 | `--run-cli` | flag | no |  | If passed, runs CLI on each reload. Useful for syntax checks or testing command execution on each reload |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Nothing is loaded when the command starts. The CLI is loaded the first time the file changes and
 again on every later change. The manifests it includes and the Python file of its blueprint are
@@ -297,7 +276,6 @@ cli docs [OPTIONS] CLI_OR_MANIFEST
 | `-f`, `--format` | `md` \| `rst` \| `html` | no | `md` | Output format. |
 | `-o`, `--output-dir` | directory | no |  | Output directory |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Writes `<name>.md`, `<name>.rst` or `<name>.html` to the output directory, or to the current directory
 when `--output-dir` is not given. The output directory must exist.
@@ -317,7 +295,6 @@ cli info [OPTIONS] CLI_NAME
 | Argument or option | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `CLI_NAME` | text | yes |  | Name of a loaded CLI. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Prints the name, version, requirements, blueprint (when one was used), age and stored manifest of a
 loaded CLI.
@@ -336,7 +313,6 @@ cli init [OPTIONS] [CLI_NAME]
 | `--render` | flag | no |  | Print template to terminal directly |
 | `--raw` | flag | no |  | Raw template without boilerplate helpers and examples. |
 | `--json-schema` | flag | no |  | Write JSON schema (cliffy_schema.json) file to the current directory. Useful for development. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 ```console
 $ cli init mycli --raw
@@ -359,10 +335,6 @@ cli list [OPTIONS]
 ```
 
 Alias: `cli ls`
-
-| Argument or option | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `--help` | flag | no |  | Show this message and exit. |
 
 ```console
 $ cli list
@@ -387,7 +359,6 @@ Alias: `cli add`
 |---|---|---|---|---|
 | `[MANIFESTS]...` | file | no |  | One or more manifest files to load. |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Loading does three things:
 
@@ -423,7 +394,6 @@ Alias: `cli rm`
 | Argument or option | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `[CLI_NAMES]...` | text | no |  | Names of loaded CLIs to remove. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Deletes the launcher script, the generated module and the stored metadata.
 
@@ -442,10 +412,6 @@ cli remove-all [OPTIONS]
 
 Aliases: `cli rm-all`, `cli rmall`
 
-| Argument or option | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `--help` | flag | no |  | Show this message and exit. |
-
 ## `cli render`
 
 Render the CLI manifest generation as code
@@ -458,7 +424,6 @@ cli render [OPTIONS] MANIFEST
 |---|---|---|---|---|
 | `MANIFEST` | file | yes |  | Manifest file to render. |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Prints the Python module cliffy generates, without loading or running it. Use it to see exactly how
 params, shell lines and templates are translated.
@@ -480,7 +445,6 @@ cli run [OPTIONS] MANIFEST [CLI_ARGS]...
 | `MANIFEST` | file | yes |  | Manifest file to run. |
 | `[CLI_ARGS]...` | text | no |  | Arguments passed to the generated CLI. Put `--` first when they include options. |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Generates the CLI in a temporary file and runs it once, without loading it. Options meant for your
 CLI must come after `--`, otherwise `cli run` tries to parse them itself:
@@ -509,7 +473,6 @@ cli test [OPTIONS] MANIFEST
 | `-x`, `--exitfirst` | flag | no |  | exit instantly on first error or failed test. |
 | `--traceback` | flag | no |  | Also print the full Python traceback of a command that raises. |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Runs the `tests` section of a manifest and prints each command, its output and the result. The exit
 code is `0` only when every test passes. It is `1` when a test fails or when the manifest has no tests.
@@ -529,7 +492,6 @@ Alias: `cli reload`
 | Argument or option | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `[CLI_NAMES]...` | text | no |  | Names of loaded CLIs to regenerate from their manifests. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 `update` re-reads the manifest from the path recorded by `cli load`, so it only works while the manifest
 is still at that location.
@@ -552,7 +514,6 @@ cli validate [OPTIONS] MANIFEST
 |---|---|---|---|---|
 | `MANIFEST` | file | yes |  | Manifest file to validate. |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
-| `--help` | flag | no |  | Show this message and exit. |
 
 Checks that the file is valid YAML, matches the manifest schema, that its `requires` are installed and
 that the generated code works. Scripts are checked while the code is generated, as they are by every
