@@ -333,3 +333,55 @@ def test_multiple_thread_creation(reloader):
             _args, kwargs = call
             assert kwargs.get("target") == reloader.reload
             assert kwargs.get("args") == (reloader.manifest_path, reloader.run_cli, reloader.run_cli_args)
+
+
+@pytest.mark.parametrize(
+    "changed_file, should_reload",
+    [
+        ("manifest.yaml", True),
+        ("./manifest.yaml", True),
+        ("other-manifest.yaml", False),  # used to reload: its path ends with "manifest.yaml"
+        ("sub/manifest.yaml", False),
+    ],
+)
+def test_on_modified_only_reloads_the_watched_manifest(isolated_fs, changed_file, should_reload):
+    reloader = Reloader("manifest.yaml", False, ())
+    reloader.last_modified = datetime.now() - timedelta(seconds=2)
+
+    with patch("threading.Thread") as mock_thread:
+        reloader.on_modified(FileModifiedEvent(src_path=changed_file))
+
+    assert mock_thread.called is should_reload
+
+
+def test_on_modified_with_absolute_event_path(isolated_fs):
+    reloader = Reloader("manifest.yaml", False, ())
+    reloader.last_modified = datetime.now() - timedelta(seconds=2)
+
+    with patch("threading.Thread") as mock_thread:
+        reloader.on_modified(FileModifiedEvent(src_path=str(isolated_fs / "manifest.yaml")))
+
+    mock_thread.assert_called_once()
+
+
+@patch("cliffy.reloader.out")
+@patch("cliffy.reloader.save_metadata")
+@patch("cliffy.reloader.Loader.load_from_cli")
+@patch("cliffy.reloader.Transformer")
+def test_reload_closes_manifest(MockTransformer, mock_load_from_cli, mock_save_metadata, mock_out, isolated_fs):
+    (isolated_fs / "manifest.yaml").write_text("name: t")
+
+    Reloader.reload("manifest.yaml", False, ())
+
+    manifest_io = MockTransformer.call_args.args[0]
+    assert manifest_io.name == "manifest.yaml"
+    assert manifest_io.closed
+
+
+@patch("cliffy.reloader.Observer")
+def test_watch_stops_observer_on_unexpected_error(MockObserver):
+    with patch("cliffy.reloader.time.sleep", side_effect=RuntimeError("boom")), pytest.raises(RuntimeError):
+        Reloader.watch("manifest.yaml", False, ())
+
+    MockObserver.return_value.stop.assert_called_once()
+    MockObserver.return_value.join.assert_called_once()
