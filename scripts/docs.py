@@ -446,24 +446,6 @@ FIELD_FALLBACK: dict[tuple[str, str], str] = {
     ("IncludeManifest", "tests"): "Appended to `tests`.",
 }
 
-# Replacements for model descriptions that do not match what the code does. The model text also feeds
-# the JSON schema and the `cli init` template, so it is corrected here instead of in cliffy/manifest.py.
-FIELD_OVERRIDES: dict[tuple[str, str], str] = {
-    ("CLIManifest", "requires"): "Python packages the CLI needs, as requirement specifiers such as `rich` or "
-    "`tabulate>=0.9.0`. Checked when the manifest is loaded and bundled by `cli build`.",
-    ("CLIManifest", "includes"): "Paths of other manifest files to merge into this one. Keys set in this manifest "
-    "win over included ones; lists are combined.",
-    ("CLIManifest", "vars"): "Variables for the manifest. Each one can be used anywhere in the file as "
-    "`{{ name }}` and is also defined as a module-level Python variable in the generated CLI. Values are "
-    "Jinja2 templates; `env` gives access to environment variables.",
-    ("CLIManifest", "commands"): "The commands of the CLI, keyed by name. In a key, `.` separates groups, `|` "
-    "separates aliases and a leading `(*)` adds the command to every group.",
-    ("Command", "params"): "The parameters of the command. See [Params](#params) for the three accepted forms.",
-    ("CommandConfig", "context_settings"): "Settings passed to the Click context of the command, for example "
-    "`help_option_names` or `max_content_width`.",
-    ("CommandConfig", "rich_help_panel"): "Name of the panel this command is listed under in rich help output.",
-}
-
 # Hand-written notes shown under each generated table. Every statement was checked by running it.
 MODEL_NOTES: dict[str, str] = {
     "CLIManifest": """
@@ -651,7 +633,7 @@ def _render_model(model: type[BaseModel], title: str) -> list[str]:
     lines += ["| Key | Type | Default | Description |", "|---|---|---|---|"]
     for name, field in model.model_fields.items():
         key = (model.__name__, name)
-        description = FIELD_OVERRIDES.get(key) or field.description or FIELD_FALLBACK.get(key)
+        description = field.description or FIELD_FALLBACK.get(key)
         if not description:
             raise SystemExit(f"scripts/docs.py: add a description for {model.__name__}.{name} to FIELD_FALLBACK")
         lines.append(

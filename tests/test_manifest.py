@@ -1,5 +1,7 @@
+import re
+
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from cliffy.commanders.typer import TyperCommander
 from cliffy.manifest import (
@@ -687,3 +689,41 @@ def test_get_raw_template():
 
     raw_template_with_schema = CLIManifest.get_raw_template("test", True)
     assert "# yaml-language-server:" in raw_template_with_schema
+
+
+def all_field_descriptions() -> dict[str, str]:
+    models: list[type[BaseModel]] = [CLIManifest, Command, CommandParam, CommandTemplate, CommandConfig]
+    return {
+        f"{model.__name__}.{name}": field.description or ""
+        for model in models
+        for name, field in model.model_fields.items()
+    }
+
+
+@pytest.mark.parametrize(
+    "wrong_text",
+    ["CLI.Supports", "${some_env_var}", "@rich_help", "include.Performs"],
+)
+def test_field_descriptions_do_not_describe_things_that_do_not_exist(wrong_text):
+    # the descriptions feed the JSON schema, the `cli init` template and the manifest reference
+    for field, description in all_field_descriptions().items():
+        assert wrong_text not in description, field
+
+
+def test_field_descriptions_are_single_spaced_sentences():
+    for field, description in all_field_descriptions().items():
+        assert description == " ".join(description.split()), field
+        # a sentence glued to the next one, as in "the CLI.Supports". Code in backticks is not prose
+        assert not re.search(r"[a-z]\.[A-Z]", re.sub(r"`[^`]*`", "", description)), field
+
+
+def test_includes_description_says_which_file_wins():
+    description = CLIManifest.model_fields["includes"].description or ""
+    assert "relative to this file" in description
+    assert "in the order given" not in description
+    assert "first one listed wins" in description
+
+
+def test_docs_script_has_no_description_overrides():
+    with open("scripts/docs.py", encoding="utf-8") as script:
+        assert "FIELD_OVERRIDES" not in script.read()

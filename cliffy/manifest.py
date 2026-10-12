@@ -149,10 +149,8 @@ class CommandConfig(BaseModel):
 
     context_settings: dict[Any, Any] = Field(
         default={},
-        description="""Arbitrary settings passed to Click's context. Useful for things
-        like overriding the default `max_content_width`.
-        See Click's documentation for more details:
-        https://click.palletsprojects.com/en/8.1.x/advanced/#context-settings""",
+        description="Settings passed to the Click context of the command, for example `help_option_names` "
+        "or `max_content_width`.",
     )
     epilog: str = Field(default="", description="Text displayed after the help message.")
     short_help: str = Field(default="", description="Short one-line help message displayed in help overviews.")
@@ -172,9 +170,7 @@ class CommandConfig(BaseModel):
     )
     rich_help_panel: str = Field(
         default="",
-        description="""Name of a Rich help panel to display after the default help. This is useful for
-        displaying more complex help information, such as tables or formatted text.
-        The content of the panel is defined using the `@rich_help` decorator.""",
+        description="Name of the panel this command is listed under in rich help output.",
     )
 
 
@@ -223,7 +219,11 @@ class Command(BaseModel):
     help: str = Field(default="", description="A description of the command, displayed in the help output.")
     params: list[ParamBlock] = Field(
         default=[],
-        description="A list of parameters for the command.\nThere are three ways to define a param: \n(generic) 1. A string as param definition. Gets appended to the command params signature.\n(implicit) 2. A mapping with the param name as the key and the type as the value. Custom types are accepted here. Same as the implicit v1 params syntax. \n(explicit) 3. A mapping with the following keys: `name` (required), `type` (required), `default` (None by default), `help` (Optional), `short` (Optional), `required` (False by default).",
+        description="The parameters of the command. Each entry takes one of three forms: "
+        "a shorthand mapping of the param name to its type, such as `name: str!` or `--count: int = 1`; "
+        "an explicit mapping with the keys `name` and `type` and optionally `default`, `help`, `short` and `required`; "
+        "or a string that is copied into the generated code as written "
+        "(a signature entry for Typer, a decorator for Click).",
     )
     template: str = Field(
         default="",
@@ -263,7 +263,7 @@ class CommandTemplate(BaseModel):
 
     params: list[ParamBlock] = Field(
         default=[],
-        description="A list of parameters for the command template.  These parameters will be applied to any command that uses this template.",
+        description="A list of parameters for the command template. These parameters will be applied to any command that uses this template.",
     )
     pre_run: PreRunBlock = Field(
         default=PreRunBlock(root=""),
@@ -309,21 +309,22 @@ class CLIManifest(BaseModel):
     use_click: bool = Field(default=False, description="Generate CLI to Click instead of Typer")
     requires: list[str] = Field(
         default=[],
-        description="List of Python package dependencies for the CLI.Supports requirements specifier syntax.",
+        description="Python packages the CLI needs, as requirement specifiers such as `rich` or `tabulate>=0.9.0`. "
+        "Checked when the manifest is loaded and bundled by `cli build`.",
     )
     includes: list[str] = Field(
         default=[],
-        description="List of external CLI manifests to include."
-        "Performs a deep merge of manifests sequentially in the order given to assemble a merged manifest. "
-        "and finally, deep merges the merged manifest with this manifest.",
+        description="Paths of other manifest files to merge into this one, relative to this file. "
+        "Keys set in this manifest win over included ones and lists are combined. "
+        "When two included files set the same key, the first one listed wins.",
     )
 
     vars: dict[str, VarBlock] = Field(
         default_factory=dict,
-        description="Mapping defining manifest variables that can be referenced in any other blocks. "
-        "Environments variables can be used in this section with ${some_env_var} for dynamic parsing. "
-        "Supports jinja2 formatted expressions as values. "
-        "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
+        description="Variables for the manifest. Each one can be used anywhere in the file as `{{ name }}` "
+        "and is also defined as a module-level Python variable in the generated CLI. "
+        "A value is a string, a number, a boolean, or a Python expression written as `{expression}`. "
+        "String values are Jinja2 templates: they can use other vars, and `env` gives access to environment variables.",
     )
     imports: str | list[str] = Field(
         default=[],
@@ -340,7 +341,9 @@ class CLIManifest(BaseModel):
         default_factory=dict,
         description="A mapping containing any shared type definitions. "
         "These types can be referenced by name in the params section to provide type annotations "
-        "for args and options defined in the params section.",
+        "for args and options defined in the params section. "
+        "A value is a plain type such as `int`, optionally with a default (`int = 5`), or a complete definition: "
+        "`str = typer.Option(...)` for Typer, a decorator such as `@click.option(...)` for Click.",
     )
 
     global_params: list[ParamBlock] = Field(default=[], description="Parameters applied to all commands")
@@ -351,11 +354,8 @@ class CLIManifest(BaseModel):
 
     commands: dict[str, CommandBlock] | list[Command] = Field(
         default_factory=dict,
-        description="A mapping containing the command definitions for the CLI. "
-        "Each command should have a unique key- which can be either a group command or nested subcommands. "
-        "Nested subcommands are joined by '.' in between each level. "
-        "Aliases for commands can be separated in the key by '|'. "
-        "A special '(*)' wildcard can be used to spread the subcommand to all group-level commands",
+        description="The commands of the CLI, keyed by name. "
+        "In a key, `.` separates groups, `|` separates aliases and a leading `(*)` adds the command to every group.",
     )
 
     callbacks: list[Callback] = Field(
