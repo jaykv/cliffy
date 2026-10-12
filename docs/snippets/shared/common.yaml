@@ -1,0 +1,28 @@
+imports:
+  - import json
+
+vars:
+  team: platform
+
+functions:
+  - |
+    def as_json(data: dict) -> str:
+        return json.dumps(data, sort_keys=True)
+
+types:
+  Service: str = typer.Argument(..., help="Name of the service")
+
+commands:
+  health:
+    help: Report service health
+    params:
+      - service: Service
+    run: |
+      print(as_json({"service": service, "status": "ok"}))
+
+  whoami:
+    help: Show the owning team
+    run: print(team)
+
+tests:
+  - health api: assert '"ok"' in result.output

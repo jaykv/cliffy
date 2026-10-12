@@ -39,6 +39,17 @@ lint:
 docs-serve:
 	uv run --group docs mkdocs serve
 
+# docs/reference/*.md are generated from the click commands, the manifest models and examples/.
+docs-generate:
+	uv run python scripts/docs.py generate
+
+# Fails when the generated pages are stale or a manifest in docs/snippets does not pass its tests.
+docs-check:
+	uv run python scripts/docs.py check
+
+docs-build: docs-check
+	uv run --group docs mkdocs build --strict
+
 # The example manifests declare requirements that are not cliffy dependencies. They have to be
 # installed into the project environment (not a `uv run --with` overlay), because cliffy validates
 # `requires` against `pip freeze`. `uv sync` in generate-cleanup removes them again.
@@ -57,5 +68,6 @@ generate-cleanup:
 generate-schema:
 	uv run python -m cliffy.manifest --json-schema > examples/cliffy_schema.json
 
-.PHONY: check install sync test test-cov clean package publish format lint docs-serve \
+.PHONY: check install sync test test-cov clean package publish format lint \
+	docs-serve docs-generate docs-check docs-build \
 	generate-clis generate-all generate-cleanup generate-schema

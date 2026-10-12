@@ -1,0 +1,55 @@
+name: counter
+version: 0.1.0
+help: A counter stored in a file, with tests
+
+imports: |
+  from pathlib import Path
+
+functions:
+  - |
+    def read_count() -> int:
+        path = Path("counter.txt")
+        return int(path.read_text()) if path.exists() else 0
+
+commands:
+  show:
+    help: Print the counter
+    run: print(read_count())
+
+  bump:
+    help: Increase the counter
+    params:
+      - --by: int = 1
+    run: |
+      total = read_count() + by
+      Path("counter.txt").write_text(str(total))
+      print(total)
+
+  crash:
+    help: Always fails
+    run: raise ValueError("boom")
+
+# --8<-- [start:tests]
+tests:
+  # A string starting with $ or > is a shell step, handy for setup and cleanup
+  - $ rm -f counter.txt
+
+  # A mapping is a test case: the command line, then the assertion to run
+  - show: assert result.output == "0\n"
+  - bump: assert result.exit_code == 0
+
+  # Use a block when you need several statements
+  - bump --by 2: |
+      assert result.exit_code == 0
+      assert result_text == "3"
+
+  # Usage errors exit with code 2
+  - bump --by nope: assert result.exit_code == 2
+
+  # An uncaught exception is stored on the result
+  - crash: |
+      assert result.exit_code == 1
+      assert isinstance(result.exception, ValueError)
+
+  - "> rm -f counter.*"
+# --8<-- [end:tests]

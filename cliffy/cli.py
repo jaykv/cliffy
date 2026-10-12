@@ -283,7 +283,7 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str], blueprint: str |
 
     - cli dev examples/hello.yaml --run-cli  -- -h
 
-    - cli dev examples/hello.yaml --run-cli hello
+    - cli dev examples/hello.yaml --run-cli python
     """
     out(f"🔄 Watching {manifest} for changes...\n", fg="magenta")
     if blueprint:
