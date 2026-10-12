@@ -7,6 +7,7 @@ from typing import Any, TextIO
 from cliffy.ai import ai
 from cliffy.blueprint import BlueprintError, installed_blueprints, resolve_blueprint
 from cliffy.builder import build_cli, build_cli_from_manifest, run_cli
+from cliffy.checker import GeneratedCodeError, check_generated_code
 from cliffy.doc import DocGenerator
 from cliffy.helper import (
     CLI_NAME_PATTERN,
@@ -357,12 +358,15 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
 @click.argument("manifest", type=click.File("rb"), required=True)
 @blueprint_option
 def validate(manifest: TextIO, blueprint: str | None = None) -> None:
-    """Validate the syntax and structure of a CLI manifest"""
+    """Validate a CLI manifest: its structure, its requirements and the code generated from it"""
     try:
-        Transformer(manifest, blueprint=blueprint)
-        out(f"Manifest {manifest.name} is valid", fg="green")
+        T = Transformer(manifest, blueprint=blueprint)
+        check_generated_code(T.cli)
+    except GeneratedCodeError as e:
+        exit_err(f"Manifest {manifest.name} is invalid: the generated code does not work\n  {e}")
     except Exception as e:
         exit_err(f"Manifest {manifest.name} is invalid: {e}")
+    out(f"Manifest {manifest.name} is valid", fg="green")
 
 
 @click.argument("cli_or_manifest", type=ManifestOrCLI())
