@@ -316,7 +316,12 @@ def test_script_target_builds_a_loaded_cli_by_name(tmp_path):
 
     assert result.exit_code == 0, result.output
     script = (tmp_path / "dist" / "loaded.py").read_text()
-    assert inline_metadata(script)["dependencies"] == ["six", f"rich-click=={metadata.version('rich-click')}"]
+    # rich-click is an optional extra: it is pinned to the installed version, when it is installed
+    try:
+        rich_click = f"rich-click=={metadata.version('rich-click')}"
+    except metadata.PackageNotFoundError:
+        rich_click = "rich-click"
+    assert inline_metadata(script)["dependencies"] == ["six", rich_click]
 
 
 def test_script_runs_with_uv_and_with_the_current_interpreter(shell_manifest, tmp_path):
