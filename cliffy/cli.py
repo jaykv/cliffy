@@ -197,7 +197,7 @@ def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, py
             )
 
         if result.exit_code != 0:
-            out(result.stdout)
+            out(result.output)
             if result.exception:
                 out(str(result.exception))
             out_err(f"~ {cli_name} build failed")
@@ -220,7 +220,6 @@ def info(cli_name: str) -> None:
 @click.argument("manifest", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
 @click.option(
     "--run-cli",
-    type=str,
     default=False,
     help="If passed, runs CLI on each reload. Useful for syntax checks or testing command execution on each reload",
     is_flag=True,

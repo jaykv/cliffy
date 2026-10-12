@@ -23,8 +23,8 @@ def ai() -> None:
 @click.option(
     "--model",
     "-m",
-    help="AI model to use. See https://ai.pydantic.dev/models/ for supported models.",
-    default="gemini-2.0-flash",
+    help="AI model to use. See https://pydantic.dev/docs/ai/models/overview/ for supported models.",
+    default="google:gemini-2.0-flash",
     show_default=True,
 )
 @click.option(
@@ -66,18 +66,18 @@ Use Python and Typer features and imports as needed to craft the best CLI for th
 
     result = agent.run_sync(description, usage_limits=usage_limits)
 
-    manifest = result.data.strip().removeprefix("```yaml").removesuffix("```").strip()
+    manifest = result.output.strip().removeprefix("```yaml").removesuffix("```").strip()
     (output_dir / Path(f"{cli_name}.yaml")).write_text(manifest)
     out(f"✨ {cli_name}.yaml")
     out("\ntoken usage:")
     out("------------")
-    out(f"request: {result.usage().request_tokens}")
-    out(f"response: {result.usage().response_tokens}")
+    out(f"request: {result.usage.input_tokens}")
+    out(f"response: {result.usage.output_tokens}")
 
 
 @click.option("--preview", is_flag=True, help="Display the generated prompt before sending the request.", default=False)
 @click.option("--max-tokens", type=int, help="The maximum number of tokens to generate before stopping.", default=None)
-@click.option("--model", "-m", help="LLM model to use.", default="gemini-2.0-flash", show_default=True)
+@click.option("--model", "-m", help="LLM model to use.", default="google:gemini-2.0-flash", show_default=True)
 @click.option(
     "--cli", type=ManifestOrCLI(), help="Loaded CLI or manifest to include in prompt as reference.", default=None
 )
@@ -148,11 +148,11 @@ Use Python and Typer features and imports as needed to craft the best CLI for th
     usage_limits = UsageLimits(total_tokens_limit=max_tokens) if max_tokens else None
 
     result = agent.run_sync(reference + prompt, usage_limits=usage_limits)
-    out(result.data)
+    out(result.output)
     out("\ntoken usage:")
     out("------------")
-    out(f"request: {result.usage().request_tokens}")
-    out(f"response: {result.usage().response_tokens}")
+    out(f"request: {result.usage.input_tokens}")
+    out(f"response: {result.usage.output_tokens}")
 
 
 ai.command("generate", help="Generate a CLI manifest based on a description.")(generate)

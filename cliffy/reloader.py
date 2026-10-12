@@ -33,8 +33,9 @@ class Reloader(FileSystemEventHandler):
 
         self.last_modified = datetime.now()
 
-        t = threading.Thread(target=self.reload, args=(self.manifest_path, self.run_cli, self.run_cli_args))
-        t.setDaemon(True)
+        t = threading.Thread(
+            target=self.reload, args=(self.manifest_path, self.run_cli, self.run_cli_args), daemon=True
+        )
         try:
             t.start()
         except RuntimeError as e:

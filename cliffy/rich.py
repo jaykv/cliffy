@@ -7,8 +7,7 @@ try:
     import rich_click as click  # type: ignore
     from rich.console import Console  # type: ignore
     from rich.table import Table  # type: ignore
-
-    from rich_click.rich_group import RichGroup  # type: ignore
+    from rich_click import RichGroup  # type: ignore
 
     ClickGroup = RichGroup  # type: ignore[no-redef]
 except ImportError:

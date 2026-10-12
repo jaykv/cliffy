@@ -70,7 +70,7 @@ def test_show_aliases():
     assert "list" in result.output
 
 
-def test_load_valid_manifest():
+def test_load_valid_manifest(isolated_fs):
     runner = CliRunner()
     manifest_content = """
     name: test-cli
@@ -80,12 +80,11 @@ def test_load_valid_manifest():
             help: Say hello
             run: echo "Hello"
     """
-    with runner.isolated_filesystem():
-        with open("test.yaml", "w") as f:
-            f.write(manifest_content)
-        with open("test.yaml", "rb") as f:
-            result = runner.invoke(load_command, [f.name])
-        assert "Generated test-cli CLI" in result.output
+    with open("test.yaml", "w") as f:
+        f.write(manifest_content)
+    with open("test.yaml", "rb") as f:
+        result = runner.invoke(load_command, [f.name])
+    assert "Generated test-cli CLI" in result.output
 
 
 def test_update_nonexistent_cli():
@@ -95,12 +94,11 @@ def test_update_nonexistent_cli():
     assert "not found" in result.output
 
 
-def test_init_command():
+def test_init_command(isolated_fs):
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        result = runner.invoke(init_command, ["testcli", "--render"])
-        assert result.exit_code == 0
-        assert "name: testcli" in result.output
+    result = runner.invoke(init_command, ["testcli", "--render"])
+    assert result.exit_code == 0
+    assert "name: testcli" in result.output
 
 
 def test_remove_command():
@@ -110,41 +108,37 @@ def test_remove_command():
     assert "not loaded" in result.output
 
 
-def test_validate_invalid_manifest():
+def test_validate_invalid_manifest(isolated_fs):
     runner = CliRunner()
     invalid_manifest = "invalid: yaml: content"
-    with runner.isolated_filesystem():
-        with open("invalid.yaml", "w") as f:
-            f.write(invalid_manifest)
-        with open("invalid.yaml", "rb") as f:
-            result = runner.invoke(validate_command, [f.name])
-        assert result.exit_code == 1
-        assert "invalid" in result.output.lower()
+    with open("invalid.yaml", "w") as f:
+        f.write(invalid_manifest)
+    with open("invalid.yaml", "rb") as f:
+        result = runner.invoke(validate_command, [f.name])
+    assert result.exit_code == 1
+    assert "invalid" in result.output.lower()
 
 
-def test_build_command():
+def test_build_command(isolated_fs):
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        result = runner.invoke(build_command, ["nonexistent-cli"])
-        assert result.exit_code == 0
-        assert "not loaded" in result.output
+    result = runner.invoke(build_command, ["nonexistent-cli"])
+    assert result.exit_code == 0
+    assert "not loaded" in result.output
 
 
-def test_manifest_or_cli_converter():
+def test_manifest_or_cli_converter(isolated_fs):
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        result = runner.invoke(build_command, ["test.yaml"])
-        assert result.exit_code == 2
+    result = runner.invoke(build_command, ["test.yaml"])
+    assert result.exit_code == 2
 
 
-def test_init_with_json_schema():
+def test_init_with_json_schema(isolated_fs):
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        result = runner.invoke(init_command, ["testcli", "--json-schema"])
-        assert result.exit_code == 0
-        assert "cliffy_schema.json" in result.output
-        assert "testcli.yaml" in os.listdir()
-        assert "cliffy_schema.json" in os.listdir()
+    result = runner.invoke(init_command, ["testcli", "--json-schema"])
+    assert result.exit_code == 0
+    assert "cliffy_schema.json" in result.output
+    assert "testcli.yaml" in os.listdir()
+    assert "cliffy_schema.json" in os.listdir()
 
 
 @patch("cliffy.cli.get_clis")
@@ -253,7 +247,7 @@ def test_dev_command_basic(mock_reloader):
     result = runner.invoke(cli, ["dev", "examples/hello.yaml"])
     assert result.exit_code == 0
     assert "Watching examples/hello.yaml for changes" in result.output
-    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", None, ())
+    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", False, ())
 
 
 @patch("cliffy.cli.Reloader")
@@ -262,7 +256,7 @@ def test_dev_command_with_run_cli(mock_reloader):
     result = runner.invoke(cli, ["dev", "examples/hello.yaml", "--run-cli"])
     assert result.exit_code == 0
     assert "Watching examples/hello.yaml for changes" in result.output
-    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", "True", ())
+    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", True, ())
 
 
 @patch("cliffy.cli.Reloader")
@@ -271,7 +265,7 @@ def test_dev_command_with_run_cli_and_args(mock_reloader):
     result = runner.invoke(cli, ["dev", "examples/hello.yaml", "--run-cli", "--", "-h", "test"])
     assert result.exit_code == 0
     assert "Watching examples/hello.yaml for changes" in result.output
-    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", "True", ("-h", "test"))
+    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", True, ("-h", "test"))
 
 
 def test_dev_command_nonexistent_file():
@@ -287,21 +281,20 @@ def test_dev_command_with_empty_args(mock_reloader):
     result = runner.invoke(cli, ["dev", "examples/hello.yaml", "--run-cli", "--"])
     assert result.exit_code == 0
     assert "Watching examples/hello.yaml for changes" in result.output
-    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", "True", ())
+    mock_reloader.watch.assert_called_once_with("examples/hello.yaml", True, ())
 
 
-def test_dev_command_invalid_file_permissions():
+def test_dev_command_invalid_file_permissions(isolated_fs):
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        with open("test.yaml", "w") as f:
-            f.write("test")
-        os.chmod("test.yaml", 0o000)
-        result = runner.invoke(cli, ["dev", "test.yaml"])
-        assert result.exit_code == 2
-        assert "usage" in result.output.lower()
+    with open("test.yaml", "w") as f:
+        f.write("test")
+    os.chmod("test.yaml", 0o000)
+    result = runner.invoke(cli, ["dev", "test.yaml"])
+    assert result.exit_code == 2
+    assert "usage" in result.output.lower()
 
 
-def test_update_command():
+def test_update_command(isolated_fs):
     runner = CliRunner()
     manifest_content = """
     name: test-cli-update
@@ -320,21 +313,20 @@ def test_update_command():
             help: Say world
             run: echo "World"
     """
-    with runner.isolated_filesystem():
-        with open("test.yaml", "w") as f:
-            f.write(manifest_content)
+    with open("test.yaml", "w") as f:
+        f.write(manifest_content)
 
-        result = runner.invoke(load_command, ["test.yaml"])
-        assert result.exit_code == 0
+    result = runner.invoke(load_command, ["test.yaml"])
+    assert result.exit_code == 0
 
-        cli_metadata = get_metadata("test-cli-update")
-        assert cli_metadata and cli_metadata.version == "5.0.1"
+    cli_metadata = get_metadata("test-cli-update")
+    assert cli_metadata and cli_metadata.version == "5.0.1"
 
-        with open("test.yaml", "w") as f:
-            f.write(manifest_content_update)
+    with open("test.yaml", "w") as f:
+        f.write(manifest_content_update)
 
-        result = runner.invoke(update_command, ["test-cli-update"])
-        assert result.exit_code == 0
+    result = runner.invoke(update_command, ["test-cli-update"])
+    assert result.exit_code == 0
 
-        cli_metadata = get_metadata("test-cli-update")
-        assert cli_metadata and cli_metadata.version == "5.0.2"
+    cli_metadata = get_metadata("test-cli-update")
+    assert cli_metadata and cli_metadata.version == "5.0.2"
