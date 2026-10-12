@@ -16,7 +16,16 @@ from cliffy.merger import cliffy_merger
 class Transformer:
     """Loads command manifest and transforms it into a CLI"""
 
-    __slots__ = ("cli", "command_config", "includes_config", "manifest", "manifest_io", "manifest_version")
+    __slots__ = (
+        "cli",
+        "command_config",
+        "include_chain",
+        "includes_config",
+        "manifest",
+        "manifest_io",
+        "manifest_path",
+        "manifest_version",
+    )
 
     def __init__(
         self,
@@ -24,8 +33,12 @@ class Transformer:
         *,
         as_include: bool = False,
         validate_requires: bool = True,
+        include_chain: tuple[str, ...] = (),
     ) -> None:
         self.manifest_io = manifest_io
+        self.manifest_path = os.path.realpath(manifest_io.name)
+        # manifests that are being resolved right now, outermost first: used to detect include cycles
+        self.include_chain = (*include_chain, self.manifest_path)
         self.command_config = self.load_manifest(manifest_io)
         self.manifest_version = self.command_config.pop("manifestVersion", LATEST_SCHEMA_VERSION)
         if self.command_config.get("includes"):
@@ -58,17 +71,34 @@ class Transformer:
                 )
 
     def resolve_includes(self) -> dict[str, Any]:
-        include_transforms = map(self.resolve_include_by_path, set(self.command_config["includes"]))
+        includes = self.command_config["includes"]
+        if not isinstance(includes, list):
+            exit_err(f"~ error validating {self.manifest_io.name}: includes must be a list of manifest paths")
+
         merged_config: dict[str, Any] = {}
-        for transformed_include in include_transforms:
+        # merged in the order given. dict.fromkeys drops duplicates and, unlike a set, keeps that order
+        for include_path in dict.fromkeys(str(include) for include in includes):
+            transformed_include = self.resolve_include(include_path)
             cliffy_merger.merge(merged_config, transformed_include.command_config)
 
         return merged_config
 
-    @classmethod
-    def resolve_include_by_path(cls, path: str) -> Self:
-        with open(path) as m:
-            return cls(m, as_include=True)
+    def resolve_include(self, path: str) -> Self:
+        """Loads an included manifest.
+
+        A relative path is looked up next to the including manifest first, then in the working directory.
+        """
+        candidates = [os.path.join(os.path.dirname(self.manifest_path), path), path]
+        include_path = next((candidate for candidate in candidates if os.path.isfile(candidate)), None)
+        if include_path is None:
+            exit_err(f"~ error loading manifest: `{self.manifest_io.name}` includes `{path}`, which does not exist")
+
+        if os.path.realpath(include_path) in self.include_chain:
+            cycle = " -> ".join([*self.include_chain, os.path.realpath(include_path)])
+            exit_err(f"~ error loading manifest: circular include {cycle}")
+
+        with open(include_path, encoding="utf-8") as m:
+            return type(self)(m, as_include=True, include_chain=self.include_chain)
 
     @staticmethod
     def load_manifest(manifest_io: TextIO) -> dict[str, Any]:

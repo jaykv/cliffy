@@ -127,6 +127,75 @@ def test_env_is_available_in_the_whole_manifest(tmp_path, monkeypatch):
     assert load(manifest_path).manifest.help == "{{ 7 * 7 }} hello / {{ 7 * 7 }} hello / {{ 7 * 7 }} hello"
 
 
+def test_includes_are_resolved_next_to_the_manifest(tmp_path, monkeypatch):
+    manifest_dir = tmp_path / "manifests"
+    manifest_dir.mkdir()
+    (manifest_dir / "shared.yaml").write_text("commands:\n  shared: print('shared')\n")
+    (manifest_dir / "main.yaml").write_text(
+        "name: t\nversion: '1'\nincludes: [shared.yaml]\ncommands:\n  a: print(1)\n"
+    )
+    monkeypatch.chdir(tmp_path)
+
+    assert "shared" in load(manifest_dir / "main.yaml").manifest.commands
+
+
+def test_includes_relative_to_working_directory_still_work(tmp_path, monkeypatch):
+    manifest_dir = tmp_path / "manifests"
+    manifest_dir.mkdir()
+    (tmp_path / "shared.yaml").write_text("commands:\n  shared: print('shared')\n")
+    (manifest_dir / "main.yaml").write_text(
+        "name: t\nversion: '1'\nincludes: [shared.yaml]\ncommands:\n  a: print(1)\n"
+    )
+    monkeypatch.chdir(tmp_path)
+
+    assert "shared" in load(manifest_dir / "main.yaml").manifest.commands
+
+
+def test_missing_include(tmp_path, capsys):
+    manifest_path = tmp_path / "main.yaml"
+    manifest_path.write_text("name: t\nversion: '1'\nincludes: [nope.yaml]\ncommands:\n  a: print(1)\n")
+
+    with pytest.raises(SystemExit):
+        load(manifest_path)
+
+    assert "includes `nope.yaml`, which does not exist" in capsys.readouterr().err
+
+
+def test_includes_are_merged_in_the_order_given(tmp_path):
+    # the first manifest that defines a command wins. A set() made the winner depend on the hash seed.
+    names = [f"include{i}.yaml" for i in range(8)]
+    for i, name in enumerate(names):
+        (tmp_path / name).write_text(f"commands:\n  who: print('{i}')\n")
+    manifest_path = tmp_path / "main.yaml"
+    manifest_path.write_text(f"name: t\nversion: '1'\nincludes: {names + names[:2]}\ncommands:\n  a: print(1)\n")
+
+    T = load(manifest_path)
+
+    assert T.includes_config["commands"]["who"] == "print('0')"
+
+
+def test_circular_includes(tmp_path, capsys):
+    (tmp_path / "main.yaml").write_text("name: t\nversion: '1'\nincludes: [a.yaml]\ncommands:\n  a: print(1)\n")
+    (tmp_path / "a.yaml").write_text("includes: [b.yaml]\ncommands:\n  b: print(1)\n")
+    (tmp_path / "b.yaml").write_text("includes: [a.yaml]\ncommands:\n  c: print(1)\n")
+
+    with pytest.raises(SystemExit):
+        load(tmp_path / "main.yaml")
+
+    assert "circular include" in capsys.readouterr().err
+
+
+def test_include_shared_by_two_includes_is_not_a_cycle(tmp_path):
+    (tmp_path / "main.yaml").write_text(
+        "name: t\nversion: '1'\nincludes: [a.yaml, b.yaml]\ncommands:\n  main: print(1)\n"
+    )
+    (tmp_path / "a.yaml").write_text("includes: [common.yaml]\ncommands:\n  a: print(1)\n")
+    (tmp_path / "b.yaml").write_text("includes: [common.yaml]\ncommands:\n  b: print(1)\n")
+    (tmp_path / "common.yaml").write_text("commands:\n  common: print(1)\n")
+
+    assert set(load(tmp_path / "main.yaml").manifest.commands) == {"main", "a", "b", "common"}
+
+
 @pytest.mark.parametrize("name", ["../../evil", "a/b", "my cli", "a.b", "-rf", "x\nimport os", "", "$(id)"], ids=repr)
 def test_cli_name_must_be_a_safe_file_name(tmp_path, capsys, name):
     # the name is used in the path of the generated module, of the script in the interpreter's
