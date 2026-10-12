@@ -19,7 +19,7 @@ cli [OPTIONS] COMMAND [ARGS]...
 |---|---|
 | [`cli ai`](#cli-ai) | AI-powered commands. Requires the `ai` extra: pip install 'cliffy[ai]' |
 | [`cli blueprint`](#cli-blueprint) | Work with blueprints: custom YAML specs that map onto a CLI |
-| [`cli build`](#cli-build) | Build a CLI manifest or a loaded CLI into a single-file executable (zipapp) |
+| [`cli build`](#cli-build) | Build a CLI manifest or a loaded CLI into a single file to hand to someone else |
 | [`cli dev`](#cli-dev) | Start hot-reloader for a manifest for active development. |
 | [`cli docs`](#cli-docs) | Generate documentation for a CLI |
 | [`cli info`](#cli-info) | Display CLI info |
@@ -163,7 +163,7 @@ files written in the blueprint's spec.
 
 ## `cli build`
 
-Build a CLI manifest or a loaded CLI into a single-file executable (zipapp)
+Build a CLI manifest or a loaded CLI into a single file to hand to someone else
 
 ```text
 cli build [OPTIONS] [CLI_OR_MANIFESTS]...
@@ -172,25 +172,40 @@ cli build [OPTIONS] [CLI_OR_MANIFESTS]...
 | Argument or option | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `[CLI_OR_MANIFESTS]...` | file | no |  | Manifest files (paths ending in `yaml`) or names of loaded CLIs. |
+| `-t`, `--target` | `zipapp` \| `script` \| `native` | no | `zipapp` | What to build: `zipapp` is a zipapp with its dependencies bundled, which needs a compatible Python; `script` is a .py script that declares its dependencies inline, which needs uv or an environment with them; `native` is a compiled executable that brings its own Python and needs nothing installed (built with cargo and uv). |
 | `-o`, `--output-dir` | directory | no |  | Output dir |
-| `-p`, `--python` | text | no | `/usr/bin/env python3` | Python interpreter to set as the zipapp shebang. This gets added after the #! |
+| `-p`, `--python` | text | no |  | Interpreter for the #! line of a zipapp or a script, added after the #!. [default: /usr/bin/env python3 for a zipapp, /usr/bin/env -S uv run --script for a script] |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
 
-Builds a single-file [zipapp](https://docs.python.org/3/library/zipapp.html) with
-[shiv](https://shiv.readthedocs.io/). The file contains the generated CLI, the framework it imports
-(Typer, or rich-click with `use_click`) and every package listed under `requires`. Without
-`--output-dir` it is written to the current directory.
+Builds one file to hand to someone else. `--target` chooses what kind:
+
+| Target | What you get | Needs on the other machine |
+|---|---|---|
+| `zipapp` | `hello`, a [zipapp](https://docs.python.org/3/library/zipapp.html) built with [shiv](https://shiv.readthedocs.io/) that contains the dependencies | A compatible Python |
+| `script` | `hello.py`, a script with its dependencies declared inline | [uv](https://docs.astral.sh/uv/), or Python with the dependencies installed |
+| `native` | `hello`, a compiled executable with its own Python | Nothing |
+
+Every target ships the generated CLI, the framework it imports (Typer, or rich-click with
+`use_click`) and every package listed under `requires`. Without `--output-dir` the file is written
+to the current directory.
 
 ```console
 $ cli build hello.yaml -o dist
 + hello built 📦
-  dist/hello (single file, needs Python >=3.10)
+  dist/hello (single file, needs Python >=3.10, 1.8 MB)
+  run it with: ./dist/hello
 $ ./dist/hello greet Ada
 Hello, Ada!
+$ cli build hello.yaml -o dist --target script
++ hello built 📦
+  dist/hello.py (single file, needs uv, or Python >=3.11 with typer==0.27.3 installed, 1.3 kB)
+  run it with: ./dist/hello.py (or: uv run dist/hello.py)
+  uv downloads the dependencies the first time the script runs
 ```
 
-When a build fails, the reason is printed and the exit code is `1`. With `--blueprint`, or a
-`blueprint:` key in the file, the blueprint is applied at build time and is not needed to run the result.
+The `native` target needs `cargo` and `uv` on the machine that builds. When a build fails, the
+reason is printed and the exit code is `1`. With `--blueprint`, or a `blueprint:` key in the file,
+the blueprint is applied at build time and is not needed to run the result.
 
 See [Building executables](../guides/building.md).
 

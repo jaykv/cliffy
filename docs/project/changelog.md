@@ -28,12 +28,27 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
 - `cli dev --run-cli` is a real flag. It no longer re-runs the CLI on every reload when the flag is
   not given.
 - `cli build` prints the build output when a build fails.
+- Requires pybash 0.4. Shell lines are parsed like a shell parses them: quotes and backslashes reach
+  the command unchanged, a value inserted into a `>` line is quoted, and `>` lines keep their quotes.
+  See the [migration notes](migration.md#from-06x-to-070).
+- A CLI imports `pybash.runtime` when it uses pipes, redirects or chains in `$` lines, and nothing
+  but `subprocess` otherwise. Built CLIs carry that helper themselves and do not need pybash.
+- A shell line that cannot be translated, or a Python syntax error in a script, is reported when the
+  manifest is loaded, with the command, the line and the column.
+- After a build, `cli build` prints the size of the file and how to run it. `--python` has no fixed
+  default any more: each target has its own.
 - The source distribution only contains the package, tests and examples.
 - Documentation: new site structure with a tutorial, task guides and reference pages generated from
   the code. Every manifest shown in the guides is run by `make docs-check`.
 
 ### Added
 
+- `cli build --target` chooses what is built from the same manifest: `zipapp` (the default, as
+  before), `script` for a single Python file with its dependencies declared inline, to run with uv,
+  and `native` for a compiled executable that brings its own Python. See
+  [Building executables](../guides/building.md).
+- Shell lines support `&&`, `||`, `;`, `|&`, `2>`, `&>`, `2>&1`, `$(command)`, continuation lines and
+  comments. See [Shell commands](../guides/shell-commands.md).
 - [Blueprints](../blueprints.md): custom YAML specs that map onto a CLI, selected with `--blueprint`
   or a `blueprint:` key, and the `cli blueprint list` and `cli blueprint schema` commands.
 - [`callbacks`](../blueprints.md#callbacks) in manifests: code that runs before the commands of the

@@ -82,8 +82,6 @@ A tool that only runs on its author's machine is not finished.
 
 The manifest does not change between targets. Choosing how to ship is a flag, never a rewrite.
 
-Status: the zipapp target exists today. The script and native targets are committed direction, not yet shipped.
-
 ### 7. Every generated tool is a good citizen
 
 A CLI built by cliffy should be easy for the next person or program to use:

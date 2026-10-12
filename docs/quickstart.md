@@ -206,12 +206,16 @@ on every save.
 ```console
 $ cli build notes.yaml -o dist
 + notes built 📦
+  dist/notes (single file, needs Python >=3.10, 1.8 MB)
+  run it with: ./dist/notes
 $ ./dist/notes --version
 notes, 0.1.0
 ```
 
 `dist/notes` is a self-contained zipapp. It runs on any machine with a compatible Python 3 and does
-not need cliffy. More in [Building executables](guides/building.md).
+not need cliffy. With `--target script` you get a single Python script instead, and with
+`--target native` a compiled executable that does not even need Python. More in
+[Building executables](guides/building.md).
 
 ## The finished manifest
 

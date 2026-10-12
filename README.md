@@ -66,8 +66,9 @@ HELLO, ADA!
   templates share params between commands.
 - **Hot reload.** `cli dev hello.yaml` reloads the CLI every time you save the manifest.
 - **Built-in tests.** Keep assertions next to your commands and run them with `cli test`.
-- **Single-file executables.** `cli build hello.yaml` packs the CLI and its dependencies into one
-  zipapp.
+- **One file to ship.** `cli build hello.yaml` packs the CLI and its dependencies into one zipapp.
+  `--target script` writes a single Python script that declares its dependencies, and
+  `--target native` compiles an executable that needs nothing installed.
 
 ## Commands
 
@@ -78,7 +79,7 @@ HELLO, ADA!
 | `cli load <manifest>` | Install the CLI as a command in the current environment |
 | `cli dev <manifest>` | Reload the CLI whenever the manifest changes |
 | `cli test <manifest>` | Run the tests defined in the manifest |
-| `cli build <manifest>` | Build a single-file executable |
+| `cli build <manifest>` | Build one file to ship: a zipapp, a script or a native executable |
 | `cli render <manifest>` | Print the generated Python code |
 | `cli validate <manifest>` | Check a manifest against the schema |
 | `cli docs <manifest>` | Generate documentation for the CLI |
