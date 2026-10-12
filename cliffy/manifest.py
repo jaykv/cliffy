@@ -8,7 +8,7 @@ from typing import Any, Self
 
 from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator, model_validator
 
-from .helper import CLI_NAME_PATTERN, GENERATED_NAMES, wrap_as_comment
+from .helper import CLI_NAME_PATTERN, GENERATED_NAMES, option_like_requirement, wrap_as_comment
 
 LATEST_SCHEMA_VERSION = "v3"
 MIGRATION_GUIDE = "https://jaykv.github.io/cliffy/project/migration/"
@@ -373,6 +373,13 @@ class CLIManifest(BaseModel):
         default=[], description="Example command usages to display in generated CLI docs."
     )
 
+    @field_validator("requires", mode="after")
+    @classmethod
+    def requires_are_requirements(cls, value: list[str]) -> list[str]:
+        if problem := option_like_requirement(value):
+            raise ValueError(problem)
+        return value
+
     @field_validator("name", mode="after")
     @classmethod
     def is_safe_name(cls, value: str) -> str:
@@ -643,6 +650,13 @@ class IncludeManifest(BaseModel):
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
     tests: list[str | dict[str, str]] = []
+
+    @field_validator("requires", mode="after")
+    @classmethod
+    def requires_are_requirements(cls, value: list[str]) -> list[str]:
+        if problem := option_like_requirement(value):
+            raise ValueError(problem)
+        return value
 
 
 class CLIMetadata(BaseModel):

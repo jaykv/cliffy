@@ -52,7 +52,9 @@ def pip_requirements(mock_pip_run: MagicMock) -> list[str]:
     pip_args = mock_pip_run.call_args.args[0]
     assert pip_args[:3] == [sys.executable, "-m", "pip"]
     assert "install" in pip_args
-    return pip_args[pip_args.index("--target") + 2 :]
+    # the requirements follow `--`, which ends the options of pip
+    assert pip_args[pip_args.index("--target") + 2] == "--"
+    return pip_args[pip_args.index("--") + 1 :]
 
 
 def run_artifact(
@@ -406,3 +408,64 @@ def test_build_creates_nested_output_dir(tmp_path):
 
     assert result.exit_code == 0, result.output
     assert (output_dir / "script").exists()
+
+
+OPTION_LIKE = ["--index-url=https://packages.invalid/simple", "-r/etc/hosts", "  -e .", "--no-deps"]
+
+
+@pytest.mark.parametrize("requirement", OPTION_LIKE)
+def test_requirement_that_is_an_option_is_rejected_by_the_manifest(tmp_path, requirement):
+    # `cli build` does not check `requires` against the installed packages, so the entry went to pip
+    # as it was: an option, which changed where pip installs from
+    manifest = tmp_path / "optioned.yaml"
+    manifest.write_text(f"name: optioned\nversion: '1'\nrequires: [{requirement!r}, rich]\ncommands:\n  a: print(1)\n")
+
+    with patch("cliffy.builder.subprocess.run") as run:
+        result = CliRunner().invoke(cli, ["build", str(manifest), "-o", str(tmp_path / "out")])
+
+    assert result.exit_code == 1
+    run.assert_not_called()
+    assert f"`{requirement.strip()}` is an option, not a requirement" in result.output
+    assert "requires" in result.output
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("requirement", OPTION_LIKE)
+def test_requirement_that_is_an_option_is_rejected_in_an_include(tmp_path, requirement):
+    (tmp_path / "shared.yaml").write_text(f"requires: [{requirement!r}]\n")
+    manifest = tmp_path / "optioned.yaml"
+    manifest.write_text("name: optioned\nversion: '1'\nincludes: [shared.yaml]\ncommands:\n  a: print(1)\n")
+
+    result = CliRunner().invoke(cli, ["render", str(manifest)])
+
+    assert result.exit_code == 1
+    assert f"`{requirement.strip()}` is an option, not a requirement" in result.output
+
+
+@pytest.mark.parametrize("requirement", OPTION_LIKE)
+def test_build_does_not_pass_an_option_to_pip(tmp_path, requirement):
+    # the requirements of a loaded CLI come from its metadata record, not from a validated manifest
+    script = tmp_path / "demo.py"
+    script.write_text(TYPER_CODE)
+
+    with patch("cliffy.builder.subprocess.run") as run:
+        result = build_cli(
+            "demo", script_path=str(script), deps=["rich", requirement], output_dir=str(tmp_path / "out")
+        )
+
+    run.assert_not_called()
+    assert result.exit_code == 1
+    assert f"`{requirement.strip()}` is an option, not a requirement" in result.output
+
+
+def test_requirements_follow_the_end_of_pip_options(tmp_path):
+    script = tmp_path / "demo.py"
+    script.write_text(TYPER_CODE)
+
+    with skip_pip() as run:
+        build_cli("demo", script_path=str(script), deps=["rich>=13"], output_dir=str(tmp_path / "out"))
+
+    command = run.call_args.args[0]
+    assert command[command.index("--") + 1] == "rich>=13"
+    assert all(not argument.startswith("-") for argument in command[command.index("--") + 1 :])
+    assert "shell" not in run.call_args.kwargs

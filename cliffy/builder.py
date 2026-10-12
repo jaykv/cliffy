@@ -24,7 +24,7 @@ from packaging.version import InvalidVersion, Version
 from shiv import cli as shiv_cli
 
 from cliffy.commander import CLI, SHELL_RUNTIME_IMPORT
-from cliffy.helper import import_generated_code, make_executable
+from cliffy.helper import import_generated_code, make_executable, option_like_requirement
 from cliffy.transformer import Transformer
 
 DEFAULT_TARGET = "zipapp"
@@ -115,7 +115,10 @@ class ZipappTarget(BuildTarget):
 
         with TemporaryDirectory() as staging:
             pip_install = [sys.executable, "-m", "pip", "--disable-pip-version-check", "install", "--no-compile"]
-            pip = subprocess.run([*pip_install, "--target", staging, *job.requirements], capture_output=True, text=True)
+            # `--` ends the options of pip: whatever follows is a requirement, also if it starts with `-`
+            pip = subprocess.run(
+                [*pip_install, "--target", staging, "--", *job.requirements], capture_output=True, text=True
+            )
             if pip.returncode != 0:
                 return self.failed(f"could not install {', '.join(job.requirements)}:\n{last_lines(pip)}")
 
@@ -348,6 +351,9 @@ def build_cli(
     """
     if target not in TARGETS:
         return BuildResult(1, f"unknown build target `{target}`: choose one of {', '.join(TARGETS)}", target=target)
+    if problem := option_like_requirement(deps or []):
+        # a manifest is checked when it is read. The requirements of a loaded CLI come from its metadata record
+        return BuildResult(1, f"`requires` of {cli_name}: {problem}", target=target)
     try:
         code = Path(script_path).read_text(encoding="utf-8")
     except OSError as e:

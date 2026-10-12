@@ -241,6 +241,22 @@ def get_installed_package_versions() -> dict[str, str]:
     return installed_packages
 
 
+def option_like_requirement(requirements: list[str]) -> str | None:
+    """Why `requirements` cannot be handed to an installer, or None when they can.
+
+    `cli build` passes the manifest's `requires` to pip. An entry that starts with `-` would be read
+    as an option of pip (`--index-url ...`, `-r file`) and change where and what it installs from,
+    so `requires` holds requirements and nothing else.
+    """
+    for requirement in requirements:
+        if str(requirement).strip().startswith("-"):
+            return (
+                f"`{str(requirement).strip()}` is an option, not a requirement. `requires` lists packages, "
+                "such as `rich` or `tabulate>=0.9.0`"
+            )
+    return None
+
+
 def check_requirement(requirement: str, installed_packages: dict[str, str]) -> str | None:
     """Checks a PEP 508 requirement against the installed packages.
 
