@@ -882,11 +882,16 @@ def check_readme() -> list[str]:
     return []
 
 
+def snippet_environment(tmp: str | os.PathLike[str]) -> dict[str, str]:
+    """Environment for the snippet tests. Anything a snippet builds with shiv extracts into ``tmp``, not ``~/.shiv``."""
+    return {**os.environ, "NO_COLOR": "1", "PYTHONWARNINGS": "ignore", "SHIV_ROOT": str(Path(tmp) / "shiv-root")}
+
+
 def check_snippets() -> list[str]:
     """Load, compile and test every manifest in docs/snippets from a scratch copy of that directory."""
     errors = []
-    env = {**os.environ, "NO_COLOR": "1", "PYTHONWARNINGS": "ignore"}
     with tempfile.TemporaryDirectory() as tmp:
+        env = snippet_environment(tmp)
         workdir = Path(tmp) / "snippets"
         shutil.copytree(SNIPPETS, workdir)
         previous = Path.cwd()
