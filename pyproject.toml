@@ -4,48 +4,59 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cliffy"
-version = "0.6.1"
+version = "0.7.0"
 description = "$ cli load from.yaml"
 authors = [{ name = "Jay", email = "jay.github0@gmail.com" }]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["cli", "yaml", "manifest", "generator", "typer", "click", "zipapp", "shell"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Shells",
+    "Typing :: Typed",
+]
 dependencies = [
-    "click>=8.1.0",
-    "deepmerge>=1.1.0",
-    "jinja2>=3.1.2",
-    "packaging>=23.1",
-    "pybash>=0.3.4",
-    "pydantic>=2.6.1",
-    "pyyaml>=6.0",
-    "shiv>=1.0.3",
-    "typer-slim>=0.12.3",
-    "watchdog>=4.0.1",
+    "click>=8.2.0",
+    "deepmerge>=2.0",
+    "jinja2>=3.1.6",
+    "packaging>=24.2",
+    "pybash>=0.3.5",
+    "pydantic>=2.11.0",
+    "pyyaml>=6.0.2",
+    "shiv>=1.0.8",
+    "typer>=0.24.0",
+    "watchdog>=6.0.0",
 ]
 
 [project.optional-dependencies]
 rich = [
-    "rich-click>=1.6.1",
-    "shellingham>=1.5.0"
+    "rich-click>=1.9.0",
 ]
 ai = [
-    "pydantic-ai>=0.0.19"
+    "pydantic-ai>=2.0.0",
 ]
-dev = [
-    "mypy>=1.14.1",
-    "pytest>=8.3.4",
-    "pytest-pretty>=1.2.0",
-    "pytest-xdist>=3.6.1",
-    "ruff>=0.9.1",
-    "tabulate>=0.9.0",
-    "pytest-cov>=6.0.0",
-    "pytest-mock>=3.14.0",
-]
-
 
 [project.urls]
+Homepage = "https://github.com/jaykv/cliffy"
 Documentation = "https://jaykv.github.io/cliffy/"
 Repository = "https://github.com/jaykv/cliffy"
+Issues = "https://github.com/jaykv/cliffy/issues"
+Changelog = "https://github.com/jaykv/cliffy/releases"
 
 [project.scripts]
 cli = "cliffy.run:run"
@@ -53,26 +64,21 @@ cliffy = "cliffy.run:run"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.14.1",
-    "pytest>=8.3.4",
-    "pytest-pretty>=1.2.0",
-    "pytest-xdist>=3.6.1",
-    "ruff>=0.9.1",
-    "tabulate>=0.9.0",
-    "pytest-cov>=6.0.0",
+    "mypy>=1.18.0",
+    "pytest>=8.4.0",
+    "pytest-cov>=6.2.0",
     "pytest-mock>=3.14.0",
+    "pytest-pretty>=1.3.0",
+    "pytest-xdist>=3.8.0",
+    "ruff>=0.17.0",
+    "tabulate>=0.10.0",
+    "types-pyyaml>=6.0.12",
 ]
 docs = [
-    "mkdocs-git-committers-plugin-2>=2.4.1",
-    "mkdocs-literate-nav>=0.6.0",
-    "mkdocs-material>=9.5.11",
-    "mkdocs-material-extensions>=1.3.1",
-    "pymdown-extensions>=10.6",
-]
-extras = [
-    "pydantic-ai>=0.0.19",
-    "rich-click>=1.6.1",
-    "shellingham>=1.5.0"
+    "mkdocs-git-committers-plugin-2>=2.5.0",
+    "mkdocs-literate-nav>=0.6.2",
+    "mkdocs-material>=9.6.0",
+    "pymdown-extensions>=10.14",
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -133,4 +139,4 @@ exclude_lines = [
 ]
 
 [tool.uv]
-default-groups = ["dev", "docs", "extras"]
+default-groups = ["dev"]
