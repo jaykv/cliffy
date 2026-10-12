@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=cliffy_schema.json
+
+name: callbacks
+version: 0.1.0
+help: Callbacks run before the commands of a CLI or of a command group
+
+callbacks:
+  # no `group`: runs before every command, and its params become options of the CLI itself
+  - params:
+      - name: --verbose
+        type: bool
+        default: false
+        short: -v
+        help: Print what is about to run
+    invoke_without_command: true
+    run: |
+      ctx.obj = {"verbose": verbose}
+      if ctx.invoked_subcommand is None:
+          print("no command given, try --help")
+      elif verbose:
+          print(f"running {ctx.invoked_subcommand}")
+
+  # runs before every command of the `db` group
+  - group: db
+    run: print("connecting to db")
+
+commands:
+  hello: print("hello")
+  db.migrate: print("migrating")
+  db.status: print("up to date")
+
+tests:
+  - hello: assert result.output == "hello\n"
+  - --verbose hello: assert result.output == "running hello\nhello\n"
+  - -v db migrate: assert result.output == "running db\nconnecting to db\nmigrating\n"
+  - db status: assert result.output == "connecting to db\nup to date\n"
+  - "": assert result.output == "no command given, try --help\n"
+  - --version: assert result.output == "callbacks, 0.1.0\n"

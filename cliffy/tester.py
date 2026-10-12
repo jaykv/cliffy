@@ -37,9 +37,9 @@ class ShellScript(BaseModel):
 
 
 class Tester:
-    def __init__(self, manifest_path: str) -> None:
+    def __init__(self, manifest_path: str, blueprint: str | None = None) -> None:
         with open(manifest_path, encoding="utf-8") as manifest_io:
-            self.T = Transformer(manifest_io)
+            self.T = Transformer(manifest_io, blueprint=blueprint)
 
         with NamedTemporaryFile(
             mode="w", prefix=f"{self.T.cli.name}_test_", suffix=".py", delete=False, encoding="utf-8"
@@ -56,7 +56,8 @@ class Tester:
         self.module_funcs = inspect.getmembers(self.module, inspect.isfunction)
 
         manifest = cast(CLIManifest, self.T.manifest)
-        # typer vendors its own click: its runner cannot invoke a CLI that was generated for click
+        # typer vendors its own click and its runner only accepts typer apps: a CLI generated with
+        # `use_click` is a plain click group and needs click's own runner
         self.runner: CliRunner | ClickCliRunner = ClickCliRunner() if manifest.use_click else CliRunner()
         self.parser = Parser(manifest)
 

@@ -4,7 +4,15 @@ import re
 
 from cliffy.commander import BaseGroup, Commander
 from cliffy.helper import py_str
-from cliffy.manifest import CLIManifest, Command, CommandParam, GenericCommandParam, SimpleCommandParam
+from cliffy.manifest import (
+    Callback,
+    CLIManifest,
+    Command,
+    CommandParam,
+    GenericCommandParam,
+    ParamBlock,
+    SimpleCommandParam,
+)
 from cliffy.parser import Parser
 
 
@@ -36,8 +44,11 @@ def show_aliases(ctx, param, value):
     print({py_str(self.aliases_table())})
     ctx.exit()
 """
+        callbacks = self.callbacks_for()
         self.cli += """
 @click.group(context_settings=CONTEXT_SETTINGS"""
+        if "invoke_without_command" not in self.manifest.cli_options:
+            self.cli += self.parse_callback_options(callbacks, leading=", ")
         if self.manifest.cli_options:
             self.cli += f",{self.click_parser.to_args(self.manifest.cli_options)}"
         self.cli += f""")
@@ -47,22 +58,46 @@ def show_aliases(ctx, param, value):
             self.cli += """
 @click.option('--aliases', is_flag=True, callback=show_aliases, expose_value=False, is_eager=True,
     help='Show command aliases.')"""
-        self.cli += f"""
-def cli():
+        self.cli += f"""{self.parse_callback_decorators(callbacks)}
+def cli({self.parse_callback_param_names(callbacks)}):
     {py_str(self.manifest.help)}
-    pass
-
+{self.parse_callback_run(callbacks)}
 """
+
+    def parse_callback_options(self, callbacks: list[Callback], leading: str = "") -> str:
+        return f"{leading}invoke_without_command=True" if any(cb.invoke_without_command for cb in callbacks) else ""
+
+    def parse_callback_decorators(self, callbacks: list[Callback]) -> str:
+        """Decorators for a group function with callbacks: its params, then the context."""
+        if not callbacks:
+            return ""
+
+        decorators = self.click_parser.parse_param_list(self.callback_params(callbacks))
+        return ("\n" + decorators if decorators else "") + "\n@click.pass_context"
+
+    def parse_callback_param_names(self, callbacks: list[Callback]) -> str:
+        if not callbacks:
+            return ""
+
+        names = self.click_parser.get_param_list_names(self.callback_params(callbacks))
+        return f"ctx, {names}" if names else "ctx"
+
+    @staticmethod
+    def callback_params(callbacks: list[Callback]) -> list[ParamBlock]:
+        return [param for callback in callbacks for param in callback.params]
+
+    def parse_callback_run(self, callbacks: list[Callback]) -> str:
+        return "".join(self.click_parser.parse_run_block(callback.run) for callback in callbacks) or "    pass\n"
 
     def define_groups(self) -> None:
         for group in self.groups.values():
             parsed_help = group.help.replace("\n", "") if group.help else ""
+            callbacks = self.callbacks_for(group)
             self.cli += f"""
-@click.group()
-def {group.var_name}():
+@click.group({self.parse_callback_options(callbacks)}){self.parse_callback_decorators(callbacks)}
+def {group.var_name}({self.parse_callback_param_names(callbacks)}):
     {py_str(parsed_help)}
-    pass
-"""
+{self.parse_callback_run(callbacks)}"""
 
     def add_group(self, group: BaseGroup) -> None:
         parent_var = group.parent_group.var_name if group.parent_group else "cli"
@@ -130,13 +165,17 @@ class ClickParser(Parser):
     GENERIC_OPTION_REGEX = re.compile(r"@click\.option\(\s*['\"]--([\w-]+)")
     GENERIC_ARGUMENT_REGEX = re.compile(r"@click\.argument\(\s*['\"]([\w-]+)['\"]")
 
-    def _combined_params(self, command: Command) -> list[CommandParam | SimpleCommandParam | GenericCommandParam]:
+    def _combined_params(self, command: Command) -> list[ParamBlock]:
         return self.manifest.global_params + command.params
 
     def get_param_names(self, command: Command) -> str:
-        """Get parameter names for function definition"""
+        """Get parameter names for the function definition of a command"""
+        return self.get_param_list_names(self._combined_params(command))
+
+    def get_param_list_names(self, params: list[ParamBlock]) -> str:
+        """Get parameter names for the function that is decorated with these params"""
         names: list[str] = []
-        for param in self._combined_params(command):
+        for param in params:
             if isinstance(param, GenericCommandParam):
                 # a raw decorator: the name can only be read back from its first declaration
                 match = self.GENERIC_OPTION_REGEX.search(param.root) or self.GENERIC_ARGUMENT_REGEX.search(param.root)
@@ -149,9 +188,13 @@ class ClickParser(Parser):
         return ", ".join(names)
 
     def parse_params(self, command: Command) -> str:
-        """Parse parameters into Click decorators"""
+        """Parse the parameters of a command, global ones included, into Click decorators"""
+        return self.parse_param_list(self._combined_params(command))
+
+    def parse_param_list(self, params: list[ParamBlock]) -> str:
+        """Parse a list of parameters into Click decorators"""
         decorators = []
-        for param in self._combined_params(command):
+        for param in params:
             if isinstance(param, GenericCommandParam):
                 decorators.append(param.root.strip())
             elif isinstance(param, CommandParam):

@@ -5,6 +5,14 @@ import yaml
 from jinja2 import BaseLoader, Environment, FileSystemLoader
 from pydantic import ValidationError
 
+from cliffy.blueprint import (
+    BLUEPRINT_KEY,
+    Blueprint,
+    BlueprintError,
+    build_manifest,
+    normalize_reference,
+    resolve_blueprint,
+)
 from cliffy.commander import generate_cli
 from cliffy.commanders.click import ClickCommander
 from cliffy.commanders.typer import TyperCommander
@@ -17,6 +25,8 @@ class Transformer:
     """Loads command manifest and transforms it into a CLI"""
 
     __slots__ = (
+        "blueprint",
+        "blueprint_ref",
         "cli",
         "command_config",
         "include_chain",
@@ -34,6 +44,7 @@ class Transformer:
         as_include: bool = False,
         validate_requires: bool = True,
         include_chain: tuple[str, ...] = (),
+        blueprint: str | None = None,
     ) -> None:
         self.manifest_io = manifest_io
         self.manifest_path = os.path.realpath(manifest_io.name)
@@ -41,13 +52,15 @@ class Transformer:
         self.include_chain = (*include_chain, self.manifest_path)
         self.command_config = self.load_manifest(manifest_io)
         self.manifest_version = self.command_config.pop("manifestVersion", LATEST_SCHEMA_VERSION)
-        if self.command_config.get("includes"):
+        self.blueprint: Blueprint | None = None
+        self.blueprint_ref = None if as_include else self.find_blueprint_reference(blueprint)
+        if not self.blueprint_ref and self.command_config.get("includes"):
             self.includes_config = self.resolve_includes()
             cliffy_merger.merge(self.command_config, self.includes_config)
 
         manifest_cls = IncludeManifest if as_include else CLIManifest
         try:
-            self.manifest = manifest_cls(**self.command_config)
+            self.manifest = self.apply_blueprint() if self.blueprint_ref else manifest_cls(**self.command_config)
         except ValidationError as e:
             out(f"{e}")
             exit_err(f"~ error validating {manifest_io.name}")
@@ -58,6 +71,33 @@ class Transformer:
         if isinstance(self.manifest, CLIManifest):
             commander_cls = ClickCommander if self.manifest.use_click else TyperCommander
             self.cli = generate_cli(self.manifest, commander_cls=commander_cls)
+            if self.blueprint:
+                self.cli.code = self.blueprint.post_codegen(self.cli.code)
+                self.cli.blueprint = self.blueprint_ref
+
+    def find_blueprint_reference(self, blueprint: str | None) -> str | None:
+        """Blueprint for this file: the `--blueprint` option wins over the file's own `blueprint:` key.
+
+        A path given on the command line is relative to the working directory, a path in the file is
+        relative to the file.
+        """
+        in_file = self.command_config.pop(BLUEPRINT_KEY, None)
+        if blueprint:
+            return normalize_reference(blueprint)
+        if in_file is None:
+            return None
+        if not isinstance(in_file, str) or not in_file.strip():
+            exit_err(f"~ error loading {self.manifest_io.name}: `{BLUEPRINT_KEY}` must be a blueprint reference")
+        return normalize_reference(in_file, os.path.dirname(self.manifest_path))
+
+    def apply_blueprint(self) -> CLIManifest:
+        """Validate the file against its blueprint's spec and transform it into a manifest"""
+        try:
+            blueprint_cls = resolve_blueprint(str(self.blueprint_ref))
+            self.blueprint, manifest = build_manifest(blueprint_cls, self.command_config, source=self.manifest_io.name)
+        except BlueprintError as e:
+            exit_err(f"~ {e}")
+        return manifest
 
     def validate_cli_requires(self) -> None:
         if not self.manifest.requires:

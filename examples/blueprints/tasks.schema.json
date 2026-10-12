@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "Task": {
+      "properties": {
+        "run": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          ],
+          "description": "Shell line(s) to run, in order.",
+          "title": "Run"
+        },
+        "help": {
+          "default": "",
+          "description": "What the task does, shown in --help.",
+          "title": "Help",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run"
+      ],
+      "title": "Task",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Task runner: every entry under `tasks` becomes a command that runs shell lines",
+  "properties": {
+    "name": {
+      "description": "Name of the CLI.",
+      "title": "Name",
+      "type": "string"
+    },
+    "version": {
+      "default": "0.1.0",
+      "description": "Version of the CLI.",
+      "title": "Version",
+      "type": "string"
+    },
+    "help": {
+      "default": "",
+      "description": "Description of the CLI.",
+      "title": "Help",
+      "type": "string"
+    },
+    "vars": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {},
+      "description": "Values for the `{{ name }}` expressions in the file.",
+      "title": "Vars",
+      "type": "object"
+    },
+    "tasks": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "$ref": "#/$defs/Task"
+          }
+        ]
+      },
+      "description": "Tasks by name. A task is a shell line, a list of shell lines, or a mapping with `run` and `help`.",
+      "minProperties": 1,
+      "title": "Tasks",
+      "type": "object"
+    },
+    "blueprint": {
+      "type": "string",
+      "title": "Blueprint",
+      "description": "Blueprint that turns this file into a CLI."
+    }
+  },
+  "required": [
+    "name",
+    "tasks"
+  ],
+  "title": "Tasks",
+  "type": "object"
+}
