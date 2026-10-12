@@ -106,8 +106,7 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 # long pydantic Field descriptions feed the published JSON schema verbatim
 "cliffy/manifest.py" = ["E501"]
-# trailing whitespace lives inside prompt / HTML template string literals
-"cliffy/ai.py" = ["W291"]
+# trailing whitespace lives inside HTML template string literals
 "cliffy/doc.py" = ["W293"]
 
 [tool.ruff.lint.pydocstyle]
@@ -124,6 +123,9 @@ filterwarnings = [
     "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning",
     # pydantic-ai 2.x run_sync() calls asyncio.get_event_loop() without a running loop (warns on 3.12/3.13)
     "ignore:There is no current event loop:DeprecationWarning",
+    # google-genai (the SDK behind pydantic-ai's `google:` models) compares typing._UnionGenericAlias at import
+    # (deprecated since Python 3.14)
+    "ignore:'_UnionGenericAlias' is deprecated:DeprecationWarning",
 ]
 
 [tool.mypy]
