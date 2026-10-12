@@ -1,27 +1,50 @@
 import contextlib
 import io
+import json
+import os
+import platform
 import re
+import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+import tarfile
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from importlib import metadata
 from io import TextIOWrapper
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import ClassVar
 
+import pybash
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.utils import canonicalize_name
+from packaging.version import InvalidVersion, Version
 from shiv import cli as shiv_cli
 
-from cliffy.commander import CLI
-from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path
+from cliffy.commander import CLI, SHELL_RUNTIME_IMPORT
+from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path, make_executable
 from cliffy.transformer import Transformer
 
+DEFAULT_TARGET = "zipapp"
 DEFAULT_INTERPRETER = "/usr/bin/env python3"
+SCRIPT_INTERPRETER = "/usr/bin/env -S uv run --script"
+# Oldest Python that cliffy generates code for
+MIN_PYTHON = ">=3.11"
 # Package that provides the framework a generated CLI imports
 FRAMEWORK_PACKAGES = {"typer": "typer", "rich_click": "rich-click", "click": "click"}
 GENERATED_HEADER = re.compile(r"\A## Generated (\S+) on .*\n")
+# Release of PyApp (https://github.com/ofek/pyapp), the launcher a native build compiles
+PYAPP_VERSION = "0.30.0"
+INSTALL_RUST = (
+    "Install Rust from https://rustup.rs (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`), "
+    "open a new terminal and build again."
+)
+INSTALL_UV = (
+    "Install uv from https://docs.astral.sh/uv/getting-started/installation/ "
+    "(`curl -LsSf https://astral.sh/uv/install.sh | sh`), open a new terminal and build again."
+)
 
 
 @dataclass
@@ -33,18 +56,257 @@ class BuildResult:
     exception: BaseException | None = None
     path: str | None = None
     requires_python: str | None = None
+    target: str = DEFAULT_TARGET
+    # what the machine that runs the file has to provide, i.e. "Python >=3.10"
+    needs: str = ""
+    # lines for the person who built it: how to run the file and what to expect
+    notes: list[str] = field(default_factory=list)
+
+
+@dataclass
+class BuildJob:
+    """What every target builds from: the generated CLI, ready to ship, and its requirements."""
+
+    cli_name: str
+    version: str
+    # generated code that imports nothing but the framework and the requirements
+    code: str
+    # the manifest's `requires` plus the pinned framework
+    requirements: list[str]
+    output_dir: Path
+    # for the `#!` line, None for the default of the target
+    interpreter: str | None = None
+
+    @property
+    def module_name(self) -> str:
+        return self.cli_name.replace("-", "_")
+
+
+class BuildTarget(ABC):
+    """One way to ship a CLI as a single file. A new target is a subclass that is added to `TARGETS`."""
+
+    name: ClassVar[str]
+    # completes "... into": shown in the help of `cli build`
+    description: ClassVar[str]
+
+    @abstractmethod
+    def build(self, job: BuildJob) -> BuildResult:
+        """Write the file into `job.output_dir`. Failures are returned, with the reason, not raised."""
+        raise NotImplementedError
+
+    def failed(self, reason: str, exception: BaseException | None = None) -> BuildResult:
+        return BuildResult(1, reason, exception, target=self.name)
+
+
+class ZipappTarget(BuildTarget):
+    """A shiv zipapp: the CLI and its dependencies in one executable archive. Needs a compatible Python."""
+
+    name = "zipapp"
+    description = "a zipapp with its dependencies bundled, which needs a compatible Python"
+
+    def build(self, job: BuildJob) -> BuildResult:
+        output_path = job.output_dir / job.cli_name
+        interpreter = job.interpreter or DEFAULT_INTERPRETER
+
+        with TemporaryDirectory() as staging:
+            pip_install = [sys.executable, "-m", "pip", "--disable-pip-version-check", "install", "--no-compile"]
+            pip = subprocess.run([*pip_install, "--target", staging, *job.requirements], capture_output=True, text=True)
+            if pip.returncode != 0:
+                return self.failed(f"could not install {', '.join(job.requirements)}:\n{last_lines(pip)}")
+
+            requires_python = get_requires_python(Path(staging))
+            Path(staging, f"{job.module_name}.py").write_text(
+                get_python_guard(job.cli_name, requires_python) + job.code, encoding="utf-8"
+            )
+
+            shiv_args = ["--site-packages", staging, "--compressed", "--reproducible"]
+            shiv_args += ["-e", f"{job.module_name}.cli", "-o", str(output_path), "-p", interpreter]
+            shiv_output = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(shiv_output), contextlib.redirect_stderr(shiv_output):
+                    shiv_cli.main.main(args=shiv_args, standalone_mode=False)
+            except (Exception, SystemExit) as e:
+                return self.failed(f"{shiv_output.getvalue()}could not write {output_path}", e)
+
+        return BuildResult(
+            0,
+            path=str(output_path),
+            requires_python=requires_python,
+            target=self.name,
+            needs=f"Python {requires_python}",
+            notes=[f"run it with: {shell_path(output_path)}"],
+        )
+
+
+class ScriptTarget(BuildTarget):
+    """One readable `.py` file that declares its dependencies inline (PEP 723). Needs uv, or Python and the packages."""
+
+    name = "script"
+    description = "a .py script that declares its dependencies inline, which needs uv or an environment with them"
+
+    def build(self, job: BuildJob) -> BuildResult:
+        output_path = job.output_dir / f"{job.cli_name}.py"
+        script = (
+            f"#!{job.interpreter or SCRIPT_INTERPRETER}\n"
+            + get_inline_metadata(job.requirements, MIN_PYTHON)
+            + get_python_guard(job.cli_name, MIN_PYTHON)
+            + job.code
+        )
+        try:
+            output_path.write_text(script, encoding="utf-8")
+            make_executable(str(output_path))
+        except OSError as e:
+            return self.failed(f"could not write {output_path}", e)
+
+        return BuildResult(
+            0,
+            path=str(output_path),
+            requires_python=MIN_PYTHON,
+            target=self.name,
+            needs=f"uv, or Python {MIN_PYTHON} with {', '.join(job.requirements) or 'no packages'} installed",
+            notes=[
+                f"run it with: {shell_path(output_path)} (or: uv run {output_path})",
+                "uv downloads the dependencies the first time the script runs",
+            ],
+        )
+
+
+class NativeTarget(BuildTarget):
+    """One compiled executable that carries its own Python and packages. Needs nothing on the other machine.
+
+    A standalone Python is downloaded with uv, the CLI is installed into it as a wheel together with
+    its requirements, and the result is embedded in PyApp, a launcher written in Rust. On its first
+    run the executable unpacks that Python into the user's data directory, then it only starts it.
+    """
+
+    name = "native"
+    description = (
+        "a compiled executable that brings its own Python and needs nothing installed (built with cargo and uv)"
+    )
+
+    def build(self, job: BuildJob) -> BuildResult:
+        if problem := self.missing_tool():
+            return self.failed(problem)
+
+        python_version = f"3.{sys.version_info.minor}"
+        output_path = job.output_dir / job.cli_name
+        with TemporaryDirectory() as workdir:
+            work = Path(workdir)
+            project = write_wheel_project(work / "project", job, f">={python_version}")
+            steps = [
+                (
+                    "download a standalone Python",
+                    ["uv", "python", "install", python_version, "--install-dir", str(work / "python"), "--no-bin"],
+                ),
+                (
+                    "package the CLI as a wheel",
+                    ["uv", "build", "--wheel", "--out-dir", str(work / "wheels"), str(project)],
+                ),
+            ]
+            for goal, command in steps:
+                if failure := self.run_step(goal, command):
+                    return failure
+
+            distribution = find_python_distribution(work / "python")
+            wheels = sorted((work / "wheels").glob("*.whl"))
+            if distribution is None or not wheels:
+                return self.failed(f"uv did not leave a Python distribution and a wheel in {work}")
+
+            python = distribution / "bin" / "python3"
+            # --break-system-packages: uv marks its Pythons as externally managed, this copy is ours to change
+            install = [
+                "uv",
+                "pip",
+                "install",
+                "--python",
+                str(python),
+                "--break-system-packages",
+                "--link-mode",
+                "copy",
+            ]
+            if failure := self.run_step(
+                f"install {', '.join(job.requirements) or job.cli_name} into the standalone Python",
+                [*install, str(wheels[0])],
+            ):
+                return failure
+
+            archive = work / "python.tar.gz"
+            with tarfile.open(archive, "w:gz") as tar:
+                for entry in sorted(distribution.iterdir()):
+                    tar.add(entry, arcname=entry.name)
+            unpacked_size = sum(path.lstat().st_size for path in distribution.rglob("*") if not path.is_dir())
+
+            pyapp_root = work / "pyapp"
+            # A target directory of its own, also when CARGO_TARGET_DIR is set: cargo does not rebuild PyApp
+            # when only these options change, and would hand back the executable of an earlier build.
+            environment = {
+                **os.environ,
+                **pyapp_environment(job, archive, python_version),
+                "CARGO_TARGET_DIR": str(work / "cargo-target"),
+            }
+            cargo = ["cargo", "install", "pyapp", "--version", PYAPP_VERSION, "--locked", "--force", "--root"]
+            if failure := self.run_step("compile the executable", [*cargo, str(pyapp_root)], environment):
+                return failure
+
+            try:
+                shutil.copyfile(pyapp_root / "bin" / "pyapp", output_path)
+                make_executable(str(output_path))
+            except OSError as e:
+                return self.failed(f"could not write {output_path}", e)
+
+        system = {"Darwin": "macOS"}.get(platform.system(), platform.system())
+        return BuildResult(
+            0,
+            path=str(output_path),
+            target=self.name,
+            needs=f"nothing installed, runs on {system} {platform.machine()}",
+            notes=[
+                f"run it with: {shell_path(output_path)}",
+                f"the first run unpacks its Python {python_version} ({format_size(unpacked_size)}) into the user's "
+                "data directory, without network access; later runs start right away",
+            ],
+        )
+
+    @staticmethod
+    def missing_tool() -> str | None:
+        """Why a native build cannot start on this machine, with what to do about it."""
+        if not shutil.which("cargo"):
+            return (
+                "the native target compiles a small launcher written in Rust and needs `cargo`, "
+                f"which was not found on PATH. {INSTALL_RUST}"
+            )
+        if not shutil.which("uv"):
+            return (
+                "the native target uses `uv` to download a standalone Python and install the CLI into it, "
+                f"and `uv` was not found on PATH. {INSTALL_UV}"
+            )
+        return None
+
+    def run_step(self, goal: str, command: list[str], env: dict[str, str] | None = None) -> BuildResult | None:
+        """Run a build tool. Returns the failed build when it does not succeed."""
+        try:
+            step = subprocess.run(command, capture_output=True, text=True, env=env)
+        except OSError as e:
+            return self.failed(f"could not {goal}: `{command[0]}` could not be started", e)
+        if step.returncode != 0:
+            return self.failed(f"could not {goal} (`{' '.join(command[:3])} ...` failed):\n{last_lines(step)}")
+        return None
+
+
+TARGETS: dict[str, BuildTarget] = {target.name: target for target in (ZipappTarget(), ScriptTarget(), NativeTarget())}
 
 
 def build_cli_from_manifest(
     manifestIO: TextIOWrapper,
     output_dir: str | None = None,
-    interpreter: str = DEFAULT_INTERPRETER,
+    interpreter: str | None = None,
     blueprint: str | None = None,
+    target: str = DEFAULT_TARGET,
 ) -> tuple[CLI, BuildResult]:
-    """Build a manifest, or a YAML file written in a blueprint's spec, into a single-file executable.
+    """Build a manifest, or a YAML file written in a blueprint's spec, into a single file.
 
-    The blueprint is applied here, at build time. The executable holds the generated CLI and its
-    dependencies and needs neither the blueprint nor the YAML file to run.
+    The blueprint is applied here, at build time. The file holds the generated CLI and needs neither
+    cliffy, the blueprint nor the YAML file to run.
     """
     T = Transformer(manifestIO, validate_requires=False, blueprint=blueprint)
     # the directory is removed with the script in it, also when the build fails
@@ -57,6 +319,8 @@ def build_cli_from_manifest(
             deps=T.cli.requires,
             output_dir=output_dir,
             interpreter=interpreter,
+            target=target,
+            version=T.cli.version,
         )
 
     return T.cli, result
@@ -67,47 +331,135 @@ def build_cli(
     script_path: str,
     deps: list[str] | None = None,
     output_dir: str | None = None,
-    interpreter: str = DEFAULT_INTERPRETER,
+    interpreter: str | None = None,
+    target: str = DEFAULT_TARGET,
+    version: str = "0",
 ) -> BuildResult:
-    """Bundle a generated CLI script and its dependencies into one executable zipapp named `cli_name`.
+    """Build a generated CLI script and its dependencies into one file for a target in `TARGETS`.
 
-    Dependencies are installed with the pip of the running interpreter. The framework the CLI imports
-    (typer or rich-click) is pinned to the version installed next to cliffy unless `deps` names it, and
-    the archive is written with fixed timestamps, so equal inputs give an identical file.
+    The framework the CLI imports (typer or rich-click) is pinned to the version installed next to cliffy
+    unless `deps` names it. The shell helper of pybash is pasted into the code when the CLI uses it, so
+    the result depends on the framework and on `deps` and on nothing else.
     """
+    if target not in TARGETS:
+        return BuildResult(1, f"unknown build target `{target}`: choose one of {', '.join(TARGETS)}", target=target)
     try:
         code = Path(script_path).read_text(encoding="utf-8")
     except OSError as e:
-        return BuildResult(1, f"could not read the generated CLI at {script_path}", e)
+        return BuildResult(1, f"could not read the generated CLI at {script_path}", e, target=target)
 
-    module_name = cli_name.replace("-", "_")
-    output_path = Path(output_dir or ".") / cli_name
-    requirements = get_build_requirements(code, deps or [])
+    job = BuildJob(
+        cli_name=cli_name,
+        version=version,
+        code=get_standalone_code(code),
+        requirements=get_build_requirements(code, deps or []),
+        output_dir=Path(output_dir or "."),
+        interpreter=interpreter,
+    )
+    try:
+        job.output_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        return BuildResult(1, f"could not create the output directory {job.output_dir}", e, target=target)
+    return TARGETS[target].build(job)
 
-    with TemporaryDirectory() as staging:
-        pip_install = [sys.executable, "-m", "pip", "--disable-pip-version-check", "install", "--no-compile"]
-        pip = subprocess.run([*pip_install, "--target", staging, *requirements], capture_output=True, text=True)
-        if pip.returncode != 0:
-            reason = (pip.stderr.strip() or pip.stdout.strip()).splitlines()[-15:]
-            return BuildResult(1, f"could not install {', '.join(requirements)}:\n" + "\n".join(reason))
 
-        requires_python = get_requires_python(Path(staging))
-        code = GENERATED_HEADER.sub(r"## Generated \1 with cliffy\n", code)
-        Path(staging, f"{module_name}.py").write_text(
-            get_python_guard(cli_name, requires_python) + code, encoding="utf-8"
-        )
+def get_standalone_code(code: str) -> str:
+    """Generated code as it is shipped: no timestamp, and no import of pybash.
 
-        shiv_args = ["--site-packages", staging, "--compressed", "--reproducible"]
-        shiv_args += ["-e", f"{module_name}.cli", "-o", str(output_path), "-p", interpreter]
-        shiv_output = io.StringIO()
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with contextlib.redirect_stdout(shiv_output), contextlib.redirect_stderr(shiv_output):
-                shiv_cli.main.main(args=shiv_args, standalone_mode=False)
-        except (Exception, SystemExit) as e:
-            return BuildResult(1, f"{shiv_output.getvalue()}could not write {output_path}", e)
+    A CLI with shell operators calls a helper of pybash. Its source is pasted in where the import
+    was, so that a built CLI depends on its framework and never on pybash or cliffy.
+    """
+    code = GENERATED_HEADER.sub(r"## Generated \1 with cliffy\n", code)
+    return code.replace(SHELL_RUNTIME_IMPORT, f"\n\n{pybash.runtime_source()}\n\n", 1)
 
-    return BuildResult(0, path=str(output_path), requires_python=requires_python)
+
+def get_inline_metadata(requirements: list[str], requires_python: str) -> str:
+    """PEP 723 block that tells a script runner such as uv what the script needs."""
+    lines = ["# /// script", f"# requires-python = {json.dumps(requires_python)}", "# dependencies = ["]
+    # a JSON string is a valid TOML basic string, so a requirement cannot end the list early
+    lines += [f"#     {json.dumps(requirement)}," for requirement in requirements]
+    return "\n".join([*lines, "# ]", "# ///"]) + "\n"
+
+
+def get_project_version(version: str) -> str:
+    """The CLI version as a version a wheel accepts. It only names the throwaway wheel, `--version` is not affected."""
+    try:
+        return str(Version(version))
+    except InvalidVersion:
+        return "0"
+
+
+def get_project_name(cli_name: str) -> str:
+    """The CLI name as a valid Python project name: `_my.cli` -> `my-cli`."""
+    return re.sub(r"[^A-Za-z0-9]+", "-", cli_name).strip("-") or "cli"
+
+
+def write_wheel_project(directory: Path, job: BuildJob, requires_python: str) -> Path:
+    """Write a minimal Python project for the CLI: its module, its requirements and its entry point."""
+    directory.mkdir(parents=True)
+    (directory / f"{job.module_name}.py").write_text(job.code, encoding="utf-8")
+    pyproject = f"""[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = {json.dumps(get_project_name(job.cli_name))}
+version = {json.dumps(get_project_version(job.version))}
+requires-python = {json.dumps(requires_python)}
+dependencies = {json.dumps(job.requirements)}
+
+[project.scripts]
+{json.dumps(job.cli_name)} = {json.dumps(job.module_name + ":cli")}
+
+[tool.hatch.build.targets.wheel]
+include = [{json.dumps(job.module_name + ".py")}]
+"""
+    (directory / "pyproject.toml").write_text(pyproject, encoding="utf-8")
+    return directory
+
+
+def find_python_distribution(install_dir: Path) -> Path | None:
+    """The Python that `uv python install --install-dir` unpacked: a directory with `bin/python3`, not a link to one."""
+    if not install_dir.is_dir():
+        return None
+    candidates = (path for path in sorted(install_dir.iterdir()) if not path.is_symlink())
+    return next((path for path in candidates if (path / "bin" / "python3").exists()), None)
+
+
+def pyapp_environment(job: BuildJob, distribution_archive: Path, python_version: str) -> dict[str, str]:
+    """Build-time options for PyApp (https://ofek.dev/pyapp/latest/config/project/).
+
+    The embedded distribution already holds the CLI and its packages. With installation skipped and
+    full isolation, the executable unpacks it on first run and never downloads or installs anything.
+    """
+    # sys.argv[0] is `-c` otherwise, and would be the name shown in the help
+    run = f"import sys, {job.module_name}; sys.exit({job.module_name}.cli(prog_name={job.cli_name!r}))"
+    return {
+        "PYAPP_PROJECT_NAME": get_project_name(job.cli_name),
+        "PYAPP_PROJECT_VERSION": get_project_version(job.version),
+        "PYAPP_DISTRIBUTION_PATH": str(distribution_archive),
+        "PYAPP_DISTRIBUTION_PYTHON_PATH": "bin/python3",
+        "PYAPP_DISTRIBUTION_SITE_PACKAGES_PATH": f"lib/python{python_version}/site-packages",
+        "PYAPP_FULL_ISOLATION": "1",
+        "PYAPP_SKIP_INSTALL": "1",
+        "PYAPP_EXEC_CODE": run,
+        # every argument belongs to the CLI: without this, PyApp answers a `self` command itself
+        "PYAPP_SELF_COMMAND": "none",
+    }
+
+
+def last_lines(process: subprocess.CompletedProcess, count: int = 15) -> str:
+    """The end of what a failed tool printed, which is where it says why."""
+    return "\n".join((process.stderr.strip() or process.stdout.strip()).splitlines()[-count:])
+
+
+def shell_path(path: Path) -> str:
+    """A path as it is typed to run the file: `./notes` for a file in the working directory."""
+    return str(path) if path.is_absolute() else f"./{path}"
+
+
+def format_size(size: int) -> str:
+    return f"{size / 1_000_000:.1f} MB" if size >= 100_000 else f"{size / 1000:.1f} kB"
 
 
 def get_build_requirements(code: str, deps: list[str]) -> list[str]:

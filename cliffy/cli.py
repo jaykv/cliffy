@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import traceback
 from io import TextIOWrapper
@@ -6,7 +7,16 @@ from typing import Any, TextIO
 
 from cliffy.ai import ai
 from cliffy.blueprint import BlueprintError, installed_blueprints, resolve_blueprint
-from cliffy.builder import build_cli, build_cli_from_manifest, run_cli
+from cliffy.builder import (
+    DEFAULT_INTERPRETER,
+    DEFAULT_TARGET,
+    SCRIPT_INTERPRETER,
+    TARGETS,
+    build_cli,
+    build_cli_from_manifest,
+    format_size,
+    run_cli,
+)
 from cliffy.doc import DocGenerator
 from cliffy.helper import (
     CLI_NAME_PATTERN,
@@ -201,25 +211,40 @@ def remove_all() -> None:
 
 
 @click.argument("cli_or_manifests", type=ManifestOrCLI(), nargs=-1)
+@click.option(
+    "--target",
+    "-t",
+    type=click.Choice(list(TARGETS)),
+    default=DEFAULT_TARGET,
+    show_default=True,
+    help="What to build: " + "; ".join(f"`{name}` is {target.description}" for name, target in TARGETS.items()) + ".",
+)
 @click.option("--output-dir", "-o", type=click.Path(file_okay=False, dir_okay=True, writable=True), help="Output dir")
 @click.option(
     "--python",
     "-p",
     type=str,
-    help="Python interpreter to set as the zipapp shebang. This gets added after the #! ",
-    default="/usr/bin/env python3",
-    show_default=True,
+    default=None,
+    help="Interpreter for the #! line of a zipapp or a script, added after the #!. "
+    f"[default: {DEFAULT_INTERPRETER} for a zipapp, {SCRIPT_INTERPRETER} for a script]",
 )
 @blueprint_option
 def build(
-    cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: str, blueprint: str | None = None
+    cli_or_manifests: list[TextIOWrapper | str],
+    target: str,
+    output_dir: str,
+    python: str | None,
+    blueprint: str | None = None,
 ) -> None:
-    """Build a CLI manifest or a loaded CLI into a single-file executable (zipapp)"""
+    """Build a CLI manifest or a loaded CLI into a single file to hand to someone else"""
+    if python and target == "native":
+        exit_err("~ --python sets the #! line of a zipapp or a script. A native build brings its own Python")
+
     failed = False
     for cli_or_manifest in cli_or_manifests:
         if isinstance(cli_or_manifest, TextIOWrapper):
             cli, result = build_cli_from_manifest(
-                cli_or_manifest, output_dir=output_dir, interpreter=python, blueprint=blueprint
+                cli_or_manifest, output_dir=output_dir, interpreter=python, blueprint=blueprint, target=target
             )
             cli_name = cli.name
         else:
@@ -235,9 +260,11 @@ def build(
                 deps=metadata.requires,
                 output_dir=output_dir,
                 interpreter=python,
+                target=target,
+                version=metadata.version,
             )
 
-        if result.exit_code != 0:
+        if result.exit_code != 0 or not result.path:
             out(result.output)
             if result.exception:
                 out(str(result.exception))
@@ -246,7 +273,10 @@ def build(
             continue
 
         out(f"+ {cli_name} built 📦", fg="green")
-        out(f"  {result.path} (single file, needs Python {result.requires_python})")
+        size = format_size(os.path.getsize(result.path))
+        out(f"  {result.path} (single file, needs {result.needs}, {size})")
+        for note in result.notes:
+            out(f"  {note}")
 
     if failed:
         raise SystemExit(1)
