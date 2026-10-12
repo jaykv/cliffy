@@ -3,9 +3,9 @@ from collections.abc import Generator
 from tempfile import NamedTemporaryFile
 from typing import cast
 
+import pybash
 from click.testing import CliRunner as ClickCliRunner
 from click.testing import Result
-from pybash import transformer
 from pydantic import BaseModel, field_validator
 from typer.testing import CliRunner
 
@@ -74,8 +74,8 @@ class Tester:
                 self.test_pipeline.extend(test_cases)
 
     def invoke_shell(self, script: ShellScript) -> None:
-        py_code = transformer.transform(script.command)
-        exec("import subprocess\n" + py_code)
+        py_code = pybash.transform(script.command, runtime=pybash.RUNTIME_NAME)
+        exec(pybash.header() + py_code)
 
     def invoke_test(self, command: str, script: str) -> Generator[Result, None, None]:
         result = self.runner.invoke(self.module.cli, command)

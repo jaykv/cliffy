@@ -204,9 +204,9 @@ def test_add_lazy_command_multiple_groups():
         help="",
         version="0.1.0",
         commands={
-            "group1.command1": RunBlock("echo hello"),
-            "group2.command2": RunBlock("echo world"),
-            "(*).lazy": RunBlock("echo {(*)}"),
+            "group1.command1": RunBlock("$ echo hello"),
+            "group2.command2": RunBlock("$ echo world"),
+            "(*).lazy": RunBlock("$ echo {(*)}"),
         },
     )
     commander = TyperCommander(manifest)

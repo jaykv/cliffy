@@ -1,8 +1,10 @@
 ## Command parser
+import ast
 import keyword
+import warnings
 from typing import Any
 
-from pybash.transformer import transform as transform_bash
+import pybash
 
 from cliffy.helper import py_str, to_identifier
 from cliffy.manifest import (
@@ -16,26 +18,70 @@ from cliffy.manifest import (
 )
 
 
+class ScriptError(ValueError):
+    """A script in the manifest that cannot be turned into Python.
+
+    The message names the script and shows the offending line with a caret under the column, in
+    the terms of the manifest. The transformer adds the manifest file.
+    """
+
+
+def transform_script(script: str, where: str) -> str:
+    """Translate the `$` and `>` lines of a script into Python and check that the result parses.
+
+    Args:
+        script: Text of a run block, or of one entry of `functions`.
+        where: What the script is, for error messages: "command `greet`, run".
+
+    Raises:
+        ScriptError: A shell line pybash cannot translate, or a Python syntax error.
+    """
+    try:
+        code = pybash.transform(script, runtime=pybash.RUNTIME_NAME)
+        with warnings.catch_warnings():
+            # e.g. an invalid escape sequence: Python reports it when the CLI runs
+            warnings.simplefilter("ignore")
+            # pybash maps one line to one line, so a Python error is on the same line of the script
+            ast.parse(code)
+    except SyntaxError as e:
+        raise ScriptError(describe_syntax_error(script, where, e)) from e
+    return code
+
+
+def describe_syntax_error(script: str, where: str, error: SyntaxError) -> str:
+    """`<where>, line 2, column 9: <message>`, then line 2 of the script and a caret under column 9."""
+    lines = script.split("\n")
+    line = min(max(error.lineno or 1, 1), len(lines))
+    text = lines[line - 1]
+    column = min(max(error.offset or 1, 1), len(text) + 1)
+    # the line is shown without its indentation, the column counts from the first character shown
+    indent = min(len(text) - len(text.lstrip()), column - 1)
+    shown, column = text[indent:], column - indent
+    problem = error.msg if isinstance(error, pybash.PybashSyntaxError) else f"not valid Python: {error.msg}"
+    return f"{where}, line {line}, column {column}: {problem}\n    {shown}\n    {' ' * (column - 1)}^"
+
+
 class Parser:
     __slots__ = ("manifest",)
 
     def __init__(self, manifest: CLIManifest) -> None:
         self.manifest = manifest
 
-    def parse_run_block(self, script: RunBlock | RunBlockList) -> str:
+    def parse_run_block(self, script: RunBlock | RunBlockList, where: str = "run block") -> str:
         norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
         if not isinstance(norm_script, str):
             raise ValueError(f"Invalid script type: {type(norm_script)}")
-        parsed_script: str = transform_bash(norm_script).strip()
+        parsed_script: str = transform_script(norm_script, where).strip()
         return "".join(" " * 4 + line + "\n" for line in parsed_script.split("\n"))
 
     def parse_command_run(self, command: Command) -> str:
+        where = f"command `{command.name}`"
         code = ""
         if command.pre_run:
-            code += self.parse_run_block(command.pre_run)
-        code += self.parse_run_block(command.run)
+            code += self.parse_run_block(command.pre_run, f"{where}, pre_run")
+        code += self.parse_run_block(command.run, f"{where}, run")
         if command.post_run:
-            code += self.parse_run_block(command.post_run)
+            code += self.parse_run_block(command.post_run, f"{where}, post_run")
         return code
 
     def build_param_type(

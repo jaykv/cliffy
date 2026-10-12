@@ -1,6 +1,6 @@
 import datetime
 
-from cliffy.commander import BaseGroup, Commander
+from cliffy.commander import BaseGroup, Commander, callback_label
 from cliffy.helper import py_str
 from cliffy.manifest import Callback, CLIManifest, Command
 
@@ -77,7 +77,7 @@ def main({self.parse_callback_params(callbacks)}"""
         return signature
 
     def parse_callback_run(self, callbacks: list[Callback]) -> str:
-        return "".join(self.parser.parse_run_block(callback.run) for callback in callbacks) or "    pass\n"
+        return "".join(self.parser.parse_run_block(cb.run, callback_label(cb)) for cb in callbacks) or "    pass\n"
 
     def add_root_command(self, command: Command) -> None:
         """

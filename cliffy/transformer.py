@@ -19,6 +19,7 @@ from cliffy.commanders.typer import TyperCommander
 from cliffy.helper import check_requirement, exit_err, get_installed_package_versions, out
 from cliffy.manifest import LATEST_SCHEMA_VERSION, CLIManifest, IncludeManifest
 from cliffy.merger import cliffy_merger
+from cliffy.parser import ScriptError
 
 
 class Transformer:
@@ -70,7 +71,10 @@ class Transformer:
 
         if isinstance(self.manifest, CLIManifest):
             commander_cls = ClickCommander if self.manifest.use_click else TyperCommander
-            self.cli = generate_cli(self.manifest, commander_cls=commander_cls)
+            try:
+                self.cli = generate_cli(self.manifest, commander_cls=commander_cls)
+            except ScriptError as e:
+                exit_err(f"~ error in {manifest_io.name}: {e}")
             if self.blueprint:
                 self.cli.code = self.blueprint.post_codegen(self.cli.code)
                 self.cli.blueprint = self.blueprint_ref

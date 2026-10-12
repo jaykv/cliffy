@@ -312,7 +312,10 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
     passed = 0
     for i, case in enumerate(tester.test_pipeline):
         if isinstance(case, ShellScript):
-            tester.invoke_shell(case)
+            try:
+                tester.invoke_shell(case)
+            except SyntaxError as e:
+                exit_err(f"~ error in {manifest}: test step `{case.command}`, column {e.offset}: {e.msg}")
             continue
 
         out(f"\n\n🪄 > {tester.T.cli.name} {case.command}\n")

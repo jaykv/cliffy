@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import ItemsView, Iterator, ValuesView
 
-from pybash.transformer import transform as transform_bash
+import pybash
 from pydantic import BaseModel
 
 from cliffy.helper import py_str, to_identifier
@@ -22,7 +23,17 @@ from cliffy.manifest import (
     RunBlockList,
     SimpleCommandParam,
 )
-from cliffy.parser import Parser
+from cliffy.parser import Parser, transform_script
+
+# The helper behind shell lines with operators (`|`, `&&`, `>` ...) or with values quoted for a `>` line.
+# Plain `$ command` lines are bare `subprocess` calls and do not use it.
+SHELL_RUNTIME_IMPORT = f"import pybash.runtime as {pybash.RUNTIME_NAME}\n"
+SHELL_RUNTIME_REFERENCE = re.compile(rf"\b{pybash.RUNTIME_NAME}\.\w")
+
+
+def callback_label(callback: Callback) -> str:
+    """How error messages name the run block of a callback."""
+    return f"callback of group `{callback.group}`, run" if callback.group else "callback of the CLI, run"
 
 
 class CLI(BaseModel):
@@ -206,6 +217,7 @@ class Commander(ABC):
 
     def generate_cli(self) -> None:
         self.add_base_imports()
+        base_imports_end = len(self.cli)
         self.add_imports()
         self.add_vars()
         self.add_base_cli()
@@ -215,6 +227,9 @@ class Commander(ABC):
         self.add_subcommands()
         self.add_greedy_commands()
         self.add_main_block()
+        # imported only by a CLI that uses it, so that the others read as plain subprocess calls
+        if SHELL_RUNTIME_REFERENCE.search(self.cli, base_imports_end):
+            self.cli = self.cli[:base_imports_end] + SHELL_RUNTIME_IMPORT + self.cli[base_imports_end:]
 
     def add_root_commands(self) -> None:
         for root_command in self.root_group.commands:
@@ -249,8 +264,8 @@ class Commander(ABC):
         if isinstance(self.manifest.functions, str):
             self.cli += self.manifest.functions + "\n"
         elif isinstance(self.manifest.functions, list):
-            for func in self.manifest.functions:
-                self.cli += f"{transform_bash(func)}\n"
+            for position, func in enumerate(self.manifest.functions, start=1):
+                self.cli += f"{transform_script(func, f'functions, entry {position}')}\n"
         self.cli += "\n"
 
     def add_command(self, command: Command) -> None:
