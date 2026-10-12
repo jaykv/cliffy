@@ -35,7 +35,7 @@ dependencies = [
     "deepmerge>=2.0",
     "jinja2>=3.1.6",
     "packaging>=24.2",
-    "pybash>=0.3.5",
+    "pybash>=0.4.0",
     "pydantic>=2.12.0",
     "pyyaml>=6.0.2",
     "shiv>=1.0.8",
@@ -117,8 +117,6 @@ testpaths = ["tests"]
 filterwarnings = [
     "error::DeprecationWarning",
     "error::PendingDeprecationWarning",
-    # pybash 0.3.5 passes re.sub()'s count positionally (deprecated since Python 3.13)
-    "ignore:'count' is passed as positional argument:DeprecationWarning",
     # shiv 1.0.8 calls datetime.utcfromtimestamp() (deprecated since Python 3.12)
     "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning",
     # pydantic-ai 2.x run_sync() calls asyncio.get_event_loop() without a running loop (warns on 3.12/3.13)
@@ -177,3 +175,8 @@ exclude_lines = [
 
 [tool.uv]
 default-groups = ["dev"]
+
+# pybash 0.4.0 is not on PyPI yet. Remove this override once it is published: a wheel on PyPI
+# cannot depend on a git revision, so cliffy cannot be released before then.
+[tool.uv.sources]
+pybash = { git = "https://github.com/jaykv/PyBash", rev = "03622df" }
