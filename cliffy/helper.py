@@ -14,7 +14,6 @@ from typing import IO, Any, NoReturn
 
 from click import File, secho
 from click.core import Context, Parameter
-from click.types import _is_file_like
 from packaging import version
 from pydantic import BaseModel
 
@@ -47,12 +46,14 @@ class ManifestOrCLI(File):
     def convert(  # type: ignore[override]
         self, value: str | os.PathLike[str] | IO[Any], param: Parameter | None, ctx: Context | None
     ) -> str | IO[Any]:
-        if _is_file_like(value):
-            return value
+        if isinstance(value, str):
+            # a manifest path is opened, anything else is treated as the name of a loaded CLI
+            return super().convert(value, param, ctx) if value.endswith("yaml") else value
 
-        if isinstance(value, os.PathLike) or value.endswith("yaml"):
+        if isinstance(value, os.PathLike):
             return super().convert(value, param, ctx)
 
+        # already a file-like object
         return value
 
 
