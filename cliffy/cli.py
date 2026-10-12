@@ -3,6 +3,7 @@ import traceback
 from io import TextIOWrapper
 from typing import Any, TextIO
 
+from cliffy.ai import ai
 from cliffy.builder import build_cli, build_cli_from_manifest, run_cli
 from cliffy.doc import DocGenerator
 from cliffy.helper import (
@@ -344,6 +345,7 @@ update_command = cli.command("update")(update)
 test_command = cli.command("test")(test)
 validate_command = cli.command("validate")(validate)
 docs_command = cli.command("docs")(docs)
+cli.add_command(ai)
 
 # register aliases
 cli.command("add", hidden=True, epilog="Alias for load")(
