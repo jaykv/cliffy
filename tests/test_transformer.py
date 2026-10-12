@@ -78,6 +78,55 @@ def load(path, **kwargs) -> Transformer:
         return Transformer(f, validate_requires=False, **kwargs)
 
 
+@pytest.mark.parametrize("content", ["", "# only a comment\n", "- a\n- b\n", "just text\n"])
+def test_manifest_must_be_a_mapping(tmp_path, capsys, content):
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(content)
+
+    with pytest.raises(SystemExit):
+        load(manifest_path)
+
+    assert "must be a YAML mapping" in capsys.readouterr().err
+
+
+def test_empty_vars_section(tmp_path, capsys):
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text("name: t\nversion: '1'\nvars:\ncommands:\n  a: print(1)\n")
+
+    # a validation error, not a TypeError traceback
+    with pytest.raises(SystemExit):
+        load(manifest_path)
+
+    assert "error validating" in capsys.readouterr().err
+
+
+def test_environment_values_are_not_rendered_as_templates(tmp_path, monkeypatch):
+    # every value of os.environ used to be rendered by Jinja on each load: template syntax in any
+    # environment variable ran as a template, and broke the load if it was not valid Jinja
+    monkeypatch.delenv("CLIFFY_PWNED", raising=False)
+    monkeypatch.setenv("CLIFFY_EVIL", "{{ cycler.__init__.__globals__.os.environ.__setitem__('CLIFFY_PWNED', '1') }}")
+    monkeypatch.setenv("CLIFFY_ZSH_PROMPT", "%{%F{red}%}")
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text("name: t\nversion: '1'\ncommands:\n  a: print(1)\n")
+
+    assert load(manifest_path).manifest.name == "t"
+    assert "CLIFFY_PWNED" not in os.environ
+
+
+def test_env_is_available_in_the_whole_manifest(tmp_path, monkeypatch):
+    monkeypatch.setenv("CLIFFY_GREETING", "{{ 7 * 7 }} hello")
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(
+        "name: t\nversion: '1'\n"
+        "vars:\n  from_vars: \"{{ env['CLIFFY_GREETING'] }}\"\n"
+        "help: \"{{ env['CLIFFY_GREETING'] }} / {{ env.CLIFFY_GREETING }} / {{ from_vars }}\"\n"
+        "commands:\n  a: print(1)\n"
+    )
+
+    # the value is used as it is: once in `vars`, and (new) anywhere else in the manifest
+    assert load(manifest_path).manifest.help == "{{ 7 * 7 }} hello / {{ 7 * 7 }} hello / {{ 7 * 7 }} hello"
+
+
 @pytest.mark.parametrize("name", ["../../evil", "a/b", "my cli", "a.b", "-rf", "x\nimport os", "", "$(id)"], ids=repr)
 def test_cli_name_must_be_a_safe_file_name(tmp_path, capsys, name):
     # the name is used in the path of the generated module, of the script in the interpreter's

@@ -74,16 +74,29 @@ class Transformer:
     def load_manifest(manifest_io: TextIO) -> dict[str, Any]:
         try:
             manifest_path = os.path.realpath(manifest_io.name)
-            with open(manifest_path) as manifest_file:
-                all_vars = yaml.safe_load(manifest_file).get("vars", {})
-            all_vars["env"] = os.environ
+            with open(manifest_path, encoding="utf-8") as manifest_file:
+                raw_manifest = yaml.safe_load(manifest_file)
+            if not isinstance(raw_manifest, dict):
+                exit_err(f"~ error loading manifest: {manifest_io.name} must be a YAML mapping")
+
+            manifest_vars = raw_manifest.get("vars") or {}
+            if not isinstance(manifest_vars, dict):
+                exit_err(f"~ error loading manifest: vars in {manifest_io.name} must be a mapping")
+
+            # `env` is passed to the templates as-is. Environment values are data: they are never
+            # rendered as templates themselves.
+            render_context = {**manifest_vars, "env": os.environ}
             var_env = Environment(loader=BaseLoader())
-            interpolated_vars = {
-                var_env.from_string(str(k)).render(all_vars): var_env.from_string(str(v)).render(all_vars)
-                for k, v in all_vars.items()
+            interpolated_vars: dict[str, Any] = {
+                var_env.from_string(str(k)).render(render_context): var_env.from_string(str(v)).render(render_context)
+                for k, v in manifest_vars.items()
             }
+            interpolated_vars["env"] = os.environ
             manifest_env = Environment(loader=FileSystemLoader(manifest_path)).get_template("")
-            return yaml.safe_load(manifest_env.render(interpolated_vars))
+            manifest = yaml.safe_load(manifest_env.render(interpolated_vars))
+            if not isinstance(manifest, dict):
+                exit_err(f"~ error loading manifest: {manifest_io.name} must be a YAML mapping")
+            return manifest
         except yaml.YAMLError as e:
             out(f"{e}")
             exit_err("~ error loading manifest")
