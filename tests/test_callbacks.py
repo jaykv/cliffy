@@ -1,3 +1,4 @@
+import click
 import pytest
 from click.testing import CliRunner
 from pydantic import ValidationError
@@ -90,8 +91,10 @@ def test_callbacks_example_passes_cli_test():
 def test_callback_params_are_options_of_the_cli(callbacks_manifest):
     result = CliRunner().invoke(cli, ["run", callbacks_manifest, "--", "--help"])
     assert result.exit_code == 0
+    # rich colours the help when it thinks it is on a terminal (it does on GitHub Actions)
+    output = click.unstyle(result.output)
     for option in ("--verbose", "-v", "--profile", "--version", "--aliases", "Print what is about to run"):
-        assert option in result.output
+        assert option in output
 
 
 def test_manifest_without_callbacks_generates_the_same_entry_point():
