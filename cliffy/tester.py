@@ -30,9 +30,9 @@ class ShellScript(BaseModel):
             return value
 
         raise ValueError(
-            "Shell script for test case must start with > or $. "
-            "Use > to indicate a safe subprocess call. "
-            "Use $ to execute the command through the shell. WARNING: this can be dangerous."
+            "A shell step in tests must start with $ or >. "
+            "Use $ to run the command directly, without a shell. "
+            "Use > to run it through a shell (pipes into shell builtins, globs). WARNING: this can be dangerous."
         )
 
 

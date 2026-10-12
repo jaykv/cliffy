@@ -313,10 +313,14 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
     out("✨ Invoking tests ✨", nl=False)
     total = tester.total_cases
     passed = 0
-    for i, case in enumerate(tester.test_pipeline):
+    case_number = 0
+    for case in tester.test_pipeline:
         if isinstance(case, ShellScript):
+            # a setup or cleanup step: it is run, but it is not one of the counted test cases
             tester.invoke_shell(case)
             continue
+
+        case_number += 1
 
         out(f"\n\n🪄 > {tester.T.cli.name} {case.command}\n")
         try:
@@ -326,7 +330,7 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
             if result.exception:
                 out(str(result))
             next(test, "")
-            out(f"\n✅ {i + 1} of {total}")
+            out(f"\n✅ {case_number} of {total}")
             passed += 1
         except AssertionError:
             _, _, tb = sys.exc_info()
