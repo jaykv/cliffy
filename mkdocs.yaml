@@ -46,29 +46,20 @@ nav:
 
 theme:
   name: material
-  # Zensical's classic variant keeps the look of Material for MkDocs.
-  variant: classic
   icon:
     logo: fontawesome/solid/mountain
     repo: fontawesome/brands/github
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: brown
-      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue grey
-      accent: indigo
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-  font:
-    text: Roboto
-    code: Roboto Mono
   features:
     - content.action.edit
     - content.code.copy
