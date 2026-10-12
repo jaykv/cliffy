@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from cliffy.commander import generate_cli
 from cliffy.commanders.click import ClickCommander
 from cliffy.commanders.typer import TyperCommander
-from cliffy.helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
+from cliffy.helper import check_requirement, exit_err, get_installed_package_versions, out
 from cliffy.manifest import LATEST_SCHEMA_VERSION, CLIManifest, IncludeManifest
 from cliffy.merger import cliffy_merger
 
@@ -52,16 +52,9 @@ class Transformer:
 
         installed_package_versions = get_installed_package_versions()
         for dep in self.manifest.requires:
-            dep_spec = parse_requirement(dep)
-            if dep_spec.name.lower() not in installed_package_versions:
-                exit_err(f"~ missing requirement: `{self.manifest_io.name}` requires `{dep}` to be installed")
-
-            if dep_spec.version and not compare_versions(
-                installed_package_versions[dep_spec.name], dep_spec.version, dep_spec.operator
-            ):
+            if problem := check_requirement(dep, installed_package_versions):
                 exit_err(
-                    f"~ missing requirement: `{self.manifest_io.name}` requires `{dep}` to be installed"
-                    f"    found version `{installed_package_versions[dep_spec.name]}`"
+                    f"~ missing requirement: `{self.manifest_io.name}` requires `{dep}` to be installed\n    {problem}"
                 )
 
     def resolve_includes(self) -> dict[str, Any]:

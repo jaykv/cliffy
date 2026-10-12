@@ -71,3 +71,50 @@ def test_resolve_includes():
                 assert transformer.includes_config["name"] == "include-cli"
                 assert transformer.includes_config["version"] == "1.0.0"
                 assert "test-command" in transformer.manifest.commands
+
+
+def load(path, **kwargs) -> Transformer:
+    with open(path, encoding="utf-8") as f:
+        return Transformer(f, validate_requires=False, **kwargs)
+
+
+def write_requires_manifest(tmp_path, requires: list[str]):
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(
+        yaml.dump({"name": "t", "version": "1", "requires": requires, "commands": {"a": "print(1)"}})
+    )
+    return manifest_path
+
+
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        "PyYAML>=6",  # KeyError: name was lowercased for the lookup only
+        "pyyaml>=5,<99",  # InvalidVersion: only one specifier was understood
+        "click~=8.0",  # reported as missing: `~=` was not understood
+        "typer[all]>=0.9",  # reported as missing: extras were part of the name
+        "rich_click",  # reported as missing: `_` and `-` are the same in package names
+        "Jinja2",
+        "pywin32>=1; sys_platform == 'no-such-platform'",
+    ],
+)
+def test_requires_met(tmp_path, requirement):
+    with open(write_requires_manifest(tmp_path, [requirement])) as f:
+        assert Transformer(f).cli.requires == [requirement]
+
+
+@pytest.mark.parametrize(
+    "requirement, expected_error",
+    [
+        ("no-such-package-for-cliffy", "not installed"),
+        ("PyYAML<1.0.0", "found version `"),
+        ("click>=8,<8.1", "found version `"),
+        ("not a requirement !!", "invalid requirement"),
+    ],
+)
+def test_requires_unmet(tmp_path, capsys, requirement, expected_error):
+    with open(write_requires_manifest(tmp_path, [requirement])) as f, pytest.raises(SystemExit):
+        Transformer(f)
+
+    error = capsys.readouterr().err
+    assert f"requires `{requirement}` to be installed\n    {expected_error}" in error

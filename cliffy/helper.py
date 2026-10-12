@@ -1,10 +1,13 @@
+import builtins
 import contextlib
-import operator
+import json
+import keyword
 import os
 import platform
-import subprocess
+import re
 import sys
 from datetime import datetime
+from importlib.metadata import distributions
 from importlib.resources import files
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -14,8 +17,8 @@ from typing import IO, Any, NoReturn
 
 from click import File, secho
 from click.core import Context, Parameter
-from packaging import version
-from pydantic import BaseModel
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.utils import canonicalize_name
 
 CLIFFY_CLI_DIR = files("cliffy").joinpath("clis")
 CLIFFY_METADATA_DIR = files("cliffy").joinpath("metadata")
@@ -25,21 +28,25 @@ PYTHON_BIN = (
     else f"{os.path.join(sys.exec_prefix, 'bin')}"
 )
 PYTHON_EXECUTABLE = sys.executable
-OPERATOR_MAP = {
-    "==": operator.eq,
-    "!=": operator.ne,
-    ">=": operator.ge,
-    "<=": operator.le,
-    "<": operator.lt,
-    ">": operator.gt,
-}
+# Names the generated module defines or imports itself. A command function with one of these names
+# would replace the object the rest of the generated code relies on.
+GENERATED_NAMES = frozenset(
+    {
+        "Any",
+        "CONTEXT_SETTINGS",
+        "Optional",
+        "aliases_callback",
+        "cli",
+        "click",
+        "main",
+        "show_aliases",
+        "subprocess",
+        "typer",
+        "version_callback",
+    }
+)
+CLI_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
 TEMP_FILES: list[_TemporaryFileWrapper] = []
-
-
-class RequirementSpec(BaseModel):
-    name: str
-    operator: str | None
-    version: str | None
 
 
 class ManifestOrCLI(File):
@@ -112,29 +119,38 @@ def wrap_as_var(text: str) -> str:
 
 
 def get_installed_package_versions() -> dict[str, str]:
-    reqs = subprocess.check_output([sys.executable, "-m", "pip", "freeze"])
-    installed_packages = {}
-    for r in reqs.split():
-        r_spec = r.decode().lower().split("==")
-        if len(r_spec) > 1:
-            installed_packages[r_spec[0]] = r_spec[1]
+    """Installed distributions of the running interpreter, keyed by normalized (PEP 503) name."""
+    installed_packages: dict[str, str] = {}
+    for dist in distributions():
+        if name := dist.metadata["Name"]:
+            # the first match on sys.path is the one that gets imported
+            installed_packages.setdefault(canonicalize_name(name), dist.version)
     return installed_packages
 
 
-def parse_requirement(requirement: str) -> RequirementSpec:
-    for op in OPERATOR_MAP:
-        if op in requirement:
-            parts = requirement.replace(" ", "").split(op)
-            return RequirementSpec(name=parts[0], operator=op, version=parts[1])
+def check_requirement(requirement: str, installed_packages: dict[str, str]) -> str | None:
+    """Checks a PEP 508 requirement against the installed packages.
 
-    return RequirementSpec(name=requirement.strip(), operator=None, version=None)
+    Returns:
+        None when the requirement is met (or its environment marker does not apply),
+        otherwise a description of what is wrong.
+    """
+    try:
+        req = Requirement(requirement)
+    except InvalidRequirement as e:
+        return f"invalid requirement: {e}"
 
+    if req.marker and not req.marker.evaluate():
+        return None
 
-def compare_versions(version1: str, version2: str, op: str | None = "=") -> bool:
-    v1 = version.parse(version1)
-    v2 = version.parse(version2)
+    installed_version = installed_packages.get(canonicalize_name(req.name))
+    if installed_version is None:
+        return "not installed"
 
-    return OPERATOR_MAP[op](v1, v2) if op else v1 == v2
+    if not req.specifier.contains(installed_version, prereleases=True):
+        return f"found version `{installed_version}`"
+
+    return None
 
 
 def out(text: str, **echo_kwargs: Any) -> None:
