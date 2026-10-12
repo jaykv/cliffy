@@ -258,7 +258,8 @@ Alias: `cli add`
 Loading does three things:
 
 1. generates the CLI code and writes it to `cliffy/clis/<name>.py` inside the installed cliffy package,
-2. writes a launcher script called `<name>` into the `bin` directory of the active Python environment,
+2. writes a launcher script called `<name>` into the `bin` directory of the Python environment cliffy
+   is installed in,
 3. records the manifest path and contents so that `cli list`, `cli info` and `cli update` can find it.
 
 The CLI is therefore available wherever that environment is active. Packages listed under `requires`

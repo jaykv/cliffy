@@ -85,7 +85,7 @@ A one-key mapping: the key is the name, the value is the type.
 |---|---|---|
 | `name` | Positional argument | `source: str` |
 | `--name` | Option | `--count: int` |
-| `--name\|-n` | Option with a short alias | `--count\|-c: int` |
+| `--name|-n` | Option with a short alias | `--count|-c: int` |
 | `type!` | Required | `source: str!` |
 | `type = value` | Default value, written as a Python expression | `target: str = "out.txt"` |
 | a name from `types` | Reuse a full Typer definition | `level: Level` |

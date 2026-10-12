@@ -24,8 +24,8 @@ Each entry is `name: type`.
 | `source: str!` | A required positional argument. |
 | `target: str = "out.txt"` | An optional argument with a default. |
 | `label: str` | An optional argument that is `None` when omitted. |
-| `--count\|-c: int = 1` | The option `--count` with the short form `-c`. |
-| `--force\|-f: bool = False` | A flag. `force` is `True` when `--force` or `-f` is passed. |
+| `--count|-c: int = 1` | The option `--count` with the short form `-c`. |
+| `--force|-f: bool = False` | A flag. `force` is `True` when `--force` or `-f` is passed. |
 | `--owner: str!` | A required option. |
 | `--dry-run: bool = False` | An option whose variable is `dry_run`. |
 

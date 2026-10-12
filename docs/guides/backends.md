@@ -42,7 +42,7 @@ migrating
 
 | Feature | With `use_click: true` |
 |---|---|
-| Short option names (`--times\|-t`) | Not supported in shorthand params. Use a generic param: `"@click.option('--times', '-t', type=int, default=1)"`. |
+| Short option names (`--times|-t`) | Not supported in shorthand params. Use a generic param: `"@click.option('--times', '-t', type=int, default=1)"`. |
 | Boolean options | `--loud: bool = False` expects a value (`--loud true`). For a flag, use a generic param with `is_flag=True`. |
 | `types` | Not supported. Type names are passed to Click as written, so only real Python types work. |
 | `config` | Ignored. |

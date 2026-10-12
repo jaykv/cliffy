@@ -100,7 +100,8 @@ COMMAND_NOTES: dict[str, str] = {
 Loading does three things:
 
 1. generates the CLI code and writes it to `cliffy/clis/<name>.py` inside the installed cliffy package,
-2. writes a launcher script called `<name>` into the `bin` directory of the active Python environment,
+2. writes a launcher script called `<name>` into the `bin` directory of the Python environment cliffy
+   is installed in,
 3. records the manifest path and contents so that `cli list`, `cli info` and `cli update` can find it.
 
 The CLI is therefore available wherever that environment is active. Packages listed under `requires`
@@ -489,7 +490,7 @@ A one-key mapping: the key is the name, the value is the type.
 |---|---|---|
 | `name` | Positional argument | `source: str` |
 | `--name` | Option | `--count: int` |
-| `--name\\|-n` | Option with a short alias | `--count\\|-c: int` |
+| `--name|-n` | Option with a short alias | `--count|-c: int` |
 | `type!` | Required | `source: str!` |
 | `type = value` | Default value, written as a Python expression | `target: str = "out.txt"` |
 | a name from `types` | Reuse a full Typer definition | `level: Level` |
