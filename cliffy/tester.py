@@ -1,14 +1,17 @@
-from typing import Generator, Union, cast
+import inspect
+from collections.abc import Generator
+from tempfile import NamedTemporaryFile
+from typing import cast
+
 from click.testing import Result
+from pybash import transformer
 from pydantic import BaseModel, field_validator
 from typer.testing import CliRunner
+
+from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path
 from cliffy.manifest import CLIManifest, Command, RunBlock
 from cliffy.parser import Parser
 from cliffy.transformer import Transformer
-from cliffy.helper import import_module_from_path, delete_temp_files, TEMP_FILES
-from tempfile import NamedTemporaryFile
-import inspect
-from pybash import transformer
 
 
 class TestCase(BaseModel):
@@ -22,7 +25,7 @@ class ShellScript(BaseModel):
     @field_validator("command", mode="after")
     @classmethod
     def is_shelled(cls, value: str) -> str:
-        if value.startswith(">") or value.startswith("$"):
+        if value.startswith((">", "$")):
             return value
 
         raise ValueError(
@@ -34,7 +37,7 @@ class ShellScript(BaseModel):
 
 class Tester:
     def __init__(self, manifest_path: str) -> None:
-        with open(manifest_path, "r") as manifest_io:
+        with open(manifest_path) as manifest_io:
             self.T = Transformer(manifest_io)
 
         with NamedTemporaryFile(mode="w", prefix=f"{self.T.cli.name}_test_", suffix=".py", delete=False) as runner_file:
@@ -49,7 +52,7 @@ class Tester:
         self.runner = CliRunner()
         self.parser = Parser(cast(CLIManifest, self.T.manifest))
 
-        self.test_pipeline: list[Union[ShellScript, TestCase]] = []
+        self.test_pipeline: list[ShellScript | TestCase] = []
         self.total_cases = 0
 
         for t in self.T.manifest.tests:

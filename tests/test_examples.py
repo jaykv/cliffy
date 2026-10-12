@@ -112,9 +112,8 @@ def test_cli_response_with_loads(cli_name):
 
             # run commands for loaded cli
             loaded_cli_result = subprocess.run(
-                [cli_name] + command["args"].split(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                [cli_name, *command["args"].split()],
+                capture_output=True,
                 encoding="utf-8",
                 env=environment,
             )
@@ -138,9 +137,8 @@ def test_cli_response_with_builds(cli_name):
         executable_path = os.path.join(os.getcwd(), BUILD_DIR_PATH, cli_name)
 
         built_manifest_result = subprocess.run(
-            [sys.executable, executable_path] + shlex.split(command["args"]),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            [sys.executable, executable_path, *shlex.split(command["args"])],
+            capture_output=True,
             encoding="utf-8",
             env=environment,
         )

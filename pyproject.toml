@@ -81,11 +81,45 @@ docs = [
     "pymdown-extensions>=10.14",
 ]
 
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["cliffy/clis", "examples/generated"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "PIE", # flake8-pie
+    "RUF", # ruff-specific rules
+]
+
+[tool.ruff.lint.per-file-ignores]
+# long pydantic Field descriptions feed the published JSON schema verbatim
+"cliffy/manifest.py" = ["E501"]
+# trailing whitespace lives inside prompt / HTML template string literals
+"cliffy/ai.py" = ["W291"]
+"cliffy/doc.py" = ["W293"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff]
-line-length = 120
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "error::DeprecationWarning",
+    "error::PendingDeprecationWarning",
+    # pybash 0.3.5 passes re.sub()'s count positionally (deprecated since Python 3.13)
+    "ignore:'count' is passed as positional argument:DeprecationWarning",
+    # shiv 1.0.8 calls datetime.utcfromtimestamp() (deprecated since Python 3.12)
+    "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning",
+]
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
@@ -107,10 +141,6 @@ disable_error_code = [
     "no-untyped-call",
     "no-any-return"
 ]
-
-[[tool.mypy.overrides]]
-module = "yaml"
-ignore_missing_imports = true
 
 # https://coverage.readthedocs.io/en/latest/config.html#run
 [tool.coverage.run]

@@ -1,11 +1,12 @@
-import pytest
 import io
 import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from cliffy.reloader import Reloader
+import pytest
 from watchdog.events import FileModifiedEvent
+
+from cliffy.reloader import Reloader
 
 
 @pytest.mark.parametrize(
@@ -240,7 +241,7 @@ def test_on_modified_thread_safety(reloader):
 @patch("cliffy.reloader.Transformer")
 def test_reload_invalid_paths(mock_transformer, manifest_path):
     # Act & Assert
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         Reloader.reload(manifest_path, False, ())
     mock_transformer.assert_not_called()
 
@@ -256,7 +257,7 @@ def test_thread_daemon_property(reloader):
 
         # Assert
         mock_thread.assert_called_once()
-        args, kwargs = mock_thread.call_args
+        _args, kwargs = mock_thread.call_args
         assert kwargs.get("target") == reloader.reload
         assert kwargs.get("args") == (reloader.manifest_path, reloader.run_cli, reloader.run_cli_args)
         mock_thread.return_value.daemon = True
@@ -329,6 +330,6 @@ def test_multiple_thread_creation(reloader):
         # Assert
         assert mock_thread.call_count == 2
         for call in mock_thread.call_args_list:
-            args, kwargs = call
+            _args, kwargs = call
             assert kwargs.get("target") == reloader.reload
             assert kwargs.get("args") == (reloader.manifest_path, reloader.run_cli, reloader.run_cli_args)

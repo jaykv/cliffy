@@ -1,15 +1,16 @@
-from cliffy.transformer import Transformer
-from cliffy.loader import Loader
-from cliffy.homer import save_metadata
-from cliffy.helper import out, out_err
-from cliffy.builder import run_cli as cli_runner
-
+import threading
 import time
 from datetime import datetime, timedelta
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent, FileSystemEvent
 from pathlib import Path
-import threading
+
+from watchdog.events import FileModifiedEvent, FileSystemEvent, FileSystemEventHandler
+from watchdog.observers import Observer
+
+from cliffy.builder import run_cli as cli_runner
+from cliffy.helper import out, out_err
+from cliffy.homer import save_metadata
+from cliffy.loader import Loader
+from cliffy.transformer import Transformer
 
 
 class Reloader(FileSystemEventHandler):
@@ -58,7 +59,7 @@ class Reloader(FileSystemEventHandler):
 
     @staticmethod
     def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
-        manifest_io = open(manifest_path, "r")
+        manifest_io = open(manifest_path)  # noqa: SIM115
 
         T = Transformer(manifest_io)
         Loader.load_from_cli(T.cli)

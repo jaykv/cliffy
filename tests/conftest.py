@@ -1,10 +1,12 @@
 import os
-from cliffy.cli import remove_all_command
 from shutil import rmtree
-from cliffy.homer import get_clis
-from click.testing import CliRunner
+
 import pytest
 import xdist
+from click.testing import CliRunner
+
+from cliffy.cli import remove_all_command
+from cliffy.homer import get_clis
 
 
 @pytest.hookimpl()

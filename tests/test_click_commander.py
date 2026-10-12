@@ -1,6 +1,7 @@
 import pytest
+
 from cliffy.commanders.click import ClickCommander, ClickParser
-from cliffy.manifest import RunBlock, CLIManifest, Command, CommandParam, SimpleCommandParam
+from cliffy.manifest import CLIManifest, Command, CommandParam, RunBlock, SimpleCommandParam
 
 
 @pytest.fixture

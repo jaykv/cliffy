@@ -1,9 +1,10 @@
 import os
 import tempfile
+
+import pytest
 import yaml
 
 from cliffy.transformer import Transformer
-import pytest
 
 
 def test_load_manifest_basic():

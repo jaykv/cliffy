@@ -1,22 +1,21 @@
-from datetime import datetime
+import os
 import re
+from datetime import datetime
+from unittest.mock import patch
 
 from click.testing import CliRunner
 
 from cliffy.cli import (
+    build_command,
     cli,
     init_command,
-    run_command,
-    render_command,
-    remove_command,
-    build_command,
-    validate_command,
     load_command,
+    remove_command,
+    render_command,
+    run_command,
     update_command,
+    validate_command,
 )
-import os
-from unittest.mock import patch
-
 from cliffy.homer import get_metadata
 from cliffy.manifest import CLIMetadata
 

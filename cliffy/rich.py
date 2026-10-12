@@ -1,7 +1,7 @@
 ## rich-click compat for rich-less support
-from typing import Any, Type
+from typing import Any
 
-__all__ = ["click", "Console", "ClickGroup", "Table"]
+__all__ = ["ClickGroup", "Console", "Table", "click"]
 
 try:
     import rich_click as click  # type: ignore
@@ -14,7 +14,7 @@ except ImportError:
     import click  # type: ignore[no-redef]
     from click import Group
 
-    ClickGroup: Type[Group] = Group  # type: ignore[no-redef]
+    ClickGroup: type[Group] = Group  # type: ignore[no-redef]
 
     class Console:  # type: ignore[no-redef]
         def __init__(self) -> None:
@@ -52,7 +52,7 @@ except ImportError:
 
 def print_rich_table(cols: list[str], rows: list[list[str]], styles: list[str]) -> None:
     table = Table()
-    for style, col in zip(styles, cols):
+    for style, col in zip(styles, cols, strict=False):
         table.add_column(col, style=style)
     for row in rows:
         table.add_row(*row)

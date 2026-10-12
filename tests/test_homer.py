@@ -62,7 +62,7 @@ def test_save_metadata_happy_path(
     # Assert
     assert get_metadata_path(cli_name) == expected_metadata_path
     assert os.path.exists(expected_metadata_path)
-    with open(expected_metadata_path, "r") as f:
+    with open(expected_metadata_path) as f:
         metadata = json.load(f)
         assert metadata["cli_name"] == cli_name
         assert metadata["runner_path"] == str(manifest_file.resolve())

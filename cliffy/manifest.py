@@ -1,16 +1,19 @@
-from functools import cached_property
-from typing import Any, ItemsView, Iterator, Optional, Union
-from pydantic import BaseModel, Field, RootModel, field_validator, ValidationInfo
-from .helper import wrap_as_comment
-from datetime import datetime
 import sys
+from collections.abc import ItemsView, Iterator
+from datetime import datetime
+from functools import cached_property
+from typing import Any
+
+from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator
+
+from .helper import wrap_as_comment
 
 LATEST_SCHEMA_VERSION = "v3"
 
 
 class Example(BaseModel):
     command: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class GenericCommandParam(RootModel):
@@ -56,11 +59,11 @@ class SimpleCommandParam(RootModel):
         return self.raw_type.endswith("!")
 
     @property
-    def default(self) -> Optional[str]:
+    def default(self) -> str | None:
         return self.raw_type.split("=")[1].strip() if "=" in self.raw_type else None
 
     @property
-    def short(self) -> Optional[str]:
+    def short(self) -> str | None:
         return self.raw_name.split("|")[1] if "|" in self.raw_name else None
 
     def is_option(self) -> bool:
@@ -111,8 +114,8 @@ class CommandParam(BaseModel):
         return self.name.strip().startswith("--")
 
 
-ParamBlock = Union[CommandParam, SimpleCommandParam, GenericCommandParam]
-VarBlock = Union[str, dict[str, None]]
+ParamBlock = CommandParam | SimpleCommandParam | GenericCommandParam
+VarBlock = str | dict[str, None]
 
 
 class CommandConfig(BaseModel):
@@ -188,7 +191,7 @@ class Command(BaseModel):
     parameters, and configuration.
     """
 
-    run: Union[RunBlock, RunBlockList] = Field(
+    run: RunBlock | RunBlockList = Field(
         default=RunBlock(root=""),
     )
     help: str = Field(default="", description="A description of the command, displayed in the help output.")
@@ -216,13 +219,13 @@ class Command(BaseModel):
         default="",
         description="The name of the command. This is generally derived from the key in the `commands` section of the manifest, but can be explicitly set here.",
     )
-    config: Optional[CommandConfig] = Field(
+    config: CommandConfig | None = Field(
         default=None,
         description="An optional `CommandConfig` object that provides additional configuration options for the command, such as context settings, help text customization, and visibility.",
     )
 
 
-CommandBlock = Union[Command, RunBlock, RunBlockList]
+CommandBlock = Command | RunBlock | RunBlockList
 
 
 class CommandTemplate(BaseModel):
@@ -244,7 +247,7 @@ class CommandTemplate(BaseModel):
         default=PostRunBlock(root=""),
         description="Script to run after the command's run and post-run block. This script will be applied to any command that uses this template.",
     )
-    config: Optional[CommandConfig] = Field(
+    config: CommandConfig | None = Field(
         default=None,
         description="Additional configuration options for commands using this template. This allows customization of help text, context settings, and other Typer command parameters.",
     )
@@ -274,12 +277,12 @@ class CLIManifest(BaseModel):
         "Supports jinja2 formatted expressions as values. "
         "Interpolate defined vars in other blocks jinja2-styled {{ var_name }}.",
     )
-    imports: Union[str, list[str]] = Field(
+    imports: str | list[str] = Field(
         default=[],
         description="String block or list of strings containing any module imports. "
         "These can be used to import any python modules that the CLI depends on.",
     )
-    functions: Union[str, list[str]] = Field(
+    functions: str | list[str] = Field(
         default=[],
         description="String block or list of helper function definitions. "
         "These functions should be defined as strings that can be executed by the Python interpreter.",
@@ -298,7 +301,7 @@ class CLIManifest(BaseModel):
         default_factory=dict, description="Reusable command templates"
     )
 
-    commands: Union[dict[str, CommandBlock], list[Command]] = Field(
+    commands: dict[str, CommandBlock] | list[Command] = Field(
         ...,
         description="A mapping containing the command definitions for the CLI. "
         "Each command should have a unique key- which can be either a group command or nested subcommands. "
@@ -309,9 +312,9 @@ class CLIManifest(BaseModel):
 
     cli_options: dict[str, Any] = Field(default_factory=dict, description="Additional CLI configuration options")
 
-    tests: list[Union[str, dict[str, str]]] = Field(default=[], description="Test cases for commands")
+    tests: list[str | dict[str, str]] = Field(default=[], description="Test cases for commands")
 
-    examples: list[Union[str, Example]] = Field(
+    examples: list[str | Example] = Field(
         default=[], description="Example command usages to display in generated CLI docs."
     )
 
@@ -528,11 +531,11 @@ class IncludeManifest(BaseModel):
     requires: list[str] = []
     commands: dict[str, CommandBlock] = {}
     vars: dict[str, VarBlock] = {}
-    imports: Union[str, list[str]] = []
+    imports: str | list[str] = []
     functions: list[str] = []
     types: dict[str, str] = {}
     cli_options: dict[str, str] = {}
-    tests: list[Union[str, dict[str, str]]] = []
+    tests: list[str | dict[str, str]] = []
 
 
 class CLIMetadata(BaseModel):

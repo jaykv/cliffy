@@ -1,8 +1,7 @@
-from typing import Any, Type, TypeVar
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Any, Self
 
-T = TypeVar("T", bound="Blueprint")
+from pydantic import BaseModel, Field
 
 
 class Blueprint(BaseModel):
@@ -23,22 +22,18 @@ class Blueprint(BaseModel):
 
     def load_hook(self) -> None:
         """Hook called when blueprint is loaded"""
-        pass
 
     def init_hook(self) -> None:
         """Hook called during blueprint initialization"""
-        pass
 
     def pre_process_hook(self) -> None:
         """Hook called before processing blueprint"""
-        pass
 
     def post_process_hook(self) -> None:
         """Hook called after processing blueprint"""
-        pass
 
     @classmethod
-    def create(cls: Type[T], **data: Any) -> T:
+    def create(cls, **data: Any) -> Self:
         """Factory method to create a new blueprint instance
 
         Args:

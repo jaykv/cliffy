@@ -1,6 +1,7 @@
-from cliffy.manifest import CLIManifest, Example, RunBlock, RunBlockList, SimpleCommandParam, CommandParam
-from cliffy.helper import write_to_file
 from pydantic import BaseModel
+
+from cliffy.helper import write_to_file
+from cliffy.manifest import CLIManifest, CommandParam, Example, RunBlock, RunBlockList, SimpleCommandParam
 
 
 class CommandDoc(BaseModel):

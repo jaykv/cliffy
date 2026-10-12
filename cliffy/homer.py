@@ -2,9 +2,9 @@ import glob
 import json
 import os
 from base64 import b32encode
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Optional
 
 from cliffy.commander import CLI
 from cliffy.helper import CLIFFY_METADATA_DIR, write_to_file
@@ -21,7 +21,7 @@ def save_metadata(manifest_path: str, cli: CLI) -> None:
     abs_manifest_path = os.path.realpath(manifest_path)
     encoded_runnerpath = b32encode(cli.name.encode("ascii")).decode("utf-8")
     save_metadata_path = f"{CLIFFY_METADATA_DIR}/{encoded_runnerpath}/{cli.name}.json"
-    with open(manifest_path, "r") as manifest:
+    with open(manifest_path) as manifest:
         write_to_file(
             save_metadata_path,
             json.dumps(
@@ -73,7 +73,7 @@ def get_metadata_bypath(path: Path) -> CLIMetadata:
         )
 
 
-def get_metadata(cli_name: str) -> Optional[CLIMetadata]:
+def get_metadata(cli_name: str) -> CLIMetadata | None:
     """Fetches CLI metadata by name
 
     Args:
@@ -86,7 +86,7 @@ def get_metadata(cli_name: str) -> Optional[CLIMetadata]:
     return get_metadata_bypath(Path(cli_path)) if cli_path else None
 
 
-def get_metadata_path(cli_name: str) -> Optional[str]:
+def get_metadata_path(cli_name: str) -> str | None:
     """Fetches CLI metadata path
 
     Args:

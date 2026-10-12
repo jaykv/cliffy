@@ -1,31 +1,29 @@
-from io import TextIOWrapper
-from typing import Any, TextIO, Union
-import traceback
 import sys
-
-from cliffy.tester import ShellScript, Tester
-
-from cliffy.rich import click, Console, print_rich_table  # type: ignore
+import traceback
+from io import TextIOWrapper
+from typing import Any, TextIO
 
 from cliffy.builder import build_cli, build_cli_from_manifest, run_cli
+from cliffy.doc import DocGenerator
 from cliffy.helper import (
     CLIFFY_CLI_DIR,
+    ManifestOrCLI,
     age_datetime,
     exit_err,
     indent_block,
     out,
     out_err,
     write_to_file,
-    ManifestOrCLI,
 )
 from cliffy.homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
 from cliffy.loader import Loader
 from cliffy.manifest import CLIManifest
-from cliffy.transformer import Transformer
 from cliffy.reloader import Reloader
-from cliffy.doc import DocGenerator
+from cliffy.rich import Console, click, print_rich_table  # type: ignore
+from cliffy.tester import ShellScript, Tester
+from cliffy.transformer import Transformer
 
-CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
 ALIASES = {
     "ls": "list",
     "add": "load",
@@ -68,7 +66,8 @@ def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
     for cli_name in cli_names:
         if cli_metadata := get_metadata(cli_name):
-            T = Transformer(open(cli_metadata.runner_path, "r"))
+            with open(cli_metadata.runner_path) as manifest:
+                T = Transformer(manifest)
             Loader.load_from_cli(T.cli)
             save_metadata(cli_metadata.runner_path, T.cli)
             out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
@@ -176,7 +175,7 @@ def remove_all() -> None:
     default="/usr/bin/env python3",
     show_default=True,
 )
-def build(cli_or_manifests: list[Union[TextIOWrapper, str]], output_dir: str, python: str) -> None:
+def build(cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: str) -> None:
     """Build a CLI manifest or a loaded CLI into a zipapp"""
     for cli_or_manifest in cli_or_manifests:
         if isinstance(cli_or_manifest, TextIOWrapper):
@@ -351,7 +350,7 @@ cli.command("add", hidden=True, epilog="Alias for load")(
     click.argument("manifests", type=click.File("rb"), nargs=-1)(load)
 )
 cli.command("ls", hidden=True, epilog="Alias for list")(cliffy_list)
-cli.command("rm", hidden=True, epilog="Alias for remove")(click.argument("cli_names", type=str, nargs=-1)((remove)))
+cli.command("rm", hidden=True, epilog="Alias for remove")(click.argument("cli_names", type=str, nargs=-1)(remove))
 cli.command("rm-all", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("rmall", hidden=True, epilog="Alias for remove-all")(remove_all)
 cli.command("reload", hidden=True, epilog="Alias for update")(click.argument("cli_names", type=str, nargs=-1)(update))

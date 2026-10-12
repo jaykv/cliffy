@@ -1,16 +1,17 @@
-from pathlib import Path
-from typing import Optional
-from pydantic_ai.settings import ModelSettings
-from pydantic_ai.usage import UsageLimits
-from pydantic_ai import Agent
-from pydantic_ai.models import KnownModelName
-from cliffy.rich import click
-from cliffy.helper import out, ManifestOrCLI
-from cliffy.manifest import CLIManifest
-from cliffy.transformer import Transformer
-from cliffy.homer import get_metadata
 import json
 from io import TextIOWrapper
+from pathlib import Path
+
+from pydantic_ai import Agent
+from pydantic_ai.models import KnownModelName
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
+
+from cliffy.helper import ManifestOrCLI, out
+from cliffy.homer import get_metadata
+from cliffy.manifest import CLIManifest
+from cliffy.rich import click
+from cliffy.transformer import Transformer
 
 
 @click.group(help="AI-powered commands")
@@ -82,9 +83,7 @@ Use Python and Typer features and imports as needed to craft the best CLI for th
     "--cli", type=ManifestOrCLI(), help="Loaded CLI or manifest to include in prompt as reference.", default=None
 )
 @click.argument("prompt", required=True)
-def ask(
-    cli: Optional[ManifestOrCLI], prompt: str, model: KnownModelName, max_tokens: int, preview: bool = False
-) -> None:
+def ask(cli: ManifestOrCLI | None, prompt: str, model: KnownModelName, max_tokens: int, preview: bool = False) -> None:
     SYSTEM_PROMPT = f"""You are an expert of `cliffy`- a YAML manifest to Typer CLI generator.
 
 ## Cliffy Usage
