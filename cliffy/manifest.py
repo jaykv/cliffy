@@ -546,7 +546,8 @@ tests:
             json_schema (bool): Flag to include JSON schema reference comment
 
         Returns:
-            str: A YAML-formatted template for a CLI manifest with default configuration
+            str: A YAML-formatted template for a CLI manifest with default configuration. It has one command
+                and one test, so that it runs and passes `cli test` as written.
         """
         manifest = ""
         if json_schema:
@@ -573,11 +574,13 @@ global_params: []
 
 command_templates: {{}}
 
-commands: {{}}
+commands:
+  hello: print("Hello!")
 
 cli_options: {{}}
 
-tests: []
+tests:
+  - hello: assert result_text == "Hello!"
 """
         return manifest
 

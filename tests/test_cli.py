@@ -1,9 +1,12 @@
 import os
 import re
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from click.testing import CliRunner
 
 from cliffy.cli import (
@@ -17,6 +20,9 @@ from cliffy.cli import (
     run_command,
     update_command,
     validate_command,
+)
+from cliffy.cli import (
+    test_command as manifest_test_command,
 )
 from cliffy.homer import get_metadata
 from cliffy.loader import Loader
@@ -441,3 +447,24 @@ def test_build_failure_exit_code(isolated_fs):
 
     assert "fails build failed" in result.output
     assert result.exit_code == 1
+
+
+@pytest.mark.parametrize("flags", [[], ["--raw"]], ids=["commented", "raw"])
+def test_init_template_loads_runs_and_passes_its_own_tests(isolated_fs, flags):
+    # the commented template used to fail with "parameter without a default follows parameter with a
+    # default", and the raw template had nothing to run or test
+    runner = CliRunner()
+    assert runner.invoke(init_command, ["mycli", *flags]).exit_code == 0
+
+    validated = runner.invoke(validate_command, ["mycli.yaml"])
+    assert validated.exit_code == 0, validated.output
+
+    ran = subprocess.run(
+        [sys.executable, "-m", "cliffy", "run", "mycli.yaml", "--", "hello"], capture_output=True, text=True
+    )
+    assert ran.returncode == 0, ran.stderr
+    assert "Hello" in ran.stdout
+
+    tested = runner.invoke(manifest_test_command, ["mycli.yaml"])
+    assert "All tests passed" in tested.output
+    assert tested.exit_code == 0
