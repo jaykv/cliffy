@@ -1,3 +1,4 @@
+import contextlib
 import glob
 import json
 import os
@@ -19,9 +20,9 @@ def save_metadata(manifest_path: str, cli: CLI) -> None:
         cli (CLI): CLI
     """
     abs_manifest_path = os.path.realpath(manifest_path)
-    encoded_runnerpath = b32encode(cli.name.encode("ascii")).decode("utf-8")
+    encoded_runnerpath = b32encode(cli.name.encode("utf-8")).decode("utf-8")
     save_metadata_path = f"{CLIFFY_METADATA_DIR}/{encoded_runnerpath}/{cli.name}.json"
-    with open(manifest_path) as manifest:
+    with open(manifest_path, encoding="utf-8") as manifest:
         write_to_file(
             save_metadata_path,
             json.dumps(
@@ -44,11 +45,14 @@ def remove_metadata(cli_name: str) -> None:
     Args:
         cli_name (str): CLI name
     """
-    metadata_paths = glob.glob(f"{CLIFFY_METADATA_DIR}/*/{cli_name}.*")
+    # the name is matched literally: `*` or `?` in it must not select other CLIs
+    metadata_paths = glob.glob(f"{glob.escape(str(CLIFFY_METADATA_DIR))}/*/{glob.escape(cli_name)}.*")
     for path in metadata_paths:
         parent_path = Path(path).parent.resolve()
         os.remove(path)
-        os.rmdir(parent_path)
+        # the directory is only removed once it is empty
+        with contextlib.suppress(OSError):
+            os.rmdir(parent_path)
 
 
 def get_metadata_bypath(path: Path) -> CLIMetadata:
@@ -61,7 +65,8 @@ def get_metadata_bypath(path: Path) -> CLIMetadata:
         CLIMetadata: CLI metadata
     """
     try:
-        return CLIMetadata(**json.load(path.open("r")))
+        with path.open("r", encoding="utf-8") as metadata_file:
+            return CLIMetadata(**json.load(metadata_file))
     except Exception as e:
         return CLIMetadata(
             cli_name=path.name,
@@ -95,7 +100,7 @@ def get_metadata_path(cli_name: str) -> str | None:
     Returns:
         Optional[str]: CLI metadata path
     """
-    if cli_metadata_path := glob.glob(f"{CLIFFY_METADATA_DIR}/*/{cli_name}.json"):
+    if cli_metadata_path := glob.glob(f"{glob.escape(str(CLIFFY_METADATA_DIR))}/*/{glob.escape(cli_name)}.json"):
         return cli_metadata_path[0]
     return None
 

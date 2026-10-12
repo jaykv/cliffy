@@ -1,3 +1,5 @@
+from html import escape
+
 from pydantic import BaseModel
 
 from cliffy.helper import write_to_file
@@ -86,7 +88,7 @@ class DocGenerator:
         md += "## Examples\n\n"
         for example in docs.examples:
             md += f"```bash\n{example.command}\n```\n"
-            md += f"{example.description}\n\n"
+            md += f"{example.description or ''}\n\n"
 
         path = f"{output_dir}/{docs.name}.md" if output_dir else f"{docs.name}.md"
         write_to_file(path, md)
@@ -116,7 +118,7 @@ class DocGenerator:
         rst += "--------\n\n"
         for example in docs.examples:
             rst += f".. code-block:: bash\n\n    {example.command}\n\n"
-            rst += f"{example.description}\n\n"
+            rst += f"{example.description or ''}\n\n"
 
         path = f"{output_dir}/{docs.name}.rst" if output_dir else f"{docs.name}.rst"
         write_to_file(path, rst)
@@ -125,7 +127,7 @@ class DocGenerator:
         html = f"""<!DOCTYPE html>
 <html>
 <head>
-    <title>{docs.name} v{docs.version}</title>
+    <title>{escape(docs.name)} v{escape(docs.version)}</title>
     <style>
         body {{ font-family: system-ui; max-width: 800px; margin: 0 auto; padding: 20px; }}
         pre {{ background: #f6f8fa; padding: 16px; border-radius: 6px; }}
@@ -134,25 +136,25 @@ class DocGenerator:
     </style>
 </head>
 <body>
-    <h1>{docs.name} v{docs.version}</h1>
-    <p>{docs.help}</p>
+    <h1>{escape(docs.name)} v{escape(docs.version)}</h1>
+    <p>{escape(docs.help)}</p>
     
     <h2>Commands</h2>
 """
         for cmd_name, cmd in docs.commands.items():
             html += f"""
     <div class="command">
-        <h3>{cmd_name}</h3>
-        <p>{cmd.help}</p>
+        <h3>{escape(cmd_name)}</h3>
+        <p>{escape(cmd.help)}</p>
 """
             if cmd.params:
                 html += "        <h4>Parameters:</h4>\n        <div class='params'>\n"
                 for param in cmd.params:
-                    html += f"            <p>{param}</p>\n"
+                    html += f"            <p>{escape(param)}</p>\n"
                 html += "        </div>\n"
 
             if cmd.aliases:
-                html += f"        <p><em>Aliases: {', '.join(cmd.aliases)}</em></p>\n"
+                html += f"        <p><em>Aliases: {escape(', '.join(cmd.aliases))}</em></p>\n"
             html += "    </div>\n"
 
         html += """
@@ -160,8 +162,8 @@ class DocGenerator:
 """
         for example in docs.examples:
             html += f"""
-    <pre><code>{example.command}</code></pre>
-    <p>{example.description}</p>
+    <pre><code>{escape(example.command)}</code></pre>
+    <p>{escape(example.description or "")}</p>
 """
         html += """
 </body>

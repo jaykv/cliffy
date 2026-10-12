@@ -7,6 +7,7 @@ from collections.abc import ItemsView, Iterator, ValuesView
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
+from cliffy.helper import py_str, to_identifier
 from cliffy.manifest import (
     CLIManifest,
     Command,
@@ -40,7 +41,7 @@ class BaseGroup(BaseModel):
     @property
     def var_name(self) -> str:
         """Returns valid Python variable name for group app"""
-        return self.name.replace(".", "_") + "_app"
+        return to_identifier(self.name + "_app")
 
 
 class Groups(BaseModel):
@@ -150,6 +151,24 @@ class Commander(ABC):
         if template.post_run:
             command.post_run = PostRunBlock((command.post_run.root or "") + "\n" + template.post_run.root)
 
+    def _split_command_aliases(self, command: Command) -> None:
+        """a|b|c -> command a with the aliases b and c"""
+        if "|" not in command.name:
+            return
+
+        command_parts = [s.strip() for s in command.name.split("|")]
+        command.name = command_parts[0]
+        command.aliases += command_parts[1:]
+        self.aliases_by_commands[command_parts[0]] = command_parts[1:]
+
+    def aliases_table(self) -> str:
+        """Text printed by the generated `--aliases` option"""
+        width = max(len(x) for x in self.aliases_by_commands) + 7
+        table = f"\n{'Command'.ljust(width)}Aliases\n{'--------'.ljust(width)}--------\n"
+        for command, alias_list in self.aliases_by_commands.items():
+            table += f"{command.ljust(width)}{', '.join(alias_list)}\n"
+        return table
+
     def build_groups(self) -> None:
         """Build group hierarchy from command names"""
         for command in self.commands:
@@ -158,12 +177,7 @@ class Commander(ABC):
                 continue
 
             self._merge_command_template(command)
-
-            if "|" in command.name:
-                command_parts = [s.strip() for s in command.name.split("|")]
-                command.name = command_parts[0]
-                command.aliases += command_parts[1:]
-                self.aliases_by_commands[command_parts[0]] = command_parts[1:]
+            self._split_command_aliases(command)
 
             if "." in command.name:
                 self.groups.add_command_to_group(command)
@@ -216,9 +230,10 @@ class Commander(ABC):
 
         for var, val in self.manifest.vars.items():
             if isinstance(val, dict):
+                # `name: {expression: null}` is the documented way to assign a Python expression
                 self.cli += f"{var} = {next(iter(val))}\n"
             else:
-                self.cli += f"{var} = '{val}'\n"
+                self.cli += f"{var} = {py_str(val)}\n"
         self.cli += "\n"
 
     def add_functions(self) -> None:
@@ -233,7 +248,7 @@ class Commander(ABC):
 
     def add_command(self, command: Command) -> None:
         if "." in command.name:
-            group = command.name.rsplit(".")[0]
+            group = command.name.rsplit(".", 1)[0]
             self.add_sub_command(command, self.groups[group])
 
     def add_greedy_commands(self) -> None:
@@ -246,6 +261,10 @@ class Commander(ABC):
     def add_lazy_command(self, greedy_command: Command, group: BaseGroup) -> None:
         # make it lazy and interpolate
         lazy_command = self.from_greedy_make_lazy_command(greedy_command=greedy_command, group=group.name)
+
+        # the greedy command was skipped in build_groups, so its template and aliases are still unresolved
+        self._merge_command_template(lazy_command)
+        self._split_command_aliases(lazy_command)
 
         # lazy load
         self.commands.append(lazy_command)
@@ -302,7 +321,7 @@ class Commander(ABC):
                     if isinstance(param, CommandParam):
                         if param.help:
                             param.help = param.help.replace("{(*)}", group)
-                        if param.default:
+                        if isinstance(param.default, str):
                             param.default = param.default.replace("{(*)}", group)
                         if param.short:
                             param.short = param.short.replace("{(*)}", group)

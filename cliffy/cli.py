@@ -6,7 +6,7 @@ from typing import Any, TextIO
 from cliffy.builder import build_cli, build_cli_from_manifest, run_cli
 from cliffy.doc import DocGenerator
 from cliffy.helper import (
-    CLIFFY_CLI_DIR,
+    CLI_NAME_PATTERN,
     ManifestOrCLI,
     age_datetime,
     exit_err,
@@ -64,9 +64,10 @@ def load(manifests: list[TextIO]) -> None:
 @click.argument("cli_names", type=str, nargs=-1)
 def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
+    failed = False
     for cli_name in cli_names:
         if cli_metadata := get_metadata(cli_name):
-            with open(cli_metadata.runner_path) as manifest:
+            with open(cli_metadata.runner_path, encoding="utf-8") as manifest:
                 T = Transformer(manifest)
             Loader.load_from_cli(T.cli)
             save_metadata(cli_metadata.runner_path, T.cli)
@@ -75,6 +76,10 @@ def update(cli_names: list[str]) -> None:
             out(f" {T.cli.name} -h")
         else:
             out_err(f"~ {cli_name} not found")
+            failed = True
+
+    if failed:
+        raise SystemExit(1)
 
 
 @click.argument("manifest", type=click.File("rb"))
@@ -114,9 +119,17 @@ def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
 )
 def init(cli_name: str, render: bool, raw: bool, json_schema: bool) -> None:
     """Generate a CLI manifest template"""
-    template = (
-        CLIManifest.get_raw_template(cli_name, json_schema) if raw else CLIManifest.get_template(cli_name, json_schema)
-    )
+    if not CLI_NAME_PATTERN.fullmatch(cli_name):
+        exit_err(f"~ invalid CLI name {cli_name}: use letters, digits, `_` and `-`, starting with a letter or `_`")
+
+    try:
+        template = (
+            CLIManifest.get_raw_template(cli_name, json_schema)
+            if raw
+            else CLIManifest.get_template(cli_name, json_schema)
+        )
+    except ValueError as e:
+        exit_err(f"~ {e}")
 
     if render:
         console = Console()
@@ -148,6 +161,7 @@ def cliffy_list() -> None:
 @click.argument("cli_names", type=str, nargs=-1)
 def remove(cli_names: list[str]) -> None:
     """Remove a loaded CLI by name"""
+    failed = False
     for cli_name in cli_names:
         if get_metadata_path(cli_name):
             remove_metadata(cli_name)
@@ -155,6 +169,10 @@ def remove(cli_names: list[str]) -> None:
             out(f"~ {cli_name} removed 💥", fg="green")
         else:
             out_err(f"~ {cli_name} not loaded")
+            failed = True
+
+    if failed:
+        raise SystemExit(1)
 
 
 def remove_all() -> None:
@@ -177,6 +195,7 @@ def remove_all() -> None:
 )
 def build(cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: str) -> None:
     """Build a CLI manifest or a loaded CLI into a zipapp"""
+    failed = False
     for cli_or_manifest in cli_or_manifests:
         if isinstance(cli_or_manifest, TextIOWrapper):
             cli, result = build_cli_from_manifest(cli_or_manifest, output_dir=output_dir, interpreter=python)
@@ -185,11 +204,12 @@ def build(cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: 
             cli_name = cli_or_manifest
             if not (metadata := get_metadata(cli_name)):
                 out_err(f"~ {cli_name} not loaded")
+                failed = True
                 continue
 
             result = build_cli(
                 cli_name,
-                script_path=f"{CLIFFY_CLI_DIR}/{cli_name}.py",
+                script_path=Loader.get_cli_path(cli_name),
                 deps=metadata.requires,
                 output_dir=output_dir,
                 interpreter=python,
@@ -200,9 +220,13 @@ def build(cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: 
             if result.exception:
                 out(str(result.exception))
             out_err(f"~ {cli_name} build failed")
+            failed = True
             continue
 
         out(f"+ {cli_name} built 📦", fg="green")
+
+    if failed:
+        raise SystemExit(1)
 
 
 @click.argument("cli_name", type=str)
@@ -278,17 +302,17 @@ def test(manifest: str, exitfirst: bool) -> None:
             expr = case.assert_script.split("\n")[line_no - 1]
             out(f"💔 AssertionError: (line {line_no}) > {expr}")
             if exitfirst:
-                exit()
+                raise SystemExit(1) from None
         except SyntaxError:
             out("💔 Syntax error")
             traceback.print_exc()
             if exitfirst:
-                exit()
+                raise SystemExit(1) from None
         except Exception:
             out("💔 Exception")
             traceback.print_exc()
             if exitfirst:
-                exit()
+                raise SystemExit(1) from None
 
     if not passed:
         exit_err("All tests failed")
@@ -297,6 +321,7 @@ def test(manifest: str, exitfirst: bool) -> None:
         out("\n\n💚 All tests passed!")
     else:
         out("\n\n💛 Some tests failed :(")
+        raise SystemExit(1)
 
 
 @click.argument("manifest", type=click.File("rb"), required=True)
@@ -306,7 +331,7 @@ def validate(manifest: TextIO) -> None:
         Transformer(manifest)
         out(f"Manifest {manifest.name} is valid", fg="green")
     except Exception as e:
-        out_err(f"Manifest {manifest.name} is invalid: {e}")
+        exit_err(f"Manifest {manifest.name} is invalid: {e}")
 
 
 @click.argument("cli_or_manifest", type=ManifestOrCLI())
@@ -322,11 +347,14 @@ def docs(cli_or_manifest: str, format: str, output_dir: str) -> None:
         doc_generator.generate(format, output_dir)
         out(f"+ {T.cli.name}.{format}")
     else:
-        metadata = get_metadata(cli_or_manifest)
-        if metadata:
-            doc_generator = DocGenerator(CLIManifest.model_validate(metadata.manifest))
-            doc_generator.generate(format, output_dir)
-            out(f"+ {metadata.cli_name}.{format}")
+        metadata = get_metadata(cli_or_manifest) or exit_err(f"~ {cli_or_manifest} not loaded")
+        # metadata.manifest is the raw manifest text. It still has to be rendered and merged with its
+        # includes, so it is transformed from its source like `cli update` does.
+        with open(metadata.runner_path, encoding="utf-8") as manifest:
+            T = Transformer(manifest, validate_requires=False)
+        doc_generator = DocGenerator(T.manifest)  # type: ignore
+        doc_generator.generate(format, output_dir)
+        out(f"+ {metadata.cli_name}.{format}")
 
 
 # register commands

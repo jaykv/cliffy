@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 from datetime import datetime, timedelta
@@ -16,6 +17,7 @@ from cliffy.transformer import Transformer
 class Reloader(FileSystemEventHandler):
     def __init__(self, manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
         self.manifest_path = manifest_path
+        self.manifest_realpath = os.path.realpath(manifest_path)
         self.run_cli = run_cli
         self.run_cli_args = run_cli_args
         self.last_modified = datetime.now()
@@ -23,7 +25,8 @@ class Reloader(FileSystemEventHandler):
         super().__init__()
 
     def on_modified(self, event: FileSystemEvent) -> None:
-        if event.is_directory or not str(event.src_path).endswith(self.manifest_path):
+        # compared as full paths: `endswith` also matched other-x.yaml when watching x.yaml
+        if event.is_directory or os.path.realpath(os.fsdecode(event.src_path)) != self.manifest_realpath:
             return
 
         if not isinstance(event, FileModifiedEvent):
@@ -54,14 +57,16 @@ class Reloader(FileSystemEventHandler):
             while True:
                 time.sleep(1)
         except KeyboardInterrupt:
+            pass
+        finally:
+            # also stops the observer thread when the loop dies of anything else
             observer.stop()
-        observer.join()
+            observer.join()
 
     @staticmethod
     def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple) -> None:
-        manifest_io = open(manifest_path)  # noqa: SIM115
-
-        T = Transformer(manifest_io)
+        with open(manifest_path, encoding="utf-8") as manifest_io:
+            T = Transformer(manifest_io)
         Loader.load_from_cli(T.cli)
         save_metadata(manifest_path, T.cli)
         out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")

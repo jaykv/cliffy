@@ -3,20 +3,18 @@ import platform
 from datetime import datetime, timedelta
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from cliffy.helper import (
     CLIFFY_CLI_DIR,
     CLIFFY_METADATA_DIR,
-    OPERATOR_MAP,
     PYTHON_BIN,
     PYTHON_EXECUTABLE,
     TEMP_FILES,
-    RequirementSpec,
     age_datetime,
-    compare_versions,
+    check_requirement,
     delete_temp_files,
     exit_err,
     get_installed_package_versions,
@@ -25,7 +23,6 @@ from cliffy.helper import (
     make_executable,
     out,
     out_err,
-    parse_requirement,
     wrap_as_comment,
     wrap_as_var,
     write_to_file,
@@ -172,11 +169,17 @@ def test_wrap_as_var(text, expected_output):
     assert wrapped_var == expected_output
 
 
-# Test for get_installed_package_versions (mocking subprocess)
-@patch("subprocess.check_output")
-def test_get_installed_package_versions(mock_check_output):
+def fake_distribution(name, version):
+    dist = MagicMock(version=version)
+    dist.metadata = {"Name": name}
+    return dist
+
+
+# Test for get_installed_package_versions (mocking the installed distributions)
+@patch("cliffy.helper.distributions")
+def test_get_installed_package_versions(mock_distributions):
     # Arrange
-    mock_check_output.return_value = b"package1==1.0.0\npackage2==2.0.0"
+    mock_distributions.return_value = [fake_distribution("package1", "1.0.0"), fake_distribution("package2", "2.0.0")]
 
     # Act
     installed_packages = get_installed_package_versions()
@@ -185,40 +188,54 @@ def test_get_installed_package_versions(mock_check_output):
     assert installed_packages == {"package1": "1.0.0", "package2": "2.0.0"}
 
 
-# Parametrized tests for parse_requirement
+@patch("cliffy.helper.distributions")
+def test_get_installed_package_versions_normalizes_names(mock_distributions):
+    # pip freeze prints `PyYAML` and `rich_click` in whatever spelling the project chose
+    mock_distributions.return_value = [
+        fake_distribution("PyYAML", "6.0.3"),
+        fake_distribution("rich_click", "1.9.9"),
+        fake_distribution("pyyaml", "5.0"),  # shadowed copy later on sys.path
+    ]
+
+    assert get_installed_package_versions() == {"pyyaml": "6.0.3", "rich-click": "1.9.9"}
+
+
+def test_get_installed_package_versions_sees_real_environment():
+    # the old implementation shelled out to `pip freeze`, which skips editable and pip-less installs
+    assert "pyyaml" in get_installed_package_versions()
+
+
+# Parametrized tests for check_requirement
 @pytest.mark.parametrize(
-    "requirement, expected_output",
+    "requirement, installed, expected_output",
     [
-        ("package1>=1.0.0", RequirementSpec(name="package1", operator=">=", version="1.0.0")),  # id: with_operator
-        ("package2", RequirementSpec(name="package2", operator=None, version=None)),  # id: without_operator
-        (" package3 <= 2.0.0 ", RequirementSpec(name="package3", operator="<=", version="2.0.0")),  # id: with_spaces
+        ("package1>=1.0.0", {"package1": "1.0.0"}, None),  # id: with_operator
+        ("package2", {"package2": "0.1"}, None),  # id: without_operator
+        (" package3 <= 2.0.0 ", {"package3": "2.0.0"}, None),  # id: with_spaces
+        ("package==1.0.0", {"package": "1.0.0"}, None),  # id: equal
+        ("package>=2.0.0", {"package": "1.0.0"}, "found version `1.0.0`"),  # id: greater_than_or_equal
+        ("package<2.0.0", {"package": "1.0.0"}, None),  # id: less_than
+        ("package==2.0.0", {"package": "1.0.0"}, "found version `1.0.0`"),  # id: not_equal
+        ("package", {}, "not installed"),  # id: missing
+        ("PyYAML>=6", {"pyyaml": "6.0.3"}, None),  # id: mixed_case_name
+        ("rich_click", {"rich-click": "1.9.9"}, None),  # id: underscore_name
+        ("requests>=2,<3", {"requests": "2.32.0"}, None),  # id: multiple_specifiers
+        ("requests>=2,<3", {"requests": "3.0.0"}, "found version `3.0.0`"),  # id: multiple_specifiers_unmet
+        ("click~=8.0", {"click": "8.5.0"}, None),  # id: compatible_release
+        ("click~=8.0", {"click": "9.0.0"}, "found version `9.0.0`"),  # id: compatible_release_unmet
+        ("typer[all]>=0.9", {"typer": "0.27.3"}, None),  # id: extras
+        ("six<1.0.0", {"six": "1.17.0"}, "found version `1.17.0`"),  # id: less_than_unmet
+        ("pywin32; sys_platform == 'no-such-platform'", {}, None),  # id: marker_does_not_apply
+        ("package>=1.0.0rc1", {"package": "1.0.0rc2"}, None),  # id: prerelease_installed
     ],
 )
-def test_parse_requirement(requirement, expected_output):
-    # Act
-    parsed_req = parse_requirement(requirement)
-
-    # Assert
-    assert parsed_req == expected_output
+def test_check_requirement(requirement, installed, expected_output):
+    assert check_requirement(requirement, installed) == expected_output
 
 
-# Parametrized tests for compare_versions
-@pytest.mark.parametrize(
-    "version1, version2, op, expected_output",
-    [
-        ("1.0.0", "1.0.0", "==", True),  # id: equal
-        ("1.0.0", "2.0.0", ">=", False),  # id: greater_than_or_equal
-        ("1.0.0", "2.0.0", "<", True),  # id: less_than
-        ("1.0.0", "1.0.0", None, True),  # id: no_operator_equal
-        ("1.0.0", "2.0.0", None, False),  # id: no_operator_not_equal
-    ],
-)
-def test_compare_versions(version1, version2, op, expected_output):
-    # Act
-    comparison_result = compare_versions(version1, version2, op)
-
-    # Assert
-    assert comparison_result == expected_output
+def test_check_requirement_invalid():
+    problem = check_requirement("not a requirement !!", {})
+    assert problem is not None and problem.startswith("invalid requirement")
 
 
 # Tests for out, out_err, and exit_err (using capsys)
@@ -276,7 +293,6 @@ def test_constants():
     assert isinstance(CLIFFY_METADATA_DIR, Path)
     assert isinstance(PYTHON_BIN, str)
     assert isinstance(PYTHON_EXECUTABLE, str)
-    assert isinstance(OPERATOR_MAP, dict)
     assert isinstance(TEMP_FILES, list)
 
     if platform.system() == "Windows":

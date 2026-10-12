@@ -1,8 +1,10 @@
 ## Command parser
+import keyword
 from typing import Any
 
 from pybash.transformer import transform as transform_bash
 
+from cliffy.helper import py_str, to_identifier
 from cliffy.manifest import (
     CLIManifest,
     Command,
@@ -46,6 +48,7 @@ class Parser:
         is_required: bool = False,
         help: str | None = None,
         extra_params: str | None = None,
+        option_name: str | None = None,
     ) -> str:
         """
         Builds a type-annotated parameter definition for Typer CLI command.
@@ -59,6 +62,8 @@ class Parser:
             is_required (bool, default=False): Whether the parameter is mandatory.
             help (str, optional): Help text describing the parameter.
             extra_params (str, optional): Additional Typer parameter configurations.
+            option_name (str, optional): Option name as written in the manifest (e.g. "--dry-run").
+                Defaults to param_name. Only used when aliases are given.
 
         Returns:
             str: A formatted parameter type definition for Typer CLI command generation.
@@ -81,16 +86,14 @@ class Parser:
             parsed_param_type += f"({default_val}"
 
         if aliases and typer_cls == "Option":
-            if param_name.startswith("--"):
-                parsed_param_type += f', "{param_name}"'
-            else:
-                parsed_param_type += f', "--{param_name}"'
+            # typer derives `--dry-run` from `dry_run` on its own, but not when other names are passed
+            parsed_param_type += f", {py_str('--' + (option_name or param_name).strip().lstrip('-'))}"
 
             for alias in aliases:
-                parsed_param_type += f', "{alias.strip()}"'
+                parsed_param_type += f", {py_str(alias.strip())}"
 
         if help:
-            parsed_param_type += f', help="{help}"'
+            parsed_param_type += f", help={py_str(help)}"
 
         if extra_params:
             parsed_param_type += f", {extra_params}"
@@ -107,7 +110,8 @@ class Parser:
         param_type = param.type
 
         if isinstance(param, SimpleCommandParam) and "typer." in param.raw_type:
-            return f"{norm_param_name.strip()}: {param_type.strip()}, "
+            # a full typer definition, i.e. `name: str = typer.Option(..., prompt=True)`, is passed through as-is
+            return f"{norm_param_name}: {param.raw_type.strip()}, "
 
         if param_type in self.manifest.types:
             return f"{norm_param_name}: {self.manifest.types[param_type]},"
@@ -117,8 +121,8 @@ class Parser:
 
         # only wrap strings for CommandParam, leave simple params as-is
         if default_val is not None and isinstance(param, CommandParam) and param.type == "str":
-            # wrap default_val in quotes if it's a string and not wrapped already
-            default_val = '"{}"'.format(default_val.replace('"', r"\""))
+            # a str default is data, not an expression: emit it as a string literal
+            default_val = py_str(default_val)
 
         return self.build_param_type(
             param_name=norm_param_name,
@@ -128,12 +132,10 @@ class Parser:
             default_val=default_val,
             is_required=param.required,
             help=param.help,
+            option_name=param.name,
         )
 
     def parse_params(self, command: Command) -> str:
-        if not command.params:
-            return ""
-
         combined_command_params = self.manifest.global_params + command.params
         parsed_command_params = "".join(f"{self.parse_param(param)} " for param in combined_command_params)
         # strip the extra ", " if exists
@@ -163,18 +165,25 @@ class Parser:
         return self.to_args(configured_options)
 
     def normalize_param_name(self, name: str) -> str:
-        return name.lstrip("-").replace("-", "_")
+        """--dry-run -> dry_run. The result is the name the run block uses, so it is validated, never renamed."""
+        norm_name = name.strip().lstrip("-").replace("-", "_")
+        if not norm_name.isidentifier() or keyword.iskeyword(norm_name):
+            raise ValueError(
+                f"Invalid param name: {name}. A param becomes a Python variable, "
+                "so it has to be a valid identifier and cannot be a keyword."
+            )
+        return norm_name
 
     def get_command_func_name(self, command: Command) -> str:
-        """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b"""
+        """a -> a, a.b -> a_b, a-b -> a_b, a|b -> a_b, import -> import_, list -> list_"""
         if not command.name.replace(".", "").replace("-", "").replace("_", "").replace("|", "").isalnum():
             raise ValueError(f"Invalid command name: {command.name}")
-        return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
+        return to_identifier(command.name)
 
     def get_parsed_command_name(self, command: Command) -> str:
         """a -> a, a.b -> b"""
         return command.name.split(".")[-1] if "." in command.name else command.name
 
     def to_args(self, d: dict) -> str:
-        s = "".join(f' {k}="{v}",' if isinstance(v, str) else f" {k}={v}," for k, v in d.items())
+        s = "".join(f" {k}={py_str(v)}," if isinstance(v, str) else f" {k}={v!r}," for k, v in d.items())
         return s[:-1]
