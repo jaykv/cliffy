@@ -49,6 +49,7 @@ def aliases_callback(value: bool):
         raise typer.Exit()
 """
         callbacks = self.callbacks_for()
+        self.functions["main"] = "callbacks"
         self.cli += f"""
 @cli.callback({self.parse_callback_options(callbacks)})
 def main({self.parse_callback_params(callbacks)}"""
@@ -89,7 +90,7 @@ def main({self.parse_callback_params(callbacks)}"""
         if not command.run:
             return
 
-        parsed_command_func_name = self.parser.get_command_func_name(command)
+        parsed_command_func_name = self.command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""
@@ -116,9 +117,10 @@ cli.command({py_str(alias)}, hidden=True, epilog={alias_epilog})({parsed_command
             self.cli += f"""{group.var_name} = typer.Typer({empty_or_help})
 """
             if callbacks := self.callbacks_for(group):
+                callback_name = self.unique_name(f"{group.var_name}_callback", source=f"callbacks (group {group.name})")
                 self.cli += f"""
 @{group.var_name}.callback({self.parse_callback_options(callbacks)})
-def {group.var_name}_callback({self.parse_callback_params(callbacks)}
+def {callback_name}({self.parse_callback_params(callbacks)}
 ):
 {self.parse_callback_run(callbacks)}
 """
@@ -137,7 +139,7 @@ def {group.var_name}_callback({self.parse_callback_params(callbacks)}
             # a script-less command only carries the help of the group with the same name
             return
 
-        parsed_command_func_name = self.parser.get_command_func_name(command)
+        parsed_command_func_name = self.command_func_name(command)
         parsed_command_name = self.parser.get_parsed_command_name(command)
         parsed_command_config = self.parser.get_parsed_config(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""

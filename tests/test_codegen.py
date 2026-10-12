@@ -240,6 +240,64 @@ def test_names_become_valid_identifiers(run, manifest, args, expected_output):
     assert expected_output in result.output
 
 
+COLLIDING_NAMES = [
+    # a root command and a group that both used to be the Python name `db_app`
+    pytest.param("commands:\n  db-app: print(1)\n  db.x: print(2)\n", ["db-app"], "1", id="command_vs_group_var"),
+    pytest.param("commands:\n  db-app: print(1)\n  db.x: print(2)\n", ["db", "x"], "2", id="group_var_vs_command"),
+    pytest.param("commands:\n  db.x: print(2)\n  db-app: print(1)\n", ["db", "x"], "2", id="group_var_declared_first"),
+    pytest.param("commands:\n  a-b: print(1)\n  a_b: print(2)\n", ["a-b"], "1", id="dash_vs_underscore"),
+    pytest.param("commands:\n  a.b: print(1)\n  a_b: print(2)\n", ["a", "b"], "1", id="subcommand_vs_command"),
+    pytest.param("commands:\n  a.b.x: print(1)\n  a_b.y: print(2)\n", ["a", "b", "x"], "1", id="group_vs_group"),
+    pytest.param("commands:\n  a.b.x: print(1)\n  a_b.y: print(2)\n", ["a_b", "y"], "2", id="group_vs_group_second"),
+    pytest.param(
+        "imports: import json\ncommands:\n  json: print(1)\n  dump: print(json.dumps([2]))\n",
+        ["dump"],
+        "[2]",
+        id="command_vs_import",
+    ),
+    pytest.param(
+        "vars:\n  status: up\ncommands:\n  status: print(1)\n  show: print(status)\n",
+        ["show"],
+        "up",
+        id="command_vs_var",
+    ),
+    pytest.param(
+        "functions:\n  - |\n    def helper():\n        return 3\ncommands:\n  helper: print(1)\n  show: print(helper())\n",
+        ["show"],
+        "3",
+        id="command_vs_function",
+    ),
+    pytest.param(
+        "commands:\n  rm|rm-x: print(1)\n  rm-rm-x: print(2)\n  rm_rm_x: print(3)\n",
+        ["rm-x"],
+        "1",
+        id="alias_vs_command",
+    ),
+]
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+@pytest.mark.parametrize("manifest, args, expected_output", COLLIDING_NAMES)
+def test_names_that_collide_get_distinct_identifiers(run, base, manifest, args, expected_output):
+    result = run(base + manifest, args)
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == expected_output
+
+
+@pytest.mark.parametrize(
+    "name, hint",
+    [("my-var", "my_var"), ("2nd", ""), ("class", ""), ("cli", ""), ("typer", ""), ("has space", "")],
+)
+def test_var_name_must_be_a_python_identifier(generate, capsys, name, hint):
+    # a var becomes a module-level Python variable: `my-var = "x"` was a SyntaxError in the generated code
+    with pytest.raises(SystemExit):
+        generate(BASE + f"vars:\n  {name}: x\ncommands:\n  a: print(1)\n")
+
+    error = capsys.readouterr()
+    assert f"vars.{name}" in error.out + error.err
+    assert hint in error.out + error.err
+
+
 @pytest.mark.parametrize("use_click", [False, True])
 def test_keyword_param_name_is_rejected(generate, use_click):
     manifest = (CLICK if use_click else BASE) + "commands:\n  a:\n    params: [--from: str = 'x']\n    run: print(1)\n"

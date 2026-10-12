@@ -1,3 +1,5 @@
+import keyword
+import re
 import sys
 from collections.abc import ItemsView, Iterator
 from datetime import datetime
@@ -6,7 +8,7 @@ from typing import Any, Self
 
 from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator, model_validator
 
-from .helper import CLI_NAME_PATTERN, wrap_as_comment
+from .helper import CLI_NAME_PATTERN, GENERATED_NAMES, wrap_as_comment
 
 LATEST_SCHEMA_VERSION = "v3"
 
@@ -355,6 +357,29 @@ class CLIManifest(BaseModel):
         if not CLI_NAME_PATTERN.fullmatch(value):
             raise ValueError(
                 f"Invalid CLI name {value!r}. Use letters, digits, `_` and `-` only, starting with a letter or `_`."
+            )
+        return value
+
+    @field_validator("vars", mode="after")
+    @classmethod
+    def var_names_are_identifiers(cls, value: dict[str, Any]) -> dict[str, Any]:
+        """A var becomes a module-level Python variable of the generated CLI."""
+        for name in value:
+            if name.isidentifier() and not keyword.iskeyword(name) and name not in GENERATED_NAMES:
+                continue
+
+            if name in GENERATED_NAMES:
+                problem = "is a name the generated CLI uses itself"
+            elif keyword.iskeyword(name):
+                problem = "is a Python keyword"
+            else:
+                problem = "is not a valid Python identifier"
+            suggestion = re.sub(r"\W", "_", name)
+            if not suggestion.isidentifier() or keyword.iskeyword(suggestion) or suggestion in GENERATED_NAMES:
+                suggestion = f"{suggestion}_" if suggestion.isidentifier() else f"_{suggestion}"
+            raise ValueError(
+                f"vars.{name}: `{name}` {problem}. A var becomes a Python variable, so use letters, digits and `_` "
+                f"only, i.e. `{suggestion}`."
             )
         return value
 

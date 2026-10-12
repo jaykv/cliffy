@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import ItemsView, Iterator, ValuesView
@@ -31,6 +32,8 @@ class CLI(BaseModel):
     code: str
     requires: list[str] = []
     blueprint: str | None = None
+    # generated function name -> where it comes from in the manifest, i.e. {"db_create": "commands.db.create"}
+    functions: dict[str, str] = {}
 
 
 class BaseGroup(BaseModel):
@@ -39,11 +42,13 @@ class BaseGroup(BaseModel):
     parent_group: BaseGroup | None = None
     commands: list[Command] = []
     help: str = ""
+    # set by the Commander, which knows the other names of the generated module
+    var: str = ""
 
     @property
     def var_name(self) -> str:
         """Returns valid Python variable name for group app"""
-        return to_identifier(self.name + "_app")
+        return self.var or to_identifier(self.name + "_app")
 
 
 class Groups(BaseModel):
@@ -101,13 +106,16 @@ class Commander(ABC):
         "base_imports",
         "callbacks_by_group",
         "cli",
+        "command_functions",
         "commands",
+        "functions",
         "greedy",
         "groups",
         "manifest",
         "parser",
         "root_commands",
         "root_group",
+        "taken_names",
     )
 
     def __init__(self, manifest: CLIManifest) -> None:
@@ -136,6 +144,57 @@ class Commander(ABC):
             for name, command in self.manifest.commands.items()
         ]
         self.build_groups()
+
+        # Python names of the generated module. Every command function and group variable gets one that
+        # nothing else uses: two manifest names can map to the same identifier (`db-app` and the group `db`).
+        self.taken_names: set[str] = set(self.manifest.vars) | self.user_defined_names()
+        self.functions: dict[str, str] = {}
+        self.command_functions: dict[str, str] = {}
+        for group in self.groups.values():
+            group.var = self.unique_name(to_identifier(group.name + "_app"))
+
+    def user_defined_names(self) -> set[str]:
+        """Names bound by the `imports` and `functions` sections, as far as they can be read as Python."""
+        names: set[str] = set()
+        for section in (self.manifest.imports, self.manifest.functions):
+            for block in [section] if isinstance(section, str) else section:
+                try:
+                    tree = ast.parse(block)
+                except SyntaxError:
+                    # i.e. a function with shell lines. Its name cannot be known before it is transformed
+                    continue
+                for node in tree.body:
+                    if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                        names.add(node.name)
+                    elif isinstance(node, ast.Import | ast.ImportFrom):
+                        names.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+                    elif isinstance(node, ast.Assign):
+                        names.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        return names
+
+    def unique_name(self, name: str, source: str = "") -> str:
+        """Reserves a Python name for the generated module: `name`, or `name_2`, `name_3`, ... when it is taken.
+
+        Args:
+            name (str): The identifier to reserve.
+            source (str): Where a function with this name comes from in the manifest, i.e. `commands.db.create`.
+        """
+        unique, count = name, 1
+        while unique in self.taken_names:
+            count += 1
+            unique = f"{name}_{count}"
+        self.taken_names.add(unique)
+        if source:
+            self.functions[unique] = source
+        return unique
+
+    def command_func_name(self, command: Command) -> str:
+        """Name of the Python function generated for a command"""
+        if command.name not in self.command_functions:
+            self.command_functions[command.name] = self.unique_name(
+                self.parser.get_command_func_name(command), source=f"commands.{command.name}"
+            )
+        return self.command_functions[command.name]
 
     def _merge_command_template(self, command: Command) -> None:
         """Merge command with its template if specified."""
@@ -387,4 +446,10 @@ def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Command
     """
     commander = commander_cls(manifest)
     commander.generate_cli()
-    return CLI(name=manifest.name, version=manifest.version, code=commander.cli, requires=manifest.requires)
+    return CLI(
+        name=manifest.name,
+        version=manifest.version,
+        code=commander.cli,
+        requires=manifest.requires,
+        functions=commander.functions,
+    )

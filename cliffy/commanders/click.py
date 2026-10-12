@@ -45,6 +45,7 @@ def show_aliases(ctx, param, value):
     ctx.exit()
 """
         callbacks = self.callbacks_for()
+        self.functions["cli"] = "callbacks"
         self.cli += """
 @click.group(context_settings=CONTEXT_SETTINGS"""
         if "invoke_without_command" not in self.manifest.cli_options:
@@ -93,6 +94,7 @@ def cli({self.parse_callback_param_names(callbacks)}):
         for group in self.groups.values():
             parsed_help = group.help.replace("\n", "") if group.help else ""
             callbacks = self.callbacks_for(group)
+            self.functions[group.var_name] = f"callbacks (group {group.name})"
             self.cli += f"""
 @click.group({self.parse_callback_options(callbacks)}){self.parse_callback_decorators(callbacks)}
 def {group.var_name}({self.parse_callback_param_names(callbacks)}):
@@ -109,7 +111,7 @@ def {group.var_name}({self.parse_callback_param_names(callbacks)}):
         if not command.run:
             return
 
-        parsed_command_func_name = self.click_parser.get_command_func_name(command)
+        parsed_command_func_name = self.command_func_name(command)
         parsed_command_name = self.click_parser.get_parsed_command_name(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""
 
@@ -125,13 +127,13 @@ def {parsed_command_func_name}({self.click_parser.get_param_names(command)}):
             self.cli += f"""
 @cli.command(name={py_str(alias)}, hidden=True)
 {self.click_parser.parse_params(command)}
-def {self.click_parser.get_alias_func_name(command, alias)}({self.click_parser.get_param_names(command)}):
+def {self.alias_func_name(command, alias)}({self.click_parser.get_param_names(command)}):
     {py_str("Alias for " + parsed_command_name)}
 {self.click_parser.parse_command_run(command)}
 """
 
     def add_sub_command(self, command: Command, group: BaseGroup) -> None:
-        parsed_command_func_name = self.click_parser.get_command_func_name(command)
+        parsed_command_func_name = self.command_func_name(command)
         parsed_command_name = self.click_parser.get_parsed_command_name(command)
         parsed_help = command.help.replace("\n", "") if command.help else ""
 
@@ -147,10 +149,17 @@ def {parsed_command_func_name}({self.click_parser.get_param_names(command)}):
             self.cli += f"""
 @{group.var_name}.command(name={py_str(alias)}, hidden=True)
 {self.click_parser.parse_params(command)}
-def {self.click_parser.get_alias_func_name(command, alias)}({self.click_parser.get_param_names(command)}):
+def {self.alias_func_name(command, alias)}({self.click_parser.get_param_names(command)}):
     {py_str("Alias for " + parsed_command_name)}
 {self.click_parser.parse_command_run(command)}
 """
+
+    def alias_func_name(self, command: Command, alias: str) -> str:
+        """Name of the function that is registered under an alias: Click needs one function per command name."""
+        return self.unique_name(
+            self.click_parser.get_alias_func_name(self.command_func_name(command), alias),
+            source=f"commands.{command.name}",
+        )
 
     def add_main_block(self) -> None:
         self.cli += """
@@ -270,7 +279,7 @@ class ClickParser(Parser):
 
         return f"@click.option({', '.join(parts)})"
 
-    def get_alias_func_name(self, command: Command, alias: str) -> str:
+    def get_alias_func_name(self, command_func_name: str, alias: str) -> str:
         """Function name for the copy of a command that is registered under an alias"""
         alias_suffix = re.sub(r"\W", "_", alias)
-        return f"{self.get_command_func_name(command)}_{alias_suffix}"
+        return f"{command_func_name}_{alias_suffix}"
