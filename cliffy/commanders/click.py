@@ -1,18 +1,11 @@
+import ast
 import datetime
 import re
 
-from pybash.transformer import transform as transform_bash
-
 from cliffy.commander import BaseGroup, Commander
-from cliffy.manifest import (
-    CLIManifest,
-    Command,
-    CommandParam,
-    GenericCommandParam,
-    RunBlock,
-    RunBlockList,
-    SimpleCommandParam,
-)
+from cliffy.helper import py_str
+from cliffy.manifest import CLIManifest, Command, CommandParam, GenericCommandParam, SimpleCommandParam
+from cliffy.parser import Parser
 
 
 class ClickCommander(Commander):
@@ -27,7 +20,8 @@ class ClickCommander(Commander):
 
     def add_base_imports(self) -> None:
         self.cli = f"""## Generated {self.manifest.name} on {datetime.datetime.now()}\n"""
-        for imp in self.base_imports:
+        # sorted: a set has no stable order, which made the generated code differ from run to run
+        for imp in sorted(self.base_imports):
             self.cli += imp + "\n"
 
     def add_base_cli(self) -> None:
@@ -35,21 +29,11 @@ class ClickCommander(Commander):
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 """
         if self.aliases_by_commands:
-            self.cli += """
+            self.cli += f"""
 def show_aliases(ctx, param, value):
     if not value:
         return
-    print(\"\"\""""
-            max_command_length = max(len(x) for x in self.aliases_by_commands)
-            self.cli += f"""
-{"Command".ljust(max_command_length + 7)}Aliases
-{"--------".ljust(max_command_length + 7)}--------
-"""
-            for command, alias_list in self.aliases_by_commands.items():
-                self.cli += f"{command.ljust(max_command_length + 7)}"
-                self.cli += ", ".join(alias_list)
-                self.cli += "\n"
-            self.cli += """\"\"\")
+    print({py_str(self.aliases_table())})
     ctx.exit()
 """
         self.cli += """
@@ -57,7 +41,7 @@ def show_aliases(ctx, param, value):
         if self.manifest.cli_options:
             self.cli += f",{self.click_parser.to_args(self.manifest.cli_options)}"
         self.cli += f""")
-@click.version_option('{self.manifest.version}')"""
+@click.version_option({self.manifest.version!r})"""
 
         if self.aliases_by_commands:
             self.cli += """
@@ -65,7 +49,7 @@ def show_aliases(ctx, param, value):
     help='Show command aliases.')"""
         self.cli += f"""
 def cli():
-    \"\"\"{self.manifest.help or ""}\"\"\"
+    {py_str(self.manifest.help)}
     pass
 
 """
@@ -76,14 +60,14 @@ def cli():
             self.cli += f"""
 @click.group()
 def {group.var_name}():
-    \"\"\"{parsed_help}\"\"\"
+    {py_str(parsed_help)}
     pass
 """
 
     def add_group(self, group: BaseGroup) -> None:
         parent_var = group.parent_group.var_name if group.parent_group else "cli"
         self.cli += f"""
-{parent_var}.add_command({group.var_name}, name="{group.short_name}")
+{parent_var}.add_command({group.var_name}, name={py_str(group.short_name)})
 """
 
     def add_root_command(self, command: Command) -> None:
@@ -95,19 +79,19 @@ def {group.var_name}():
         parsed_help = command.help.replace("\n", "") if command.help else ""
 
         self.cli += f"""
-@cli.command(name="{parsed_command_name}")
+@cli.command(name={py_str(parsed_command_name)})
 {self.click_parser.parse_params(command)}
 def {parsed_command_func_name}({self.click_parser.get_param_names(command)}):
-    \"\"\"{parsed_help}\"\"\"
+    {py_str(parsed_help)}
 {self.click_parser.parse_command_run(command)}
 """
 
         for alias in command.aliases:
             self.cli += f"""
-@cli.command(name="{alias}", hidden=True)
+@cli.command(name={py_str(alias)}, hidden=True)
 {self.click_parser.parse_params(command)}
-def {parsed_command_func_name}_{alias}({self.click_parser.get_param_names(command)}):
-    \"\"\"Alias for {parsed_command_name}\"\"\"
+def {self.click_parser.get_alias_func_name(command, alias)}({self.click_parser.get_param_names(command)}):
+    {py_str("Alias for " + parsed_command_name)}
 {self.click_parser.parse_command_run(command)}
 """
 
@@ -117,19 +101,19 @@ def {parsed_command_func_name}_{alias}({self.click_parser.get_param_names(comman
         parsed_help = command.help.replace("\n", "") if command.help else ""
 
         self.cli += f"""
-@{group.var_name}.command(name="{parsed_command_name}")
+@{group.var_name}.command(name={py_str(parsed_command_name)})
 {self.click_parser.parse_params(command)}
 def {parsed_command_func_name}({self.click_parser.get_param_names(command)}):
-    \"\"\"{parsed_help}\"\"\"
+    {py_str(parsed_help)}
 {self.click_parser.parse_command_run(command)}
 """
 
         for alias in command.aliases:
             self.cli += f"""
-@{group.var_name}.command(name="{alias}", hidden=True)
+@{group.var_name}.command(name={py_str(alias)}, hidden=True)
 {self.click_parser.parse_params(command)}
-def {parsed_command_func_name}_{alias}({self.click_parser.get_param_names(command)}):
-    \"\"\"Alias for {parsed_command_name}\"\"\"
+def {self.click_parser.get_alias_func_name(command, alias)}({self.click_parser.get_param_names(command)}):
+    {py_str("Alias for " + parsed_command_name)}
 {self.click_parser.parse_command_run(command)}
 """
 
@@ -140,144 +124,110 @@ if __name__ == "__main__":
 """
 
 
-class ClickParser:
-    def __init__(self, manifest: CLIManifest) -> None:
-        self.manifest = manifest
+class ClickParser(Parser):
+    """Parses manifest params into Click decorators. Everything else is shared with the Typer parser."""
 
-    def parse_run_block(self, script: RunBlock | RunBlockList) -> str:
-        norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
-        if not isinstance(norm_script, str):
-            raise ValueError(f"Invalid script type: {type(norm_script)}")
-        parsed_script: str = transform_bash(norm_script).strip()
-        return "".join(" " * 4 + line + "\n" for line in parsed_script.split("\n"))
+    GENERIC_OPTION_REGEX = re.compile(r"@click\.option\(\s*['\"]--([\w-]+)")
+    GENERIC_ARGUMENT_REGEX = re.compile(r"@click\.argument\(\s*['\"]([\w-]+)['\"]")
 
-    def parse_command_run(self, command: Command) -> str:
-        code = ""
-        if command.pre_run:
-            code += self.parse_run_block(command.pre_run)
-        code += self.parse_run_block(command.run)
-        if command.post_run:
-            code += self.parse_run_block(command.post_run)
-        return code
+    def _combined_params(self, command: Command) -> list[CommandParam | SimpleCommandParam | GenericCommandParam]:
+        return self.manifest.global_params + command.params
 
     def get_param_names(self, command: Command) -> str:
         """Get parameter names for function definition"""
+        names: list[str] = []
+        for param in self._combined_params(command):
+            if isinstance(param, GenericCommandParam):
+                # a raw decorator: the name can only be read back from its first declaration
+                match = self.GENERIC_OPTION_REGEX.search(param.root) or self.GENERIC_ARGUMENT_REGEX.search(param.root)
+                if match:
+                    names.append(self.normalize_param_name(match.group(1)).lower())
+            else:
+                # Click lowercases the names it passes to the command function
+                names.append(self.normalize_param_name(param.name).lower())
 
-        params = ""
-        decorators = self.parse_params(command)
-
-        option_regex = re.compile(r"@click\.option\(['\"](--\w+)['\"]")
-        argument_regex = re.compile(r"@click\.argument\(['\"](\w+)['\"]")
-
-        for decorator in decorators.split("\n"):
-            option_match = option_regex.search(decorator)
-            argument_match = argument_regex.search(decorator)
-
-            if option_match:
-                param_name = option_match.group(1).lstrip("-").replace("-", "_")
-                params += f"{param_name}, "
-            elif argument_match:
-                param_name = argument_match.group(1).replace("-", "_")
-                params += f"{param_name}, "
-
-        return params.rstrip(", ")
+        return ", ".join(names)
 
     def parse_params(self, command: Command) -> str:
         """Parse parameters into Click decorators"""
-        if not command.params:
-            return ""
-
         decorators = []
-        for param in self.manifest.global_params + command.params:
+        for param in self._combined_params(command):
             if isinstance(param, GenericCommandParam):
-                name = param.root.strip()
-                decorators.append(name)
+                decorators.append(param.root.strip())
             elif isinstance(param, CommandParam):
-                decorator = self._build_click_option(param)
-                decorators.append(decorator)
+                decorators.append(self._build_click_option(param))
             elif isinstance(param, SimpleCommandParam):
-                decorator = self._parse_simple_param(param)
-                decorators.append(decorator)
+                decorators.append(self._parse_simple_param(param))
 
         return "\n".join(decorators)
 
+    def _option_declarations(self, name: str, short: str | None, param_type: str) -> list[str]:
+        """--dry-run with short d -> ['--dry-run', '-d']. A bool is a `--flag/--no-flag` switch, like in Typer."""
+        self.normalize_param_name(name)  # validates
+        long_name = name.strip().lstrip("-")
+        declaration = f"--{long_name}/--no-{long_name}" if param_type == "bool" else f"--{long_name}"
+        declarations = [repr(declaration)]
+        if short and short.strip():
+            declarations.append(repr("-" + short.strip().lstrip("-")))
+        return declarations
+
     def _parse_simple_param(self, param: SimpleCommandParam) -> str:
         """Parse SimpleCommandParam into Click decorator"""
-        name = next(iter(param.root.keys()))
-        param_spec = next(iter(param.root.values()))
+        param_type = param.type
+        default_value = param.default
 
-        # Split type and default value if present
-        type_parts = param_spec.split("=")
-        param_type = type_parts[0].rstrip("!")
-        default_value = type_parts[1] if len(type_parts) > 1 else None
-
-        # Check if required
-        required = param_spec.endswith("!")
-
-        # Determine if option or argument based on name prefix
-        if name.startswith("-"):
-            # Strip leading dashes for option name
-            option_name = name.lstrip("-")
-            option_parts = [f"@click.option('--{option_name}'"]
-
-            if param_type:
-                option_parts.append(f"type={param_type}")
-            if required:
-                option_parts.append("required=True")
+        if param.is_option():
+            parts = self._option_declarations(param.name, param.short, param_type)
+            if param_type and param_type != "bool":
+                parts.append(f"type={param_type}")
+            if param.required:
+                parts.append("required=True")
             if default_value is not None:
-                if param_type == "str":
-                    option_parts.append(f"default='{default_value}'")
-                else:
-                    option_parts.append(f"default={default_value}")
+                parts.append(f"default={self._simple_default(param_type, default_value)}")
 
-            return ", ".join(option_parts) + ")"
-        else:
-            # Regular argument
-            arg_parts = [f"@click.argument('{name}'"]
-            if param_type:
-                arg_parts.append(f"type={param_type}")
-            if default_value is not None:
-                if param_type == "str":
-                    arg_parts.append(f"default='{default_value}'")
-                else:
-                    arg_parts.append(f"default={default_value}")
+            return f"@click.option({', '.join(parts)})"
 
-            return ", ".join(arg_parts) + ")"
+        self.normalize_param_name(param.name)  # validates
+        parts = [repr(param.name.strip())]
+        if param_type:
+            parts.append(f"type={param_type}")
+        if default_value is not None:
+            parts.append(f"default={self._simple_default(param_type, default_value)}")
+
+        return f"@click.argument({', '.join(parts)})"
+
+    @staticmethod
+    def _simple_default(param_type: str, default_value: str) -> str:
+        """A str default may be written bare (`str = World`) or as a literal (`str = "World"`); the rest is Python."""
+        if param_type != "str":
+            return default_value
+
+        try:
+            literal = ast.literal_eval(default_value)
+        except (ValueError, SyntaxError):
+            return repr(default_value)
+        return repr(literal) if isinstance(literal, str) else repr(default_value)
 
     def _build_click_option(self, param: CommandParam) -> str:
         """Build Click option decorator from CommandParam"""
-        option_parts = [f"@click.option('--{param.name}'"]
+        parts = self._option_declarations(param.name, param.short, param.type)
 
-        if param.short:
-            option_parts.append(f"'-{param.short}'")
-
-        if param.type:
-            option_parts.append(f"type={param.type}")
+        if param.type and param.type != "bool":
+            parts.append(f"type={param.type}")
 
         if param.required:
-            option_parts.append("required=True")
+            parts.append("required=True")
 
         if param.default is not None:
-            if param.type == "str":
-                option_parts.append(f"default='{param.default}'")
-            else:
-                option_parts.append(f"default={param.default}")
+            # a str default is data, not an expression: emit it as a string literal
+            parts.append(f"default={str(param.default)!r}" if param.type == "str" else f"default={param.default}")
 
         if param.help:
-            option_parts.append(f"help='{param.help}'")
+            parts.append(f"help={param.help!r}")
 
-        return ", ".join(option_parts) + ")"
+        return f"@click.option({', '.join(parts)})"
 
-    def get_command_func_name(self, command: Command) -> str:
-        """Get valid Python function name for command"""
-        if not command.name.replace(".", "").replace("-", "").replace("_", "").replace("|", "").isalnum():
-            raise ValueError(f"Invalid command name: {command.name}")
-        return command.name.replace(".", "_").replace("-", "_").replace("|", "_")
-
-    def get_parsed_command_name(self, command: Command) -> str:
-        """Get command name for Click"""
-        return command.name.split(".")[-1] if "." in command.name else command.name
-
-    def to_args(self, d: dict) -> str:
-        s = "".join(f' {k}="{v}",' if isinstance(v, str) else f" {k}={v}," for k, v in d.items())
-        return s[:-1]
+    def get_alias_func_name(self, command: Command, alias: str) -> str:
+        """Function name for the copy of a command that is registered under an alias"""
+        alias_suffix = re.sub(r"\W", "_", alias)
+        return f"{self.get_command_func_name(command)}_{alias_suffix}"

@@ -102,3 +102,44 @@ def test_generate_html(sample_manifest, tmp_path):
     assert "<em>Aliases: sc</em>" in content
     assert "<pre><code>sample_command --param1 value</code></pre>" in content
     assert "<p>Sample example</p>" in content
+
+
+@pytest.fixture
+def markup_manifest():
+    return CLIManifest(
+        name="markup-cli",
+        version="1.0.0",
+        help="Reads <stdin> & writes",
+        commands={
+            "copy": Command(
+                help="Copies <src> to <dst>",
+                params=[CommandParam(name="--mode", type="str", help="<script>alert(1)</script>", default="a&b")],
+                aliases=["cp"],
+                run=RunBlock("test"),
+            )
+        },
+        examples=["copy a b", Example(command="copy <src> <dst>", description="1 < 2")],
+    )
+
+
+def test_generate_html_escapes_manifest_text(markup_manifest, tmp_path):
+    DocGenerator(markup_manifest).generate("html", str(tmp_path))
+    content = (tmp_path / "markup-cli.html").read_text()
+
+    assert "<script>" not in content
+    assert "<p>Reads &lt;stdin&gt; &amp; writes</p>" in content
+    assert "<p>Copies &lt;src&gt; to &lt;dst&gt;</p>" in content
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in content
+    assert "(default: a&amp;b)" in content
+    assert "<pre><code>copy &lt;src&gt; &lt;dst&gt;</code></pre>" in content
+    assert "<p>1 &lt; 2</p>" in content
+
+
+@pytest.mark.parametrize("format", ["md", "rst", "html"])
+def test_example_without_description(markup_manifest, tmp_path, format):
+    DocGenerator(markup_manifest).generate(format, str(tmp_path))
+    content = (tmp_path / f"markup-cli.{format}").read_text()
+
+    assert "copy a b" in content
+    # an example given as a plain string has no description
+    assert "None" not in content
