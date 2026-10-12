@@ -4,7 +4,7 @@ import subprocess
 import typer
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="Hello world!")
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, epilog="Examples:\n\n$ hello shell  # Say hello from a shell command.\n\n$ hello python  # Say hello from Python.", help="Hello world!")
 __version__ = "0.1.0"
 __cli_name__ = "hello"
 

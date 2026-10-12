@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import ItemsView, Iterator, ValuesView
 from contextlib import contextmanager
+from typing import Any
 
 import pybash
 from pydantic import BaseModel
@@ -325,6 +326,46 @@ class Commander(ABC):
         # imported only by a CLI that uses it, so that the others read as plain subprocess calls
         if SHELL_RUNTIME_REFERENCE.search(self.cli, base_imports_end):
             self.cli = self.cli[:base_imports_end] + SHELL_RUNTIME_IMPORT + self.cli[base_imports_end:]
+
+    # A rich markup tag, as rich.markup finds it: `[bold]`, `[/]`, `[#ff0000]`, `[@click]`
+    MARKUP_TAG = re.compile(r"(\\*)(\[[a-z#/@][^[]*?])")
+
+    def examples_epilog(self, escape_markup: bool = False) -> str:
+        """Text for the end of the CLI's `--help`: the manifest's `examples`, one paragraph each.
+
+        `$ notes add "buy milk"  # Add a note.` A paragraph per example, because the help renderers
+        (Click, rich-click and Typer) agree on nothing else: they join or re-wrap the lines within one.
+
+        Args:
+            escape_markup: Typer reads `[...]` in help text as rich markup and would drop `[home]` from
+                `--tag [home]`. An example is a command line to copy: it is shown as written.
+        """
+        lines = []
+        for example in self.manifest.examples:
+            command, description = (
+                (example, None) if isinstance(example, str) else (example.command, example.description)
+            )
+            line = "$ " + " ".join(command.splitlines()).strip()
+            if description and description.strip():
+                line += "  # " + " ".join(description.split())
+            lines.append(line)
+        if not lines:
+            return ""
+
+        epilog = "\n\n".join(["Examples:", *lines])
+        if escape_markup:
+            epilog = self.MARKUP_TAG.sub(lambda tag: f"{tag.group(1) * 2}\\{tag.group(2)}", epilog)
+        return epilog
+
+    def cli_options_with_examples(self, escape_markup: bool = False) -> dict[str, Any]:
+        """`cli_options` with the examples in `epilog`, after an epilog the manifest sets itself."""
+        options = dict(self.manifest.cli_options)
+        if examples := self.examples_epilog(escape_markup):
+            own_epilog = options.get("epilog")
+            options["epilog"] = (
+                f"{own_epilog}\n\n{examples}" if isinstance(own_epilog, str) and own_epilog else examples
+            )
+        return options
 
     def header(self) -> str:
         """First line of the generated code. It holds nothing that changes between two runs, such as the time:

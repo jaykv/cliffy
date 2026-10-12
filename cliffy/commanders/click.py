@@ -72,8 +72,8 @@ def show_aliases(ctx, param, value):
 @click.group(context_settings=CONTEXT_SETTINGS"""
         if "invoke_without_command" not in self.manifest.cli_options:
             self.cli += self.parse_callback_options(callbacks, leading=", ")
-        if self.manifest.cli_options:
-            self.cli += f",{self.click_parser.to_args(self.manifest.cli_options)}"
+        if cli_options := self.cli_options_with_examples():
+            self.cli += f",{self.click_parser.to_args(cli_options)}"
         self.cli += f""")
 @click.version_option({self.manifest.version!r})"""
 

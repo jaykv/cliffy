@@ -14,7 +14,7 @@ def show_aliases(ctx, param, value):
     print("\nCommand     Aliases\n--------    --------\nhello       hl\n")
     ctx.exit()
 
-@click.group(context_settings=CONTEXT_SETTINGS)
+@click.group(context_settings=CONTEXT_SETTINGS, epilog="Examples:\n\n$ clickhello hello  # Print \"world\".\n\n$ clickhello hl")
 @click.version_option('0.1.0')
 @click.option('--aliases', is_flag=True, callback=show_aliases, expose_value=False, is_eager=True,
     help='Show command aliases.')
