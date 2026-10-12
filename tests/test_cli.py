@@ -1,13 +1,15 @@
 import os
 import re
 from datetime import datetime
-from unittest.mock import patch
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
 from cliffy.cli import (
     build_command,
     cli,
+    docs_command,
     init_command,
     load_command,
     remove_command,
@@ -17,6 +19,7 @@ from cliffy.cli import (
     validate_command,
 )
 from cliffy.homer import get_metadata
+from cliffy.loader import Loader
 from cliffy.manifest import CLIMetadata
 
 ANSI_RE = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
@@ -89,7 +92,7 @@ def test_load_valid_manifest(isolated_fs):
 def test_update_nonexistent_cli():
     runner = CliRunner()
     result = runner.invoke(update_command, ["nonexistent-cli"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "not found" in result.output
 
 
@@ -103,7 +106,7 @@ def test_init_command(isolated_fs):
 def test_remove_command():
     runner = CliRunner()
     result = runner.invoke(remove_command, ["nonexistent-cli"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "not loaded" in result.output
 
 
@@ -121,7 +124,7 @@ def test_validate_invalid_manifest(isolated_fs):
 def test_build_command(isolated_fs):
     runner = CliRunner()
     result = runner.invoke(build_command, ["nonexistent-cli"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert "not loaded" in result.output
 
 
@@ -329,3 +332,112 @@ def test_update_command(isolated_fs):
 
     cli_metadata = get_metadata("test-cli-update")
     assert cli_metadata and cli_metadata.version == "5.0.2"
+
+
+def test_validate_reports_generation_errors_with_exit_code(isolated_fs):
+    # the manifest is well-formed, but no code can be generated for the command name
+    with open("invalid.yaml", "w") as f:
+        f.write("name: t\nversion: '1'\ncommands:\n  'a b': print(1)\n")
+
+    result = CliRunner().invoke(validate_command, ["invalid.yaml"])
+
+    assert "is invalid: Invalid command name: a b" in result.output
+    assert result.exit_code == 1
+
+
+def test_validate_valid_manifest(isolated_fs):
+    with open("valid.yaml", "w") as f:
+        f.write("name: t\nversion: '1'\ncommands:\n  a: print(1)\n")
+
+    result = CliRunner().invoke(validate_command, ["valid.yaml"])
+
+    assert "is valid" in result.output
+    assert result.exit_code == 0
+
+
+def test_init_invalid_name(isolated_fs):
+    # `--raw` wrote a manifest that `cli load` could never accept
+    result = CliRunner().invoke(init_command, ["my cli", "--raw"])
+
+    assert result.exit_code == 1
+    assert "invalid CLI name" in result.output
+    assert os.listdir(".") == []
+
+
+def test_init_template_name_error_is_not_a_traceback(isolated_fs):
+    result = CliRunner().invoke(init_command, ["my-cli"])
+
+    assert result.exit_code == 1
+    assert "CLI name must be a valid Python identifier" in result.output
+    assert isinstance(result.exception, SystemExit)
+    assert os.listdir(".") == []
+
+
+def test_init_template_is_a_loadable_name(isolated_fs):
+    # every name `init` accepts has to be accepted by `load` too
+    result = CliRunner().invoke(init_command, ["my-cli", "--raw"])
+
+    assert result.exit_code == 0
+    assert "name: my-cli" in Path("my-cli.yaml").read_text()
+
+
+def test_docs_for_loaded_cli(isolated_fs):
+    runner = CliRunner()
+    with open("docs-cli.yaml", "w") as f:
+        f.write(
+            "name: test-cli-docs\nversion: 1.2.3\nhelp: Documented\n"
+            "vars:\n  greeting: hello\ncommands:\n  greet:\n    help: Says {{ greeting }}\n    run: print(1)\n"
+        )
+    assert runner.invoke(load_command, ["docs-cli.yaml"]).exit_code == 0
+
+    try:
+        result = runner.invoke(docs_command, ["test-cli-docs"])
+    finally:
+        runner.invoke(remove_command, ["test-cli-docs"])
+
+    assert result.exit_code == 0, result.output
+    assert "+ test-cli-docs.md" in result.output
+    content = Path("test-cli-docs.md").read_text()
+    assert "# test-cli-docs v1.2.3" in content
+    assert "Says hello" in content
+
+
+def test_docs_for_unknown_cli(isolated_fs):
+    result = CliRunner().invoke(docs_command, ["nonexistent-cli"])
+
+    assert result.exit_code == 1
+    assert "not loaded" in result.output
+
+
+def test_build_loaded_cli_with_dashed_name(isolated_fs):
+    runner = CliRunner()
+    with open("dashed.yaml", "w") as f:
+        f.write("name: test-cli-dashed\nversion: '1'\ncommands:\n  a: print(1)\n")
+    assert runner.invoke(load_command, ["dashed.yaml"]).exit_code == 0
+
+    try:
+        # the module of a loaded CLI is stored as test_cli_dashed.py: the build looked for test-cli-dashed.py
+        with patch("cliffy.cli.build_cli") as mock_build_cli:
+            mock_build_cli.return_value.exit_code = 0
+            result = runner.invoke(build_command, ["test-cli-dashed"])
+        script_path = mock_build_cli.call_args.kwargs["script_path"]
+        assert script_path == Loader.get_cli_path("test-cli-dashed")
+        assert os.path.isfile(script_path)
+    finally:
+        runner.invoke(remove_command, ["test-cli-dashed"])
+
+    assert result.exit_code == 0, result.output
+
+
+def test_build_failure_exit_code(isolated_fs):
+    with open("fails.yaml", "w") as f:
+        f.write("name: fails\nversion: '1'\ncommands:\n  a: print(1)\n")
+
+    built_cli = MagicMock()
+    built_cli.name = "fails"
+    build_result = MagicMock(exit_code=1, output="pip said no", exception=None)
+    with patch("cliffy.cli.build_cli_from_manifest", return_value=(built_cli, build_result)):
+        result = CliRunner().invoke(build_command, ["fails.yaml"])
+
+    assert "fails build failed" in result.output
+    assert result.exit_code == 1

@@ -85,7 +85,7 @@ def test_cli_load_fails(cli_name):
 def test_cli_build_fails(cli_name):
     runner = CliRunner()
     result = runner.invoke(build_command, [f"{cli_name}", "-o", "test-builds"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert f"~ {cli_name} not loaded" in result.output
 
 

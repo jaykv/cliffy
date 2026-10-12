@@ -3,6 +3,7 @@ from collections.abc import Generator
 from tempfile import NamedTemporaryFile
 from typing import cast
 
+from click.testing import CliRunner as ClickCliRunner
 from click.testing import Result
 from pybash import transformer
 from pydantic import BaseModel, field_validator
@@ -37,20 +38,27 @@ class ShellScript(BaseModel):
 
 class Tester:
     def __init__(self, manifest_path: str) -> None:
-        with open(manifest_path) as manifest_io:
+        with open(manifest_path, encoding="utf-8") as manifest_io:
             self.T = Transformer(manifest_io)
 
-        with NamedTemporaryFile(mode="w", prefix=f"{self.T.cli.name}_test_", suffix=".py", delete=False) as runner_file:
-            runner_file.write(self.T.cli.code)
-            runner_file.flush()
-            self.module = import_module_from_path(runner_file.name)
+        with NamedTemporaryFile(
+            mode="w", prefix=f"{self.T.cli.name}_test_", suffix=".py", delete=False, encoding="utf-8"
+        ) as runner_file:
             TEMP_FILES.append(runner_file)
+            try:
+                runner_file.write(self.T.cli.code)
+                runner_file.flush()
+                self.module = import_module_from_path(runner_file.name)
+            finally:
+                # also when the generated code fails to import
+                delete_temp_files()
 
         self.module_funcs = inspect.getmembers(self.module, inspect.isfunction)
-        delete_temp_files()
 
-        self.runner = CliRunner()
-        self.parser = Parser(cast(CLIManifest, self.T.manifest))
+        manifest = cast(CLIManifest, self.T.manifest)
+        # typer vendors its own click: its runner cannot invoke a CLI that was generated for click
+        self.runner: CliRunner | ClickCliRunner = ClickCliRunner() if manifest.use_click else CliRunner()
+        self.parser = Parser(manifest)
 
         self.test_pipeline: list[ShellScript | TestCase] = []
         self.total_cases = 0
