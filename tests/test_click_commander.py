@@ -57,8 +57,9 @@ def test_parse_command_with_params():
     command = manifest.commands["greet"]
     parsed_params = parser.parse_params(command)
 
-    assert "--name" in parsed_params
-    assert "type=str" in parsed_params
+    # an explicit param without `--` is a positional argument, as it is for Typer (it used to become `--name`)
+    assert "@click.argument('name', type=str, help='Name to greet')" in parsed_params
+    assert "--name" not in parsed_params
     assert "--count" in parsed_params
     assert "type=int" in parsed_params
 

@@ -350,7 +350,7 @@ def test_validate_reports_generation_errors_with_exit_code(isolated_fs):
 
     result = CliRunner().invoke(validate_command, ["invalid.yaml"])
 
-    assert "is invalid: Invalid command name: a b" in result.output
+    assert "is invalid: commands.a b: Invalid command name: a b" in result.output
     assert result.exit_code == 1
 
 

@@ -4,6 +4,7 @@ import ast
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import ItemsView, Iterator, ValuesView
+from contextlib import contextmanager
 
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
@@ -261,7 +262,16 @@ class Commander(ABC):
         for group in self.groups.values():
             self.add_group(group)
             for subcommand in group.commands:
-                self.add_sub_command(subcommand, group)
+                with self.reported_against(subcommand):
+                    self.add_sub_command(subcommand, group)
+
+    @contextmanager
+    def reported_against(self, command: Command) -> Iterator[None]:
+        """Names the command in the manifest that a code generation error belongs to"""
+        try:
+            yield
+        except ValueError as e:
+            raise ValueError(f"commands.{command.name}: {e}") from e
 
     def generate_cli(self) -> None:
         self.add_base_imports()
@@ -277,7 +287,8 @@ class Commander(ABC):
 
     def add_root_commands(self) -> None:
         for root_command in self.root_group.commands:
-            self.add_root_command(root_command)
+            with self.reported_against(root_command):
+                self.add_root_command(root_command)
 
     def add_imports(self) -> None:
         if not self.manifest.imports:
@@ -315,7 +326,8 @@ class Commander(ABC):
     def add_command(self, command: Command) -> None:
         if "." in command.name:
             group = command.name.rsplit(".", 1)[0]
-            self.add_sub_command(command, self.groups[group])
+            with self.reported_against(command):
+                self.add_sub_command(command, self.groups[group])
 
     def add_greedy_commands(self) -> None:
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""

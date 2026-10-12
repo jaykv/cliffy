@@ -116,7 +116,7 @@ def {group.var_name}({self.parse_callback_param_names(callbacks)}):
         parsed_help = clean_help(command.help)
 
         self.cli += f"""
-@cli.command(name={py_str(parsed_command_name)})
+@cli.command(name={py_str(parsed_command_name)}{self.click_parser.get_parsed_config(command)})
 {self.click_parser.parse_params(command)}
 def {parsed_command_func_name}({self.click_parser.get_param_names(command)}):
     {py_str(parsed_help)}
@@ -133,12 +133,16 @@ def {self.alias_func_name(command, alias)}({self.click_parser.get_param_names(co
 """
 
     def add_sub_command(self, command: Command, group: BaseGroup) -> None:
+        if not command.run:
+            # a script-less command only carries the help of the group with the same name
+            return
+
         parsed_command_func_name = self.command_func_name(command)
         parsed_command_name = self.click_parser.get_parsed_command_name(command)
         parsed_help = clean_help(command.help)
 
         self.cli += f"""
-@{group.var_name}.command(name={py_str(parsed_command_name)})
+@{group.var_name}.command(name={py_str(parsed_command_name)}{self.click_parser.get_parsed_config(command)})
 {self.click_parser.parse_params(command)}
 def {parsed_command_func_name}({self.click_parser.get_param_names(command)}):
     {py_str(parsed_help)}
@@ -202,20 +206,106 @@ class ClickParser(Parser):
 
     def parse_param_list(self, params: list[ParamBlock]) -> str:
         """Parse a list of parameters into Click decorators"""
-        decorators = []
-        for param in params:
-            if isinstance(param, GenericCommandParam):
-                decorators.append(param.root.strip())
-            elif isinstance(param, CommandParam):
-                decorators.append(self._build_click_option(param))
-            elif isinstance(param, SimpleCommandParam):
-                decorators.append(self._parse_simple_param(param))
+        return "\n".join(self.parse_param(param) for param in params)
 
-        return "\n".join(decorators)
+    def parse_param(self, param: ParamBlock) -> str:  # type: ignore[override]
+        """Parse one param into a Click decorator"""
+        if isinstance(param, GenericCommandParam):
+            decorator = param.root.strip()
+            if not decorator.startswith("@"):
+                raise ValueError(
+                    f"param `{decorator}` is a function signature entry, which only the Typer backend can use. "
+                    "With `use_click: true` a string param has to be a Click decorator, "
+                    "i.e. \"@click.option('--name', ...)\"."
+                )
+            return decorator
+
+        if isinstance(param, SimpleCommandParam):
+            if "typer." in param.raw_type:
+                raise ValueError(
+                    f"param `{param.name}` is a Typer definition (`{param.raw_type.strip()}`), which the Click "
+                    "backend cannot use. Write it as a Click decorator string, "
+                    "i.e. \"@click.option('--name', ...)\", or remove `use_click`."
+                )
+            default, required, help_text = param.default, param.required, ""
+        else:
+            default, required, help_text = param.default, param.required, param.help
+            if default is not None:
+                default = str(default)
+
+        param_type = param.type.strip()
+        if param_type in self.manifest.types:
+            definition = self.manifest.types[param_type].strip()
+            if definition.startswith("@click."):
+                # a complete Click decorator: used as written, like a Typer definition is for the Typer backend
+                return definition
+            if "typer." in definition:
+                raise ValueError(
+                    f"param `{param.name}` uses types.{param_type}, which is a Typer definition (`{definition}`). "
+                    f"With `use_click: true` a type is a plain type such as `{param_type}: int`, or a Click decorator "
+                    f"such as `{param_type}: \"@click.option('--name', ...)\"`."
+                )
+            # `N: int = 5` names a type and a default. A default on the param itself wins.
+            param_type, _, type_default = (part.strip() for part in definition.partition("="))
+            if default is None and type_default:
+                default = type_default
+
+        click_type, multiple = self._click_type(param_type)
+        if default is not None:
+            if isinstance(param, CommandParam):
+                # a str default of an explicit param is data, not an expression: emit it as a string literal
+                default = repr(default) if click_type == "str" else default
+            else:
+                default = self._simple_default(click_type, default)
+
+        self.normalize_param_name(param.name)  # validates
+        if param.is_option():
+            parts = self._option_declarations(param.name, param.short, click_type)
+            if click_type and click_type != "bool":
+                parts.append(f"type={click_type}")
+            if multiple:
+                parts.append("multiple=True")
+            if required:
+                parts.append("required=True")
+            if default is not None:
+                parts.append(f"default={default}")
+            if help_text:
+                parts.append(f"help={help_text!r}")
+            return f"@click.option({', '.join(parts)})"
+
+        parts = [repr(param.name.strip())]
+        if click_type:
+            parts.append(f"type={click_type}")
+        if multiple:
+            parts.append("nargs=-1")
+            if required:
+                parts.append("required=True")
+        elif not required and default is None:
+            # an argument is optional unless it is marked with `!` or `required`, as in Typer
+            parts.append("required=False")
+        if default is not None:
+            parts.append(f"default={default}")
+        if help_text:
+            parts.append(f"help={help_text!r}")
+        return f"@click.argument({', '.join(parts)})"
+
+    OPTIONAL_TYPE = re.compile(r"(?:typing\.)?Optional\[(.+)\]|(.+?)\s*\|\s*None|None\s*\|\s*(.+)")
+    LIST_TYPE = re.compile(r"(?:typing\.)?[Ll]ist\[(.+)\]")
+
+    def _click_type(self, param_type: str) -> tuple[str, bool]:
+        """Annotation -> (Click type, takes several values). Optional[int] -> int, list[str] -> str, several."""
+        click_type = param_type.strip()
+        if match := self.OPTIONAL_TYPE.fullmatch(click_type):
+            click_type = next(group for group in match.groups() if group).strip()
+        multiple = False
+        if match := self.LIST_TYPE.fullmatch(click_type):
+            click_type, multiple = match.group(1).strip(), True
+        if click_type in ("Any", "typing.Any"):
+            click_type = ""
+        return click_type, multiple
 
     def _option_declarations(self, name: str, short: str | None, param_type: str) -> list[str]:
         """--dry-run with short d -> ['--dry-run', '-d']. A bool is a `--flag/--no-flag` switch, like in Typer."""
-        self.normalize_param_name(name)  # validates
         long_name = name.strip().lstrip("-")
         declaration = f"--{long_name}/--no-{long_name}" if param_type == "bool" else f"--{long_name}"
         declarations = [repr(declaration)]
@@ -225,28 +315,7 @@ class ClickParser(Parser):
 
     def _parse_simple_param(self, param: SimpleCommandParam) -> str:
         """Parse SimpleCommandParam into Click decorator"""
-        param_type = param.type
-        default_value = param.default
-
-        if param.is_option():
-            parts = self._option_declarations(param.name, param.short, param_type)
-            if param_type and param_type != "bool":
-                parts.append(f"type={param_type}")
-            if param.required:
-                parts.append("required=True")
-            if default_value is not None:
-                parts.append(f"default={self._simple_default(param_type, default_value)}")
-
-            return f"@click.option({', '.join(parts)})"
-
-        self.normalize_param_name(param.name)  # validates
-        parts = [repr(param.name.strip())]
-        if param_type:
-            parts.append(f"type={param_type}")
-        if default_value is not None:
-            parts.append(f"default={self._simple_default(param_type, default_value)}")
-
-        return f"@click.argument({', '.join(parts)})"
+        return self.parse_param(param)
 
     @staticmethod
     def _simple_default(param_type: str, default_value: str) -> str:
@@ -260,24 +329,16 @@ class ClickParser(Parser):
             return repr(default_value)
         return repr(literal) if isinstance(literal, str) else repr(default_value)
 
-    def _build_click_option(self, param: CommandParam) -> str:
-        """Build Click option decorator from CommandParam"""
-        parts = self._option_declarations(param.name, param.short, param.type)
+    def get_parsed_config(self, command: Command) -> str:
+        """Command `config` as keyword arguments of Click's `command()`, with a leading comma when there are any."""
+        if not command.config:
+            return ""
 
-        if param.type and param.type != "bool":
-            parts.append(f"type={param.type}")
-
-        if param.required:
-            parts.append("required=True")
-
-        if param.default is not None:
-            # a str default is data, not an expression: emit it as a string literal
-            parts.append(f"default={str(param.default)!r}" if param.type == "str" else f"default={param.default}")
-
-        if param.help:
-            parts.append(f"help={param.help!r}")
-
-        return f"@click.option({', '.join(parts)})"
+        configured_options = command.config.model_dump(exclude_unset=True)
+        if "rich_help_panel" in configured_options:
+            # rich-click calls the panel a command is listed under `panel`
+            configured_options["panel"] = configured_options.pop("rich_help_panel")
+        return f",{self.to_args(configured_options)}" if configured_options else ""
 
     def get_alias_func_name(self, command_func_name: str, alias: str) -> str:
         """Function name for the copy of a command that is registered under an alias"""
