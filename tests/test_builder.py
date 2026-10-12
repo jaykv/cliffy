@@ -22,6 +22,7 @@ from cliffy.builder import (
 )
 from cliffy.cli import cli
 from cliffy.helper import TEMP_FILES
+from cliffy.transformer import Transformer
 
 EXAMPLES = Path(__file__).parent.parent / "examples" / "blueprints"
 TYPER_CODE = "## Generated demo on 2026-01-01 00:00:00\nfrom typing import Optional, Any\nimport typer\n"
@@ -74,6 +75,17 @@ def run_artifact(
     )
 
 
+def pinned(package: str) -> str:
+    """The requirement the builder adds for a framework: pinned to the installed version, when it is installed.
+
+    rich-click is an optional extra, so in an install without extras it is requested without a pin.
+    """
+    try:
+        return f"{package}=={metadata.version(package)}"
+    except metadata.PackageNotFoundError:
+        return package
+
+
 def test_build_requirements_pin_the_framework():
     requirements = get_build_requirements(TYPER_CODE, ["requests>=2", "six"])
 
@@ -82,8 +94,39 @@ def test_build_requirements_pin_the_framework():
     assert requirements[2].startswith("typer==")
 
     click_requirements = get_build_requirements(CLICK_CODE, [])
-    assert len(click_requirements) == 1
-    assert click_requirements[0].startswith("rich-click==")
+    assert click_requirements == [pinned("rich-click")]
+
+
+GENERATED_CLICK_IMPORT = "try:\n    import rich_click as click\nexcept ImportError:  # fallback\n    import click\n"
+
+
+def test_generated_click_code_is_built_with_rich_click(tmp_path):
+    # generated Click code prefers rich_click and falls back to click. The build ships rich-click, which
+    # brings the Click it works with: click is not listed (and not pinned) a second time
+    manifest_path = tmp_path / "clicky.yaml"
+    manifest_path.write_text("name: clicky\nversion: '1'\nuse_click: true\ncommands:\n  a: print(1)\n")
+    with open(manifest_path) as manifest_io:
+        code = Transformer(manifest_io).cli.code
+    assert GENERATED_CLICK_IMPORT.split("#")[0] in code
+
+    assert get_build_requirements(code, []) == [pinned("rich-click")]
+    assert get_build_requirements(GENERATED_CLICK_IMPORT, ["requests"]) == ["requests", pinned("rich-click")]
+
+
+@pytest.mark.parametrize(
+    "code, deps, expected_packages",
+    [
+        ("import click\n", [], ["click"]),
+        ("import typer\nimport click\n", [], ["typer"]),
+        ("import rich_click as click\n", [], ["rich-click"]),
+        (GENERATED_CLICK_IMPORT, ["rich-click>=1.9"], []),
+        (GENERATED_CLICK_IMPORT, ["click>=8.2"], ["rich-click"]),
+        ("print('import click')\n", [], []),
+    ],
+    ids=["plain_click", "typer_and_click", "rich_click", "users_rich_click_pin", "users_click_pin", "not_an_import"],
+)
+def test_framework_detection(code, deps, expected_packages):
+    assert get_build_requirements(code, deps) == [*deps, *(pinned(package) for package in expected_packages)]
 
 
 def test_build_requirements_keep_the_users_framework_pin():
@@ -306,7 +349,7 @@ def test_build_installs_the_framework_the_cli_imports(tmp_path, manifest, framew
     pip_args = mock_pip_run.call_args.args[0]
     assert pip_args[pip_args.index("--target") + 1] != str(output_dir)
     # only the framework of the generated code, pinned to the version installed next to cliffy
-    assert pip_requirements(mock_pip_run) == [f"{framework}=={metadata.version(framework)}"]
+    assert pip_requirements(mock_pip_run) == [pinned(framework)]
 
 
 def test_framework_requirements_and_deps_are_combined(tmp_path):
@@ -316,7 +359,7 @@ def test_framework_requirements_and_deps_are_combined(tmp_path):
     with skip_pip() as mock_pip_run:
         build_cli("script", str(script_path), deps=["requests>=2,<3"], output_dir=str(tmp_path / "out"))
 
-    assert pip_requirements(mock_pip_run) == ["requests>=2,<3", f"rich-click=={metadata.version('rich-click')}"]
+    assert pip_requirements(mock_pip_run) == ["requests>=2,<3", pinned("rich-click")]
 
 
 def test_build_creates_nested_output_dir(tmp_path):

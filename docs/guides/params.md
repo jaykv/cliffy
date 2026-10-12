@@ -60,7 +60,7 @@ Each entry is a mapping. This is the only form with a `help` key.
 
 | Key | Meaning |
 |---|---|
-| `name` | Param name. Start it with `--` to make an option. |
+| `name` | Param name. Start it with `--` to make an option; without it the param is a positional argument. |
 | `type` | A Python type such as `str`, `int`, `float`, `bool`, or a name from `types`. |
 | `default` | Default value. String defaults are quoted for you when `type` is `str`. |
 | `help` | Text shown in `--help`. |
@@ -74,8 +74,8 @@ cat.jpg 100 gif
 
 ## Types
 
-`types` gives a name to a complete Typer parameter definition. Use the name wherever a type is
-expected, in shorthand or explicit params.
+`types` gives a name to a type or to a complete Typer parameter definition. Use the name wherever a
+type is expected, in shorthand or explicit params.
 
 ```yaml
 types:
@@ -87,10 +87,28 @@ types:
 --8<-- "docs/snippets/params.yaml:types"
 ```
 
-The definition is everything that follows the param name in a Python signature: the type, then
+A complete definition is everything that follows the param name in a Python signature: the type, then
 `typer.Argument(...)` or `typer.Option(...)`. This gives you help text, validation (`min`, `max`),
 prompts (`prompt=True`), environment variables (`envvar="NAME"`) and the rest of the
-[Typer parameter API](https://typer.tiangolo.com/tutorial/options/).
+[Typer parameter API](https://typer.tiangolo.com/tutorial/options/). It replaces everything the param
+entry says except its name, so a default or `help` written next to it is not used.
+
+A plain type is an alias:
+
+```yaml
+types:
+  Count: int = 1
+
+commands:
+  repeat:
+    params:
+      - --times: Count       # the option --times, an int, default 1
+      - --retries: Count = 3 # a default on the param wins
+    run: print(times, retries)
+```
+
+The param keeps what its own entry says: `--times` is an option because of its name, and an explicit
+param keeps its `help`. Plain types work with both backends.
 
 ```console
 $ cli run params.yaml -- pack data.csv
@@ -118,8 +136,9 @@ that YAML reads it as a string.
 
 - `global_params` and `command_templates.<name>.params` accept the same three forms. See
   [Command templates and global params](templates-and-global-params.md).
-- With `use_click: true`, params are translated to Click decorators and behave differently in a
-  few places. See [Click and Typer backends](backends.md).
+- With `use_click: true`, params are translated to Click decorators. Shorthand and explicit params
+  mean the same; generic params and full definitions in `types` are written as Click decorators. See
+  [Click and Typer backends](backends.md).
 
 ## The complete example
 

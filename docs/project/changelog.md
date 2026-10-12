@@ -40,6 +40,35 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
 - The source distribution only contains the package, tests and examples.
 - Documentation: new site structure with a tutorial, task guides and reference pages generated from
   the code. Every manifest shown in the guides is run by `make docs-check`.
+- **`cli validate` compiles and imports the generated code** and reports a problem against the command
+  it comes from. It used to check only the YAML, the schema and `requires`.
+- **`manifestVersion` is checked.** `v1`, `v2` and unknown values stop the load with an error that says
+  what to change, also in include files and blueprint specs. The key used to be ignored.
+- **Click backend, explicit params:** a `name` without `--` is a positional argument, as it is with
+  Typer. It used to become an option. Write `name: --width` for an option.
+- **Click backend, shorthand arguments:** `label: str` is optional and `None` when omitted, as it is
+  with Typer. Write `label: str!` for a required argument.
+- **Plain types in `types` are aliases for both backends.** With `Count: int`, the param `--n: Count`
+  is the option `--n` and an explicit param keeps its `default` and `help`. The Typer backend used to
+  replace the whole definition, which made `--n: Count` a positional argument.
+- The Click backend supports `types`, command `config` (`rich_help_panel` becomes rich-click's `panel`),
+  argument help, and `Optional[...]` and `list[...]` types. A Typer definition in a Click manifest is
+  rejected with an error that names the command.
+- A manifest no code can be generated for (a command or param name that cannot be a Python name, an
+  unknown `template`) stops every command with `~ error in <file>: command <name>: ...` instead of a
+  traceback.
+- Generated Click code imports rich-click when it is installed and plain Click otherwise, so
+  `use_click: true` no longer needs the `rich` extra. `cli build` ships rich-click with such a CLI.
+- Generated code no longer starts with the time of generation. The first line is
+  `## Generated <name> with cliffy <version>`, so the same manifest renders the same code every time.
+- `vars` keys must be valid Python identifiers that the generated code does not use itself. `my-var`
+  used to produce code that did not compile.
+- A var that refers to itself, or vars that refer to each other in a circle, are an error.
+- `cli init --raw` writes a manifest with one command and one test instead of an empty skeleton.
+- A corrupt metadata file is listed under the name of its CLI (`hello`, not `hello.json`), so it can be
+  removed with `cli rm`.
+- `make generate-clis` renders `examples/generated/` with `scripts/examples.py` and no longer installs
+  packages. The `generate-cleanup` target is gone.
 
 ### Added
 
@@ -53,6 +82,8 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
   or a `blueprint:` key, and the `cli blueprint list` and `cli blueprint schema` commands.
 - [`callbacks`](../blueprints.md#callbacks) in manifests: code that runs before the commands of the
   CLI or of a group, for both backends.
+- `vars` values can be numbers and booleans, and a var can be built from other vars in any order.
+- `cli dev` also watches included manifests and the Python file of a file blueprint.
 
 ### Security
 
@@ -66,6 +97,19 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
 ### Fixed
 
 - Manifest file handles are closed after `cli update` and after loading a manifest.
+- `cli --version` prints cliffy's version. With the `rich` extra it printed the version of rich-click.
+- Line breaks in command and group help become spaces (`Greet\nuser` was shown as `Greetuser`) and
+  blank lines stay paragraph breaks.
+- Two manifest names that map to the same Python name (command `db-app` and group `db`, a command and
+  a name from `imports`, `functions` or `vars`) no longer break the generated module.
+- The `cli test` counter counts test cases only; it could print `10 of 9`.
+- `cli test` removes colors and styles from the output before the assertions run. On a CI system rich
+  styles help output, which made tests that passed locally fail there.
+- A Jinja error in a manifest is reported with file, line and the text of the line instead of a
+  traceback.
+- The field descriptions in the JSON schema and the `cli init` template were wrong in places.
+- cliffy type-checks and its test suite passes without the optional extras. The test suite no longer
+  extracts zipapps into `~/.shiv`.
 - Compatibility with Click 8.2 and later, rich-click 1.9 and Python 3.12 and later (deprecated APIs
   replaced).
 

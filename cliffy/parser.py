@@ -159,9 +159,6 @@ class Parser:
             # a full typer definition, i.e. `name: str = typer.Option(..., prompt=True)`, is passed through as-is
             return f"{norm_param_name}: {param.raw_type.strip()}, "
 
-        if param_type in self.manifest.types:
-            return f"{norm_param_name}: {self.manifest.types[param_type]},"
-
         aliases = [param.short] if param.short else None
         default_val = param.default
 
@@ -169,6 +166,18 @@ class Parser:
         if default_val is not None and isinstance(param, CommandParam) and param.type == "str":
             # a str default is data, not an expression: emit it as a string literal
             default_val = py_str(default_val)
+
+        if param_type in self.manifest.types:
+            definition = self.manifest.types[param_type].strip()
+            if "typer." in definition:
+                # a complete Typer definition replaces everything after the param name
+                return f"{norm_param_name}: {definition},"
+            # `N: int` or `N: int = 5` names a type (and a default): the param keeps its own name, kind and help
+            param_type, _, type_default = (part.strip() for part in definition.partition("="))
+            if default_val is None and type_default:
+                default_val = type_default
+            elif isinstance(param, CommandParam) and param.default is not None and param_type == "str":
+                default_val = py_str(param.default)
 
         return self.build_param_type(
             param_name=norm_param_name,

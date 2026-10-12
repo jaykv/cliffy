@@ -116,7 +116,7 @@ cli_options:
 
 | Command | What it does |
 |---|---|
-| `cli validate hello.yaml` | Checks the YAML, the schema and the `requires`. |
+| `cli validate hello.yaml` | Checks the YAML, the schema, the `requires` and that the generated code imports. |
 | `cli render hello.yaml` | Prints the generated Python. |
 | `cli run hello.yaml -- <args>` | Runs the CLI once without installing it. |
 | `cli test hello.yaml` | Runs the `tests` section. |

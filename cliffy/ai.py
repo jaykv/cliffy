@@ -278,13 +278,16 @@ def generate_manifest(
     )
     rejections: list[ManifestOutputError] = []
 
-    @agent.output_validator
     def validate_output(output: str) -> str:
         try:
             return validate_manifest_yaml(output, cli_name)
         except ManifestOutputError as e:
             rejections.append(e)
             raise ModelRetry(str(e)) from e
+
+    # registered with a call, not as a decorator: without the `ai` extra the type checker cannot see
+    # pydantic-ai, and an untyped decorator would make this function untyped
+    agent.output_validator(validate_output)
 
     try:
         result = agent.run_sync(description)

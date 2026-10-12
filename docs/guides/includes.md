@@ -35,7 +35,7 @@ include. `health` comes entirely from the include.
 !!! note "Paths are relative to the manifest"
     `shared/common.yaml` is looked up next to the manifest that includes it first, and in the current
     working directory after that. A manifest that includes itself, directly or through another file,
-    is reported as a circular include.
+    is reported as a circular include. `cli dev` watches included files too.
 
 ## How files are merged
 
@@ -54,8 +54,8 @@ Two details to keep in mind:
 
 - When the same key holds a list in one file and a block of text in the other, your manifest's value
   is kept and the include's is dropped. Write `imports` as a list in both files if both need imports.
-- When two include files set the same key to different values, which one wins is not defined. Keep
-  shared files free of overlaps.
+- Include files are merged in the order they are listed. When two of them set the same key to
+  different values, the one listed first wins.
 
 ## Variables in include files
 

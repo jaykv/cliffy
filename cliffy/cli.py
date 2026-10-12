@@ -17,11 +17,13 @@ from cliffy.builder import (
     format_size,
     run_cli,
 )
+from cliffy.checker import GeneratedCodeError, check_generated_code
 from cliffy.doc import DocGenerator
 from cliffy.helper import (
     CLI_NAME_PATTERN,
     ManifestOrCLI,
     age_datetime,
+    cliffy_version,
     exit_err,
     indent_block,
     out,
@@ -67,7 +69,8 @@ blueprint_option = click.option(
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option()
+# the version is passed in: with rich-click installed, the automatic lookup finds rich-click's own version
+@click.version_option(cliffy_version(), package_name="cliffy")
 @click.option("--aliases", type=bool, is_flag=True, is_eager=True, callback=show_aliases_callback)
 def cli(aliases: bool) -> None:
     pass
@@ -340,13 +343,17 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
     out("✨ Invoking tests ✨", nl=False)
     total = tester.total_cases
     passed = 0
-    for i, case in enumerate(tester.test_pipeline):
+    case_number = 0
+    for case in tester.test_pipeline:
         if isinstance(case, ShellScript):
+            # a setup or cleanup step: it is run, but it is not one of the counted test cases
             try:
                 tester.invoke_shell(case)
             except SyntaxError as e:
                 exit_err(f"~ error in {manifest}: test step `{case.command}`, column {e.offset}: {e.msg}")
             continue
+
+        case_number += 1
 
         out(f"\n\n🪄 > {tester.T.cli.name} {case.command}\n")
         try:
@@ -356,7 +363,7 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
             if result.exception:
                 out(str(result))
             next(test, "")
-            out(f"\n✅ {i + 1} of {total}")
+            out(f"\n✅ {case_number} of {total}")
             passed += 1
         except AssertionError:
             _, _, tb = sys.exc_info()
@@ -390,12 +397,15 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
 @click.argument("manifest", type=click.File("rb"), required=True)
 @blueprint_option
 def validate(manifest: TextIO, blueprint: str | None = None) -> None:
-    """Validate the syntax and structure of a CLI manifest"""
+    """Validate a CLI manifest: its structure, its requirements and the code generated from it"""
     try:
-        Transformer(manifest, blueprint=blueprint)
-        out(f"Manifest {manifest.name} is valid", fg="green")
+        T = Transformer(manifest, blueprint=blueprint)
+        check_generated_code(T.cli)
+    except GeneratedCodeError as e:
+        exit_err(f"Manifest {manifest.name} is invalid: the generated code does not work\n  {e}")
     except Exception as e:
         exit_err(f"Manifest {manifest.name} is invalid: {e}")
+    out(f"Manifest {manifest.name} is valid", fg="green")
 
 
 @click.argument("cli_or_manifest", type=ManifestOrCLI())

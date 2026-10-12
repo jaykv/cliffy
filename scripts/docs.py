@@ -159,8 +159,9 @@ $ cli init mycli --raw
 + mycli.yaml
 ```
 
-`--raw` writes a skeleton with every top-level key and no content. Without `--raw` the manifest is a
-commented tour of the format with example commands.
+`--raw` writes a skeleton with every top-level key, one `hello` command and one test. Without `--raw`
+the manifest is a commented tour of the format with example commands. Both run and pass `cli test` as
+written.
 
 `--json-schema` also writes `cliffy_schema.json` and adds a `# yaml-language-server` comment that points
 at it. See [Editor setup](../guides/editor-setup.md).
@@ -223,7 +224,8 @@ loaded CLI.
 """,
     "dev": """
 Nothing is loaded when the command starts. The CLI is loaded the first time the file changes and
-again on every later change. Stop with Ctrl+C.
+again on every later change. The manifests it includes and the Python file of its blueprint are
+watched too. Stop with Ctrl+C.
 
 With `--run-cli`, the remaining arguments are passed to the freshly generated CLI after each reload.
 Put `--` before them when they include options.
@@ -237,12 +239,29 @@ code is `0` only when every test passes. It is `1` when a test fails or when the
 See [Testing manifests](../guides/testing.md).
 """,
     "validate": """
-Checks that the file is valid YAML, matches the manifest schema and that its `requires` are installed.
-It does not check that the generated Python is valid; run `cli test` or `cli run` for that.
+Checks that the file is valid YAML, matches the manifest schema, that its `requires` are installed and
+that the generated code works. Scripts are checked while the code is generated, as they are by every
+other command. `validate` then compiles and imports the generated code, which defines the commands
+without running any of them. The code in `imports` and `functions` and the expressions in `vars` do run.
 
 ```console
 $ cli validate hello.yaml
 Manifest hello.yaml is valid
+```
+
+An error in a script is reported with its command, line and column. A problem that only shows when
+the code is imported, such as a type that does not exist, is reported against the command it comes
+from:
+
+```console
+$ cli validate broken.yaml
+~ error in broken.yaml: command `db.create`, run, line 2, column 7: not valid Python: '(' was never closed
+    print((
+          ^ 💔
+$ cli validate other.yaml
+Manifest other.yaml is invalid: the generated code does not work
+  command `db.create`: NameError: name 'Table' is not defined
+    def db_create(table: Table = typer.Argument(...)): 💔
 ```
 """,
     "docs": """
@@ -445,7 +464,8 @@ def render_cli_reference() -> str:
 
 # Descriptions for fields that have none in the model.
 FIELD_FALLBACK: dict[tuple[str, str], str] = {
-    ("CLIManifest", "manifestVersion"): "Manifest schema version. `v3` is the only version.",
+    ("CLIManifest", "manifestVersion"): "Manifest schema version. `v3` is the only version that is read; "
+    "any other value is an error.",
     ("Command", "run"): "The script to run. A string, or a list of strings that are joined with newlines. "
     "Lines starting with `$` or `>` are shell commands.",
     ("Example", "command"): "The command line to show.",
@@ -460,33 +480,17 @@ FIELD_FALLBACK: dict[tuple[str, str], str] = {
     ("IncludeManifest", "tests"): "Appended to `tests`.",
 }
 
-# Replacements for model descriptions that do not match what the code does. The model text also feeds
-# the JSON schema and the `cli init` template, so it is corrected here instead of in cliffy/manifest.py.
-FIELD_OVERRIDES: dict[tuple[str, str], str] = {
-    ("CLIManifest", "requires"): "Python packages the CLI needs, as requirement specifiers such as `rich` or "
-    "`tabulate>=0.9.0`. Checked when the manifest is loaded and bundled by `cli build`.",
-    ("CLIManifest", "includes"): "Paths of other manifest files to merge into this one. Keys set in this manifest "
-    "win over included ones; lists are combined.",
-    ("CLIManifest", "vars"): "Variables for the manifest. Each one can be used anywhere in the file as "
-    "`{{ name }}` and is also defined as a module-level Python variable in the generated CLI. Values are "
-    "Jinja2 templates; `env` gives access to environment variables.",
-    ("CLIManifest", "commands"): "The commands of the CLI, keyed by name. In a key, `.` separates groups, `|` "
-    "separates aliases and a leading `(*)` adds the command to every group.",
-    ("Command", "params"): "The parameters of the command. See [Params](#params) for the three accepted forms.",
-    ("CommandConfig", "context_settings"): "Settings passed to the Click context of the command, for example "
-    "`help_option_names` or `max_content_width`.",
-    ("CommandConfig", "rich_help_panel"): "Name of the panel this command is listed under in rich help output.",
-}
-
 # Hand-written notes shown under each generated table. Every statement was checked by running it.
 MODEL_NOTES: dict[str, str] = {
     "CLIManifest": """
 - `name` and `version` are the only required keys. `version` must be a string, so quote values such as
   `"1.0"`. `commands` can be left out for a CLI that only has `callbacks`.
 - Unknown top-level keys are ignored.
-- `manifestVersion` is accepted and ignored when a manifest file is loaded.
-- `vars` values must be strings (quote numbers) or a one-key mapping such as `{"3"}` or `{os.getcwd()}`,
-  which is emitted as a Python expression. See [Vars and Jinja](../guides/vars-and-jinja.md).
+- `manifestVersion` can be left out. A value other than `v3` stops the load with an error that says
+  what to change. This also applies to include files and to files written in a blueprint's spec.
+- `vars` keys must be valid Python identifiers. A value is a string, a number, a boolean, or a one-key
+  mapping such as `{os.getcwd()}`, which is emitted as a Python expression. See
+  [Vars and Jinja](../guides/vars-and-jinja.md).
 - `cli_options` is passed as keyword arguments to `typer.Typer(...)`, or to `click.group(...)` when
   `use_click` is set. Useful Typer values are `add_completion: false` and `no_args_is_help: true`.
 - `commands` is usually a mapping. A list of [Command](#command) mappings that each set `name` is also
@@ -506,8 +510,9 @@ A command that has `help` and no `run`, and whose key is the name of a group, se
 that group.
 """,
     "CommandParam": """
-This is the explicit form. `short` is written with its dash (`-w`). A `str` default is quoted for you;
-other defaults are emitted as written.
+This is the explicit form. A `name` without `--` is a positional argument, with both backends. `short`
+is written with its dash (`-w`). A `str` default is quoted for you; other defaults are emitted as
+written.
 """,
     "Callback": """
 Callbacks for the same target run in the order given. Their params are options of the CLI or group
@@ -521,8 +526,8 @@ from the command override the template's. See
 [Command templates and global params](../guides/templates-and-global-params.md).
 """,
     "CommandConfig": """
-Only the keys you set are passed on, as keyword arguments of Typer's `command()`. The Click backend
-ignores `config`.
+Only the keys you set are passed on, as keyword arguments of the `command()` decorator of Typer or
+Click. With the Click backend `rich_help_panel` needs rich-click.
 """,
     "Example": """
 `examples` entries are only used by [`cli docs`](../guides/generating-docs.md). An entry can also be a
@@ -551,7 +556,7 @@ A one-key mapping: the key is the name, the value is the type.
 | `--name|-n` | Option with a short alias | `--count|-c: int` |
 | `type!` | Required | `source: str!` |
 | `type = value` | Default value, written as a Python expression | `target: str = "out.txt"` |
-| a name from `types` | Reuse a full Typer definition | `level: Level` |
+| a name from `types` | Reuse a type or a full definition | `level: Level` |
 
 Hyphens in a name become underscores in the Python variable (`--dry-run` is `dry_run`).
 
@@ -665,7 +670,7 @@ def _render_model(model: type[BaseModel], title: str) -> list[str]:
     lines += ["| Key | Type | Default | Description |", "|---|---|---|---|"]
     for name, field in model.model_fields.items():
         key = (model.__name__, name)
-        description = FIELD_OVERRIDES.get(key) or field.description or FIELD_FALLBACK.get(key)
+        description = field.description or FIELD_FALLBACK.get(key)
         if not description:
             raise SystemExit(f"scripts/docs.py: add a description for {model.__name__}.{name} to FIELD_FALLBACK")
         lines.append(
@@ -896,11 +901,16 @@ def check_readme() -> list[str]:
     return []
 
 
+def snippet_environment(tmp: str | os.PathLike[str]) -> dict[str, str]:
+    """Environment for the snippet tests. Anything a snippet builds with shiv extracts into ``tmp``, not ``~/.shiv``."""
+    return {**os.environ, "NO_COLOR": "1", "PYTHONWARNINGS": "ignore", "SHIV_ROOT": str(Path(tmp) / "shiv-root")}
+
+
 def check_snippets() -> list[str]:
     """Load, compile and test every manifest in docs/snippets from a scratch copy of that directory."""
     errors = []
-    env = {**os.environ, "NO_COLOR": "1", "PYTHONWARNINGS": "ignore"}
     with tempfile.TemporaryDirectory() as tmp:
+        env = snippet_environment(tmp)
         workdir = Path(tmp) / "snippets"
         shutil.copytree(SNIPPETS, workdir)
         previous = Path.cwd()

@@ -33,6 +33,7 @@ command line tools.
 | `make docs-check` | Checks the reference pages and runs every documentation manifest. |
 | `make docs-build` | `docs-check`, then a strict documentation build. |
 | `make generate-schema` | Regenerates `examples/cliffy_schema.json` from the models. |
+| `make generate-clis` | Regenerates `examples/generated/*.py` from the manifests in `examples/`. |
 | `make clean` | Removes build and cache directories. |
 
 Run a single test file or test with pytest directly:
