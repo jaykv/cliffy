@@ -398,6 +398,15 @@
                         "type": "string"
                     },
                     {
+                        "type": "boolean"
+                    },
+                    {
+                        "type": "integer"
+                    },
+                    {
+                        "type": "number"
+                    },
+                    {
                         "additionalProperties": {
                             "type": "null"
                         },

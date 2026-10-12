@@ -139,7 +139,9 @@ class CommandParam(BaseModel):
 
 
 ParamBlock = CommandParam | SimpleCommandParam | GenericCommandParam
-VarBlock = str | dict[str, None]
+# a string, a number or a boolean; or `{expression}` (a one-key mapping without a value) for a Python expression.
+# bool is listed before int: in Python a bool is an int, and `true` has to stay a boolean.
+VarBlock = str | bool | int | float | dict[str, None]
 
 
 class CommandConfig(BaseModel):
@@ -385,7 +387,12 @@ class CLIManifest(BaseModel):
     @classmethod
     def var_names_are_identifiers(cls, value: dict[str, Any]) -> dict[str, Any]:
         """A var becomes a module-level Python variable of the generated CLI."""
-        for name in value:
+        for name, var in value.items():
+            if isinstance(var, dict) and len(var) != 1:
+                raise ValueError(
+                    f"vars.{name}: a Python expression is written as `{{expression}}`, one expression in braces. "
+                    f"Found {len(var)}."
+                )
             if name.isidentifier() and not keyword.iskeyword(name) and name not in GENERATED_NAMES:
                 continue
 

@@ -1,8 +1,9 @@
 import os
+import traceback
 from typing import Any, Self, TextIO
 
 import yaml
-from jinja2 import BaseLoader, Environment, FileSystemLoader
+from jinja2 import BaseLoader, Environment, TemplateSyntaxError, meta
 from pydantic import ValidationError
 
 from cliffy.blueprint import (
@@ -145,10 +146,12 @@ class Transformer:
 
     @staticmethod
     def load_manifest(manifest_io: TextIO) -> dict[str, Any]:
+        """Reads a manifest file: it is rendered as a Jinja template with its own `vars`, then parsed as YAML."""
         try:
             manifest_path = os.path.realpath(manifest_io.name)
             with open(manifest_path, encoding="utf-8") as manifest_file:
-                raw_manifest = yaml.safe_load(manifest_file)
+                source = manifest_file.read()
+            raw_manifest = yaml.safe_load(source)
             if not isinstance(raw_manifest, dict):
                 exit_err(f"~ error loading manifest: {manifest_io.name} must be a YAML mapping")
 
@@ -156,20 +159,96 @@ class Transformer:
             if not isinstance(manifest_vars, dict):
                 exit_err(f"~ error loading manifest: vars in {manifest_io.name} must be a mapping")
 
-            # `env` is passed to the templates as-is. Environment values are data: they are never
-            # rendered as templates themselves.
-            render_context = {**manifest_vars, "env": os.environ}
-            var_env = Environment(loader=BaseLoader())
-            interpolated_vars: dict[str, Any] = {
-                var_env.from_string(str(k)).render(render_context): var_env.from_string(str(v)).render(render_context)
-                for k, v in manifest_vars.items()
-            }
-            interpolated_vars["env"] = os.environ
-            manifest_env = Environment(loader=FileSystemLoader(manifest_path)).get_template("")
-            manifest = yaml.safe_load(manifest_env.render(interpolated_vars))
+            context = resolve_vars(manifest_vars, manifest_io.name)
+            manifest = yaml.safe_load(render_manifest(source, context, manifest_io.name))
             if not isinstance(manifest, dict):
                 exit_err(f"~ error loading manifest: {manifest_io.name} must be a YAML mapping")
             return manifest
         except yaml.YAMLError as e:
             out(f"{e}")
             exit_err("~ error loading manifest")
+
+
+JINJA = Environment(loader=BaseLoader())
+TEMPLATE_FILE = "<template>"
+
+
+def resolve_vars(manifest_vars: dict[Any, Any], source: str) -> dict[str, Any]:
+    """Values of the manifest's `vars` for use in `{{ }}` placeholders, plus `env`.
+
+    A string value is a Jinja template itself and may use other vars, whatever the order they are written
+    in. Numbers and booleans keep their type, so `{{ port + 1 }}` works.
+    """
+    # `env` is passed to the templates as-is. Environment values are data: they are never
+    # rendered as templates themselves.
+    resolved: dict[Any, Any] = {}
+
+    def render(text: str, name: Any) -> str:
+        try:
+            return JINJA.from_string(text).render({**resolved, "env": os.environ})
+        except Exception as e:
+            exit_err(f"~ error loading manifest: {source}, vars.{name}: {jinja_problem(e)}\n    {text}")
+
+    def resolve(name: Any, chain: tuple[Any, ...]) -> None:
+        if name in resolved:
+            return
+        if name in chain:
+            circle = " -> ".join(str(link) for link in (*chain[chain.index(name) :], name))
+            exit_err(
+                f"~ error loading manifest: {source}: vars reference each other in a circle: {circle}. "
+                "A var cannot be built from itself."
+            )
+
+        value = manifest_vars[name]
+        if isinstance(value, bool | int | float):
+            resolved[name] = value
+            return
+
+        text = str(value)
+        try:
+            references = meta.find_undeclared_variables(JINJA.parse(text))
+        except TemplateSyntaxError as e:
+            exit_err(f"~ error loading manifest: {source}, vars.{name}: {jinja_problem(e)}\n    {text}")
+        for reference in sorted(references):
+            if reference in manifest_vars and reference != "env":
+                resolve(reference, (*chain, name))
+        resolved[name] = render(text, name)
+
+    for name in manifest_vars:
+        resolve(name, ())
+
+    # a key can be a template too
+    context: dict[str, Any] = {render(str(name), name): value for name, value in resolved.items()}
+    context["env"] = os.environ
+    return context
+
+
+def render_manifest(source: str, context: dict[str, Any], name: str) -> str:
+    """Renders the text of a manifest file as a Jinja template.
+
+    The whole file is the template, YAML comments included: a `{% for %}` loop is written in comments so
+    that the file stays valid YAML. A Jinja error is reported with the line of the manifest it is on.
+    """
+    try:
+        return JINJA.from_string(source).render(context)
+    except Exception as e:
+        if isinstance(e, TemplateSyntaxError):
+            line_number: int | None = e.lineno
+        else:
+            frames = [frame for frame in traceback.extract_tb(e.__traceback__) if frame.filename == TEMPLATE_FILE]
+            line_number = frames[-1].lineno if frames else None
+
+        lines = source.splitlines()
+        where = f"{name}, line {line_number}" if line_number else name
+        line = f"\n    {lines[line_number - 1].strip()}" if line_number and 0 < line_number <= len(lines) else ""
+        exit_err(
+            f"~ error loading manifest: {where}: {jinja_problem(e)}{line}\n"
+            "  The whole file is a Jinja template, comments included. "
+            "To keep braces as text, wrap them in {% raw %} and {% endraw %}."
+        )
+
+
+def jinja_problem(error: Exception) -> str:
+    if isinstance(error, TemplateSyntaxError):
+        return f"Jinja syntax error: {error.message}"
+    return f"Jinja could not render this: {type(error).__name__}: {error}"

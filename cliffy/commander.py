@@ -309,8 +309,11 @@ class Commander(ABC):
             if isinstance(val, dict):
                 # `name: {expression: null}` is the documented way to assign a Python expression
                 self.cli += f"{var} = {next(iter(val))}\n"
-            else:
+            elif isinstance(val, str):
                 self.cli += f"{var} = {py_str(val)}\n"
+            else:
+                # a number or a boolean is written as the Python literal of the same value
+                self.cli += f"{var} = {val!r}\n"
         self.cli += "\n"
 
     def add_functions(self) -> None:
