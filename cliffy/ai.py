@@ -219,6 +219,9 @@ def validate_manifest_yaml(text: str, cli_name: str) -> str:
         )
         raise ManifestOutputError(f"The manifest does not match the schema:\n{problems}") from e
 
+    if "commands" not in data and not manifest.callbacks:
+        # the schema allows a callbacks-only CLI, so a reply without `commands` passes its validation
+        raise ManifestOutputError("The manifest does not match the schema:\n- commands: Field required")
     if manifest.name != cli_name:
         raise ManifestOutputError(f"The manifest `name` must be `{cli_name}`, not `{manifest.name}`.")
     if manifest.includes:

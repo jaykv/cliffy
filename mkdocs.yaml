@@ -3,6 +3,7 @@ nav:
   - Cliffy: index.md
   - Getting Started: getting-started.md
   - Features: features.md
+  - Blueprints: blueprints.md
   - Schema: schema.md
 theme:
   name: material

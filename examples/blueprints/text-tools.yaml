@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=mcp_tools.schema.json
+# Written in the spec defined by mcp_tools.py, not in the cliffy manifest schema.
+blueprint: mcp_tools.py
+
+name: text-tools
+version: 0.1.0
+description: Text tools, as a CLI and as an MCP server
+
+imports:
+  - import re
+
+tools:
+  format_text:
+    description: Change the case of a text and trim it
+    parameters:
+      - name: text
+        description: The text to format
+        required: true
+      - name: uppercase
+        type: boolean
+        description: Convert the text to uppercase
+      - name: trim
+        type: boolean
+        description: Remove leading and trailing whitespace
+    run: |
+      if uppercase:
+          text = text.upper()
+      return text.strip() if trim else text
+
+  count_words:
+    description: Count the words in a text
+    parameters:
+      - name: text
+        description: The text to count words in
+        required: true
+    run: |
+      return {"words": len(text.split())}
+
+  extract_entities:
+    description: Find dates and email addresses in a text
+    parameters:
+      - name: text
+        description: The text to search
+        required: true
+      - name: entity_types
+        type: array
+        description: Only return these kinds of entities (dates, emails)
+    run: |
+      found = {
+          "dates": re.findall(r"\d{1,2}[/-]\d{1,2}[/-]\d{2,4}", text),
+          "emails": re.findall(r"[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}", text),
+      }
+      return {kind: values for kind, values in found.items() if not entity_types or kind in entity_types}
+
+  repeat:
+    description: Repeat a text
+    parameters:
+      - name: text
+        description: The text to repeat
+        required: true
+      - name: times
+        type: integer
+        default: 2
+        description: How many times
+      - name: separator
+        default: " "
+        description: Text put between the repetitions
+    run: |
+      return separator.join([text] * times)

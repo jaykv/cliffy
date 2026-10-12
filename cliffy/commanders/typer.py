@@ -2,7 +2,7 @@ import datetime
 
 from cliffy.commander import BaseGroup, Commander
 from cliffy.helper import py_str
-from cliffy.manifest import CLIManifest, Command
+from cliffy.manifest import Callback, CLIManifest, Command
 
 
 class TyperCommander(Commander):
@@ -48,9 +48,10 @@ def aliases_callback(value: bool):
         print({py_str(self.aliases_table())})
         raise typer.Exit()
 """
-        self.cli += """
-@cli.callback()
-def main("""
+        callbacks = self.callbacks_for()
+        self.cli += f"""
+@cli.callback({self.parse_callback_options(callbacks)})
+def main({self.parse_callback_params(callbacks)}"""
         if self.aliases_by_commands:
             self.cli += """
     aliases: Optional[bool] = typer.Option(None, '--aliases', callback=aliases_callback, is_eager=True),"""
@@ -58,9 +59,25 @@ def main("""
         self.cli += """
     version: Optional[bool] = typer.Option(None, '--version', callback=version_callback, is_eager=True)
 ):
-    pass
-
 """
+        self.cli += self.parse_callback_run(callbacks) + "\n"
+
+    def parse_callback_options(self, callbacks: list[Callback]) -> str:
+        return "invoke_without_command=True" if any(cb.invoke_without_command for cb in callbacks) else ""
+
+    def parse_callback_params(self, callbacks: list[Callback]) -> str:
+        """Signature lines for a callback function: the context first, then the params of each callback."""
+        if not callbacks:
+            return ""
+
+        signature = "\n    ctx: typer.Context,"
+        for callback in callbacks:
+            for param in callback.params:
+                signature += f"\n    {self.parser.parse_param(param).strip().rstrip(',')},"
+        return signature
+
+    def parse_callback_run(self, callbacks: list[Callback]) -> str:
+        return "".join(self.parser.parse_run_block(callback.run) for callback in callbacks) or "    pass\n"
 
     def add_root_command(self, command: Command) -> None:
         """
@@ -97,6 +114,13 @@ cli.command({py_str(alias)}, hidden=True, epilog={alias_epilog})({parsed_command
             parsed_help = group.help.replace("\n", "") if group.help else ""
             empty_or_help = f"help={py_str(parsed_help)}," if parsed_help else ""
             self.cli += f"""{group.var_name} = typer.Typer({empty_or_help})
+"""
+            if callbacks := self.callbacks_for(group):
+                self.cli += f"""
+@{group.var_name}.callback({self.parse_callback_options(callbacks)})
+def {group.var_name}_callback({self.parse_callback_params(callbacks)}
+):
+{self.parse_callback_run(callbacks)}
 """
 
     def add_group(self, group: BaseGroup) -> None:

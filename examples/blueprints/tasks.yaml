@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=tasks.schema.json
+# Written in the spec defined by tasks.py, not in the cliffy manifest schema.
+blueprint: tasks.py
+
+name: tasks
+version: 0.1.0
+help: Project tasks
+
+# jinja2 variables: the whole file is rendered before the blueprint sees it
+vars:
+  tag: v0.1.0
+
+tasks:
+  greet: echo "hello from tasks"
+  check:
+    - echo "linting"
+    - echo "testing"
+  release:
+    help: Check, then tag the release
+    run:
+      - echo "linting"
+      - echo "tagging {{ tag }}"

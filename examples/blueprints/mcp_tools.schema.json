@@ -1,0 +1,150 @@
+{
+  "$defs": {
+    "Tool": {
+      "properties": {
+        "name": {
+          "description": "Name of the tool, as the model calls it.",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "description": "What the tool does, shown to the model and in --help.",
+          "title": "Description",
+          "type": "string"
+        },
+        "parameters": {
+          "default": [],
+          "description": "Inputs of the tool.",
+          "items": {
+            "$ref": "#/$defs/ToolParameter"
+          },
+          "title": "Parameters",
+          "type": "array"
+        },
+        "run": {
+          "description": "Python body of the tool. Parameters are local variables. Return the result.",
+          "title": "Run",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "run"
+      ],
+      "title": "Tool",
+      "type": "object"
+    },
+    "ToolParameter": {
+      "properties": {
+        "name": {
+          "description": "Name of the parameter, a Python identifier.",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "default": "string",
+          "description": "JSON schema type. An `array` holds strings.",
+          "enum": [
+            "string",
+            "integer",
+            "number",
+            "boolean",
+            "array"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "description": "What the parameter means, shown to the model and in --help.",
+          "title": "Description",
+          "type": "string"
+        },
+        "required": {
+          "default": false,
+          "description": "Required parameters become positional arguments.",
+          "title": "Required",
+          "type": "boolean"
+        },
+        "default": {
+          "default": null,
+          "description": "Value used when an optional parameter is not given.",
+          "title": "Default"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ToolParameter",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "MCP tool server: every tool becomes a command, `serve` speaks MCP over stdio",
+  "properties": {
+    "name": {
+      "description": "Name of the CLI and of the MCP server.",
+      "title": "Name",
+      "type": "string"
+    },
+    "version": {
+      "default": "0.1.0",
+      "description": "Version of the CLI and of the MCP server.",
+      "title": "Version",
+      "type": "string"
+    },
+    "description": {
+      "default": "",
+      "description": "What the server offers.",
+      "title": "Description",
+      "type": "string"
+    },
+    "protocol_version": {
+      "default": "2025-06-18",
+      "description": "MCP protocol revision the server reports.",
+      "title": "Protocol Version",
+      "type": "string"
+    },
+    "imports": {
+      "default": [],
+      "description": "Import lines the tool bodies need, i.e. `import re`.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Imports",
+      "type": "array"
+    },
+    "requires": {
+      "default": [],
+      "description": "Packages the tool bodies need. Bundled by `cli build`.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Requires",
+      "type": "array"
+    },
+    "tools": {
+      "description": "The tools, as a list or as a mapping keyed by tool name.",
+      "items": {
+        "$ref": "#/$defs/Tool"
+      },
+      "minItems": 1,
+      "title": "Tools",
+      "type": "array"
+    },
+    "blueprint": {
+      "type": "string",
+      "title": "Blueprint",
+      "description": "Blueprint that turns this file into a CLI."
+    }
+  },
+  "required": [
+    "name",
+    "tools"
+  ],
+  "title": "MCPTools",
+  "type": "object"
+}

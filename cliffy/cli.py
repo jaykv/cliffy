@@ -1,9 +1,11 @@
+import json
 import sys
 import traceback
 from io import TextIOWrapper
 from typing import Any, TextIO
 
 from cliffy.ai import ai
+from cliffy.blueprint import BlueprintError, installed_blueprints, resolve_blueprint
 from cliffy.builder import build_cli, build_cli_from_manifest, run_cli
 from cliffy.doc import DocGenerator
 from cliffy.helper import (
@@ -32,6 +34,7 @@ ALIASES = {
     "rm": "remove",
     "rm-all": "remove-all",
     "rmall": "remove-all",
+    "blueprints": "blueprint list",
 }
 
 
@@ -43,6 +46,16 @@ def show_aliases_callback(ctx: Any, param: Any, val: bool) -> None:
         ctx.exit()
 
 
+blueprint_option = click.option(
+    "--blueprint",
+    "-b",
+    type=str,
+    default=None,
+    help="Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. "
+    "Overrides the `blueprint:` key of the file.",
+)
+
+
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option()
 @click.option("--aliases", type=bool, is_flag=True, is_eager=True, callback=show_aliases_callback)
@@ -51,10 +64,11 @@ def cli(aliases: bool) -> None:
 
 
 @click.argument("manifests", type=click.File("rb"), nargs=-1)
-def load(manifests: list[TextIO]) -> None:
+@blueprint_option
+def load(manifests: list[TextIO], blueprint: str | None = None) -> None:
     """Load CLI for given manifest(s)"""
     for manifest in manifests:
-        T = Transformer(manifest)
+        T = Transformer(manifest, blueprint=blueprint)
         Loader.load_from_cli(T.cli)
         save_metadata(manifest.name, T.cli)
         out(f"✨ Generated {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
@@ -69,7 +83,7 @@ def update(cli_names: list[str]) -> None:
     for cli_name in cli_names:
         if cli_metadata := get_metadata(cli_name):
             with open(cli_metadata.runner_path, encoding="utf-8") as manifest:
-                T = Transformer(manifest)
+                T = Transformer(manifest, blueprint=cli_metadata.blueprint)
             Loader.load_from_cli(T.cli)
             save_metadata(cli_metadata.runner_path, T.cli)
             out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
@@ -84,9 +98,10 @@ def update(cli_names: list[str]) -> None:
 
 
 @click.argument("manifest", type=click.File("rb"))
-def render(manifest: TextIO) -> None:
+@blueprint_option
+def render(manifest: TextIO, blueprint: str | None = None) -> None:
     """Render the CLI manifest generation as code"""
-    T = Transformer(manifest)
+    T = Transformer(manifest, blueprint=blueprint)
     console = Console()
     console.print(T.cli.code, overflow="fold", emoji=False, markup=False)
     out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
@@ -94,9 +109,10 @@ def render(manifest: TextIO) -> None:
 
 @click.argument("manifest", type=click.File("rb"))
 @click.argument("cli_args", type=str, nargs=-1)
-def cliffy_run(manifest: TextIO, cli_args: tuple[str]) -> None:
+@blueprint_option
+def cliffy_run(manifest: TextIO, cli_args: tuple[str], blueprint: str | None = None) -> None:
     """Run CLI for a manifest"""
-    T = Transformer(manifest)
+    T = Transformer(manifest, blueprint=blueprint)
     run_cli(T.cli.name, T.cli.code, cli_args)
 
 
@@ -194,12 +210,17 @@ def remove_all() -> None:
     default="/usr/bin/env python3",
     show_default=True,
 )
-def build(cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: str) -> None:
-    """Build a CLI manifest or a loaded CLI into a zipapp"""
+@blueprint_option
+def build(
+    cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: str, blueprint: str | None = None
+) -> None:
+    """Build a CLI manifest or a loaded CLI into a single-file executable (zipapp)"""
     failed = False
     for cli_or_manifest in cli_or_manifests:
         if isinstance(cli_or_manifest, TextIOWrapper):
-            cli, result = build_cli_from_manifest(cli_or_manifest, output_dir=output_dir, interpreter=python)
+            cli, result = build_cli_from_manifest(
+                cli_or_manifest, output_dir=output_dir, interpreter=python, blueprint=blueprint
+            )
             cli_name = cli.name
         else:
             cli_name = cli_or_manifest
@@ -225,6 +246,7 @@ def build(cli_or_manifests: list[TextIOWrapper | str], output_dir: str, python: 
             continue
 
         out(f"+ {cli_name} built 📦", fg="green")
+        out(f"  {result.path} (single file, needs Python {result.requires_python})")
 
     if failed:
         raise SystemExit(1)
@@ -237,6 +259,8 @@ def info(cli_name: str) -> None:
     out(f"{click.style('name:', fg='blue')} {metadata.cli_name}")
     out(f"{click.style('version:', fg='blue')} {metadata.version}")
     out(f"{click.style('requires:', fg='blue')} {metadata.requires}")
+    if metadata.blueprint:
+        out(f"{click.style('blueprint:', fg='blue')} {metadata.blueprint}")
     out(f"{click.style('age:', fg='blue')} {age_datetime(metadata.loaded)} ({metadata.loaded.ctime()})")
     out(f"{click.style('manifest:', fg='blue')}\n{indent_block(metadata.manifest, spaces=2)}")
 
@@ -249,7 +273,8 @@ def info(cli_name: str) -> None:
     is_flag=True,
 )
 @click.argument("run-cli-args", type=str, nargs=-1)
-def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
+@blueprint_option
+def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str], blueprint: str | None = None) -> None:
     """Start hot-reloader for a manifest for active development.
 
     Examples:
@@ -261,7 +286,10 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
     - cli dev examples/hello.yaml --run-cli hello
     """
     out(f"🔄 Watching {manifest} for changes...\n", fg="magenta")
-    Reloader.watch(manifest, run_cli, run_cli_args)
+    if blueprint:
+        Reloader.watch(manifest, run_cli, run_cli_args, blueprint=blueprint)
+    else:
+        Reloader.watch(manifest, run_cli, run_cli_args)
 
 
 @click.argument("manifest", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True))
@@ -273,9 +301,10 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str]) -> None:
     default=False,
     help="exit instantly on first error or failed test.",
 )
-def test(manifest: str, exitfirst: bool) -> None:
+@blueprint_option
+def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
     """Run tests defined in a manifest"""
-    tester = Tester(manifest)
+    tester = Tester(manifest, blueprint=blueprint)
     if not tester.test_pipeline:
         exit_err("Missing tests section in manifest")
     out("✨ Invoking tests ✨", nl=False)
@@ -326,10 +355,11 @@ def test(manifest: str, exitfirst: bool) -> None:
 
 
 @click.argument("manifest", type=click.File("rb"), required=True)
-def validate(manifest: TextIO) -> None:
+@blueprint_option
+def validate(manifest: TextIO, blueprint: str | None = None) -> None:
     """Validate the syntax and structure of a CLI manifest"""
     try:
-        Transformer(manifest)
+        Transformer(manifest, blueprint=blueprint)
         out(f"Manifest {manifest.name} is valid", fg="green")
     except Exception as e:
         exit_err(f"Manifest {manifest.name} is invalid: {e}")
@@ -340,10 +370,11 @@ def validate(manifest: TextIO) -> None:
 @click.option(
     "--output-dir", "-o", type=click.Path(exists=True, dir_okay=True, file_okay=False), help="Output directory"
 )
-def docs(cli_or_manifest: str, format: str, output_dir: str) -> None:
+@blueprint_option
+def docs(cli_or_manifest: str, format: str, output_dir: str, blueprint: str | None = None) -> None:
     """Generate documentation for a CLI"""
     if isinstance(cli_or_manifest, TextIOWrapper):
-        T = Transformer(cli_or_manifest)
+        T = Transformer(cli_or_manifest, blueprint=blueprint)
         doc_generator = DocGenerator(T.manifest)  # type: ignore
         doc_generator.generate(format, output_dir)
         out(f"+ {T.cli.name}.{format}")
@@ -352,10 +383,48 @@ def docs(cli_or_manifest: str, format: str, output_dir: str) -> None:
         # metadata.manifest is the raw manifest text. It still has to be rendered and merged with its
         # includes, so it is transformed from its source like `cli update` does.
         with open(metadata.runner_path, encoding="utf-8") as manifest:
-            T = Transformer(manifest, validate_requires=False)
+            T = Transformer(manifest, validate_requires=False, blueprint=blueprint or metadata.blueprint)
         doc_generator = DocGenerator(T.manifest)  # type: ignore
         doc_generator.generate(format, output_dir)
         out(f"+ {metadata.cli_name}.{format}")
+
+
+@click.group("blueprint", context_settings=CONTEXT_SETTINGS)
+def blueprint_group() -> None:
+    """Work with blueprints: custom YAML specs that map onto a CLI"""
+
+
+def blueprint_list() -> None:
+    """List the blueprints provided by installed packages"""
+    blueprints = installed_blueprints()
+    if not blueprints:
+        out("No blueprints installed. Use a .py file or module:Class reference, or install a blueprint package.")
+        return
+
+    rows = []
+    for blueprint in blueprints:
+        try:
+            description = blueprint.load().describe()
+        except BlueprintError as e:
+            description = f"error: {e}"
+        rows.append([blueprint.name, blueprint.target, blueprint.package, description])
+    print_rich_table(["Name", "Blueprint", "Package", "Description"], rows, styles=["cyan", "magenta", "green", "blue"])
+
+
+@click.argument("blueprint", type=str)
+@click.option("--output", "-o", type=click.Path(dir_okay=False, writable=True), help="Write the schema to a file")
+def blueprint_schema(blueprint: str, output: str | None) -> None:
+    """Print the JSON schema of a blueprint's spec, for validation and editor completion"""
+    try:
+        schema = json.dumps(resolve_blueprint(blueprint).spec_json_schema(), indent=2)
+    except BlueprintError as e:
+        exit_err(f"~ {e}")
+
+    if output:
+        write_to_file(output, schema + "\n")
+        out(f"+ {output}", fg="green")
+    else:
+        out(schema)
 
 
 # register commands
@@ -374,11 +443,15 @@ test_command = cli.command("test")(test)
 validate_command = cli.command("validate")(validate)
 docs_command = cli.command("docs")(docs)
 cli.add_command(ai)
+cli.add_command(blueprint_group)
+blueprint_list_command = blueprint_group.command("list")(blueprint_list)
+blueprint_schema_command = blueprint_group.command("schema")(blueprint_schema)
 
 # register aliases
 cli.command("add", hidden=True, epilog="Alias for load")(
-    click.argument("manifests", type=click.File("rb"), nargs=-1)(load)
+    click.argument("manifests", type=click.File("rb"), nargs=-1)(blueprint_option(load))
 )
+cli.command("blueprints", hidden=True, epilog="Alias for blueprint list")(blueprint_list)
 cli.command("ls", hidden=True, epilog="Alias for list")(cliffy_list)
 cli.command("rm", hidden=True, epilog="Alias for remove")(click.argument("cli_names", type=str, nargs=-1)(remove))
 cli.command("rm-all", hidden=True, epilog="Alias for remove-all")(remove_all)
