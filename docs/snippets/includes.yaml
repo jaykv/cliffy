@@ -1,0 +1,23 @@
+name: ops
+version: 0.1.0
+help: Commands shared between CLIs through includes
+
+includes:
+  - shared/common.yaml
+
+commands:
+  restart:
+    help: Restart a service
+    params:
+      - service: Service
+    run: |
+      print(as_json({"service": service, "action": "restart"}))
+
+  # Same key as in the include: the keys set here win, the rest is inherited
+  whoami:
+    help: Show who owns this CLI
+
+tests:
+  - restart api: assert '"restart"' in result.output
+  - whoami: assert result.output == "platform\n"
+  - whoami --help: assert "Show who owns this CLI" in result.output

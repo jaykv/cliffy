@@ -1,0 +1,115 @@
+name: shop
+version: 0.1.0
+help: Groups, aliases and command options
+
+cli_options:
+  add_completion: false
+  no_args_is_help: true
+
+commands:
+  # --8<-- [start:forms]
+  # 1. A string: the whole value is the run script
+  ping: print("pong")
+
+  # 2. A list: each item is a line of the run script
+  status:
+    - print("checking...")
+    - $ echo "all good"
+
+  # 3. A mapping: the full form
+  greet:
+    help: Greet a customer
+    params:
+      - name: str = "friend"
+    run: |
+      print(f"Welcome, {name}!")
+  # --8<-- [end:forms]
+
+  # --8<-- [start:groups]
+  # A dot nests a command inside a group: `shop orders list`
+  orders.create:
+    help: Create an order
+    params:
+      - item: str!
+    run: print(f"created order for {item}")
+
+  orders.ship:
+    help: Ship an order
+    params:
+      - number: int!
+    run: print(f"shipped order {number}")
+
+  # Groups nest as deep as you like: `shop stock warehouse count`
+  stock.warehouse.count: print("42 items")
+
+  # A command with help and no run script sets the help text of the group
+  orders:
+    help: Manage customer orders
+  # --8<-- [end:groups]
+
+  # --8<-- [start:aliases]
+  # `shop customers add` and `shop customers new` run the same code
+  customers.add|new:
+    help: Add a customer
+    params:
+      - name: str!
+    run: print(f"added {name}")
+
+  # The aliases field does the same without touching the key
+  version-info:
+    help: Show build details
+    aliases: [vi]
+    run: print("build 7")
+  # --8<-- [end:aliases]
+
+  # --8<-- [start:wildcard]
+  # (*) adds this command to every group; {(*)} is replaced by the group name
+  (*).list:
+    help: List all {(*)}
+    params:
+      - --limit|-l: int = 10
+    run: print(f"listing {limit} {(*)}")
+  # --8<-- [end:wildcard]
+
+  # --8<-- [start:hooks]
+  deploy:
+    help: Deploy the shop
+    pre_run: print("1. pre_run")
+    run: print("2. run")
+    post_run: print("3. post_run")
+  # --8<-- [end:hooks]
+
+  # --8<-- [start:config]
+  migrate:
+    help: Run the old migration tool
+    run: print("migrating")
+    config:
+      deprecated: true
+      hidden: true
+      epilog: Use `shop deploy` instead.
+  # --8<-- [end:config]
+
+  # --8<-- [start:docstring]
+  about:
+    run: |
+      """Show what this CLI is for"""
+      print("A demo shop")
+  # --8<-- [end:docstring]
+
+tests:
+  - ping: assert result.output == "pong\n"
+  - greet: assert result.output == "Welcome, friend!\n"
+  - orders create book: assert result.output == "created order for book\n"
+  - orders ship 7: assert result.output == "shipped order 7\n"
+  - stock warehouse count: assert result.output == "42 items\n"
+  - orders --help: assert "Manage customer orders" in result.output
+  - customers new Ada: assert result.output == "added Ada\n"
+  - vi: assert result.output == "build 7\n"
+  - orders list: assert result.output == "listing 10 orders\n"
+  - customers list -l 3: assert result.output == "listing 3 customers\n"
+  - orders list --help: assert "List all orders" in result.output
+  - deploy: assert result.output == "1. pre_run\n2. run\n3. post_run\n"
+  - migrate: assert "migrating" in result.output
+  - --help: assert "migrate" not in result.output
+  - about --help: assert "Show what this CLI is for" in result.output
+  - --aliases: assert "customers.add" in result.output

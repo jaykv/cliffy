@@ -1,116 +1,111 @@
-<style>
-.md-content .md-typeset h1 { display: none; }
-</style>
+---
+title: cliffy
+hide:
+  - navigation
+---
 
-# Cliffy
+# cliffy
 
-![Cliffy logo](images/logo.svg)
+![cliffy logo](images/logo.svg){ width="220" }
 
-Build feature-rich Python CLIs  _quickly_.
+**Describe a command-line tool in YAML. Get a real Python CLI.**
 
-!!! example "Simplest example"
-    1. Define a manifest
-    ```yaml
-    # hello.yaml
-    name: hello
-    version: 0.1.0
-    help: Hello world!
+cliffy reads a manifest that lists your commands, their parameters and the code each one runs, and
+generates a [Typer](https://typer.tiangolo.com/) application from it. Command bodies are plain Python,
+and any line that starts with `$` runs as a shell command, so a manifest can replace a folder of
+one-off scripts with a single CLI that has help text, typed arguments and subcommands.
 
-    commands:
-      shell: $echo "hello from shell"
-      python: print("hello from python")
-    ```
+## A CLI in 60 seconds
 
-    2. Load CLI
-    ```
-    $ cli load hello.yaml
-    ```
-    `hello.yaml` automatically gets parsed to generate a Typer CLI and gets loaded into the running Python environment.
+**1. Install cliffy** (Python 3.11 to 3.15):
 
-    3. Run CLI directly
+```console
+$ pip install cliffy
+```
 
-    ![hello -h](images/hello.png)
+**2. Write a manifest** and save it as `hello.yaml`:
 
-    For more examples, check [examples](examples/) directory.
+```yaml title="hello.yaml"
+--8<-- "docs/snippets/hello.yaml"
+```
 
-!!! example "Build into single-file executable"
-    Simple todo CLI with sqlite3 + tabulate.
+**3. Load it.** cliffy generates the CLI and puts a `hello` command into your Python environment:
 
-    ```yaml
-    # todo.yaml
-    name: todo
-    version: 1.0.0
-    requires:
-       - tabulate  # For pretty table output
-       - rich      # For colored terminal output
-    imports: |
-      import sqlite3
-      from pathlib import Path
-      from tabulate import tabulate
-      from rich import print
+```console
+$ cli load hello.yaml
+✨ Generated hello CLI v0.1.0 ✨
+$ hello -h
+```
 
-    commands:
-      create:
-        help: Create a new database with tasks table
-        params:
-        - name: str = typer.Option(..., prompt=True, confirmation_prompt=True)
-        run: |
-          db_path = Path(f"{name}.db")
-          conn = sqlite3.connect(db_path)
-          conn.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY, task TEXT NOT NULL, done BOOLEAN NOT NULL)")
+**4. Use it** like any other command:
 
-          # insert example tasks
-          conn.execute("INSERT INTO tasks (task, done) VALUES ('Fight for your right!', 0)")
-          conn.execute("INSERT INTO tasks (task, done) VALUES ('To party!', 1)")
-          conn.commit()
-          conn.close()
-          print(f"✨ Created database {db_path} with tasks table")
+```console
+$ hello shell
+hello from shell
+$ hello greet Ada --shout
+HELLO, ADA!
+$ hello --help
 
-      tasks:
-        help: List tasks in database
-        params: [name: str!]
-        run: |
-          conn = sqlite3.connect(f"{name}.db")
-          cursor = conn.execute("SELECT * FROM tasks")
-          tasks = cursor.fetchall()
-          conn.close()
-          print(tabulate(tasks, headers=['ID', 'Task', 'Done'], tablefmt='grid'))
+ Usage: hello [OPTIONS] COMMAND [ARGS]...
 
-      add:
-        help: Add a new task
-        params: [name: str!, task: str!]
-        run: |
-          conn = sqlite3.connect(f"{name}.db")
-          conn.execute("INSERT INTO tasks (task, done) VALUES (?, 0)", (task,))
-          conn.commit()
-          conn.close()
-          print(f"📝 Added task: {task}")
+ Hello world!
 
-      complete:
-        help: Mark a task as complete
-        params: [name: str!, id: int!]
-        run: |
-          conn = sqlite3.connect(f"{name}.db")
-          conn.execute("UPDATE tasks SET done = 1 WHERE id = ?", (id,))
-          conn.commit()
-          conn.close()
-          print(f"🎉 Marked task {id} as complete")
-    ```
+╭─ Options ──────────────────────────────────────────────────────────────────╮
+│ --version                                                                  │
+│ --install-completion          Install completion for the current shell.    │
+│ --show-completion             Show completion for the current shell, to    │
+│                               copy it or customize the installation.       │
+│ --help                -h      Show this message and exit.                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────╮
+│ shell                                                                      │
+│ python                                                                     │
+│ greet   Greet someone by name                                              │
+╰────────────────────────────────────────────────────────────────────────────╯
+```
 
-    ![todo-demo](images/demo.gif)
+The `tests` section at the bottom of the manifest is optional. `cli test hello.yaml` runs it.
 
-For more examples, check [examples](examples/) directory.
+## What you get
 
-## Why cliffy
-* Mix Python and shell commands naturally
-* Hot-reload changes as you develop
-* Package your CLI as a single executable with `cli build`
-* Test your CLIs with built-in test runner
-* Use Jinja2 template syntax for dynamic command generation
-* Reusable command templates
-* AI-friendly- see the supported [AI features](features#ai-features)
+- **Python and shell in one place.** Run scripts are Python; lines starting with `$` become
+  `subprocess` calls. See [Shell commands](guides/shell-commands.md).
+- **Typed parameters with a short syntax.** `name: str!` is a required argument and
+  `--count|-c: int = 1` is an option. See [Params and types](guides/params.md).
+- **Groups, aliases and templates.** `db.create` nests a command, `delete|rm` adds an alias and
+  command templates share params between commands. See
+  [Commands, groups and aliases](guides/commands.md).
+- **A fast edit loop.** `cli dev` reloads the CLI every time you save the manifest. See
+  [Hot-reload dev loop](guides/dev-loop.md).
+- **Tests next to the commands.** `cli test` runs the assertions you keep in the manifest. See
+  [Testing manifests](guides/testing.md).
+- **One file to ship.** `cli build` packs the CLI and its dependencies into a single executable
+  zipapp. See [Building executables](guides/building.md).
 
-**Similar frameworks**
+## How it works
 
-- [Bashly](https://github.com/DannyBen/bashly) - An awesome YAML to Bash CLI builder
-- [Fire](https://github.com/google/python-fire) - Python objects to CLI builder
+```text
+manifest.yaml ──► validate ──► generate Python (Typer or Click) ──► load │ run │ build
+```
+
+1. cliffy renders the manifest with [Jinja2](https://jinja.palletsprojects.com/), parses the YAML and
+   validates it against the [manifest schema](reference/manifest.md).
+2. It generates one Python module. `cli render` prints that module, so nothing about the result is
+   hidden.
+3. `cli load` installs the module as a command, `cli run` executes it once and `cli build` packages it.
+
+## Where to go next
+
+| If you want to | Read |
+|---|---|
+| Install cliffy and its extras | [Installation](installation.md) |
+| Build a complete CLI step by step | [Quickstart](quickstart.md) |
+| Look up a manifest key | [Manifest reference](reference/manifest.md) |
+| Look up a `cli` command or flag | [CLI reference](reference/cli.md) |
+| Copy from working manifests | [Examples gallery](reference/examples.md) |
+| Upgrade from an older release | [Migration notes](project/migration.md) |
+
+## Similar tools
+
+- [Bashly](https://github.com/DannyBen/bashly) generates Bash CLIs from YAML.
+- [Fire](https://github.com/google/python-fire) generates CLIs from Python objects.

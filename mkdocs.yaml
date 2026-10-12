@@ -1,22 +1,64 @@
-site_name: ""
+site_name: cliffy
+site_description: Build Python CLIs from YAML manifests
+site_url: https://jaykv.github.io/cliffy/
+repo_url: https://github.com/jaykv/cliffy
+repo_name: jaykv/cliffy
+edit_uri: edit/main/docs/
+
+# Warnings fail the build, locally and in the deploy workflow.
+strict: true
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
 nav:
-  - Cliffy: index.md
-  - Getting Started: getting-started.md
-  - Features: features.md
-  - Blueprints: blueprints.md
-  - Schema: schema.md
+  - Home: index.md
+  - Get started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+  - Guides:
+      - Manifest basics: guides/manifest-basics.md
+      - Params and types: guides/params.md
+      - Commands, groups and aliases: guides/commands.md
+      - Command templates and global params: guides/templates-and-global-params.md
+      - Includes and merging: guides/includes.md
+      - Vars and Jinja: guides/vars-and-jinja.md
+      - Shell commands: guides/shell-commands.md
+      - Click and Typer backends: guides/backends.md
+      - Testing manifests: guides/testing.md
+      - Hot-reload dev loop: guides/dev-loop.md
+      - Building executables: guides/building.md
+      - Generating docs: guides/generating-docs.md
+      - Editor setup: guides/editor-setup.md
+      - Blueprints and callbacks: blueprints.md
+      - AI commands: ai.md
+  - Reference:
+      - CLI reference: reference/cli.md
+      - Manifest reference: reference/manifest.md
+      - Examples gallery: reference/examples.md
+  - Project:
+      - Changelog: project/changelog.md
+      - Contributing: project/contributing.md
+      - Migration notes: project/migration.md
+      - Known issues: project/known-issues.md
+
 theme:
   name: material
   icon:
     logo: fontawesome/solid/mountain
+    repo: fontawesome/brands/github
   palette:
-    - scheme: default
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
       primary: brown
       accent: indigo
       toggle:
-        icon: material/brightness-7 
+        icon: material/brightness-7
         name: Switch to dark mode
-    - scheme: slate
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
       primary: blue grey
       accent: indigo
       toggle:
@@ -26,17 +68,29 @@ theme:
     text: Roboto
     code: Roboto Mono
   features:
+    - content.action.edit
     - content.code.copy
+    - navigation.footer
+    - navigation.sections
+    - navigation.tabs
     - navigation.top
-    - navigation.indexes
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
 plugins:
   - search
-  - literate-nav
+  # Looks up page contributors through the GitHub API, so it only runs in CI.
   - git-committers:
       repository: jaykv/cliffy
       branch: main
+      enabled: !ENV [CI, false]
+
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
+  - tables
   - pymdownx.details
   - pymdownx.superfences
   - pymdownx.highlight:
@@ -44,8 +98,16 @@ markdown_extensions:
       line_spans: __span
       pygments_lang_class: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
-  - pymdownx.tabbed
+  # Guides embed the manifests in docs/snippets and examples/ instead of copying them.
+  # `make docs-check` runs those manifests, so the pages cannot show YAML that does not work.
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+  - pymdownx.tabbed:
+      alternate_style: true
   - toc:
       permalink: true
-repo_url: https://github.com/jaykv/cliffy
+
+watch:
+  - examples
+  - scripts/docs.py
