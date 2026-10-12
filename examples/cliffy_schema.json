@@ -91,6 +91,7 @@
             "description": "Configuration options for a Cliffy command.",
             "properties": {
                 "context_settings": {
+                    "additionalProperties": true,
                     "default": {},
                     "description": "Arbitrary settings passed to Click's context. Useful for things\n        like overriding the default `max_content_width`.\n        See Click's documentation for more details:\n        https://click.palletsprojects.com/en/8.1.x/advanced/#context-settings",
                     "title": "Context Settings",
@@ -240,6 +241,31 @@
             "title": "CommandTemplate",
             "type": "object"
         },
+        "Example": {
+            "properties": {
+                "command": {
+                    "title": "Command",
+                    "type": "string"
+                },
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "title": "Description"
+                }
+            },
+            "required": [
+                "command"
+            ],
+            "title": "Example",
+            "type": "object"
+        },
         "GenericCommandParam": {
             "title": "Generic Command Param\nGets appended to the command params signature.",
             "type": "string"
@@ -274,7 +300,6 @@
             "type": "object"
         }
     },
-    "additionalProperties": true,
     "properties": {
         "manifestVersion": {
             "default": "v3",
@@ -407,24 +432,35 @@
             "type": "object"
         },
         "commands": {
-            "additionalProperties": {
-                "anyOf": [
-                    {
+            "anyOf": [
+                {
+                    "additionalProperties": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/$defs/Command"
+                            },
+                            {
+                                "$ref": "#/$defs/RunBlock"
+                            },
+                            {
+                                "$ref": "#/$defs/RunBlockList"
+                            }
+                        ]
+                    },
+                    "type": "object"
+                },
+                {
+                    "items": {
                         "$ref": "#/$defs/Command"
                     },
-                    {
-                        "$ref": "#/$defs/RunBlock"
-                    },
-                    {
-                        "$ref": "#/$defs/RunBlockList"
-                    }
-                ]
-            },
+                    "type": "array"
+                }
+            ],
             "description": "A mapping containing the command definitions for the CLI. Each command should have a unique key- which can be either a group command or nested subcommands. Nested subcommands are joined by '.' in between each level. Aliases for commands can be separated in the key by '|'. A special '(*)' wildcard can be used to spread the subcommand to all group-level commands",
-            "title": "Commands",
-            "type": "object"
+            "title": "Commands"
         },
         "cli_options": {
+            "additionalProperties": true,
             "description": "Additional CLI configuration options",
             "title": "Cli Options",
             "type": "object"
@@ -446,6 +482,22 @@
                 ]
             },
             "title": "Tests",
+            "type": "array"
+        },
+        "examples": {
+            "default": [],
+            "description": "Example command usages to display in generated CLI docs.",
+            "items": {
+                "anyOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "$ref": "#/$defs/Example"
+                    }
+                ]
+            },
+            "title": "Examples",
             "type": "array"
         }
     },

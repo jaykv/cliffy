@@ -1,5 +1,5 @@
 ## Command parser
-from typing import Any, Optional, Union
+from typing import Any
 
 from pybash.transformer import transform as transform_bash
 
@@ -20,7 +20,7 @@ class Parser:
     def __init__(self, manifest: CLIManifest) -> None:
         self.manifest = manifest
 
-    def parse_run_block(self, script: Union[RunBlock, RunBlockList]) -> str:
+    def parse_run_block(self, script: RunBlock | RunBlockList) -> str:
         norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
         if not isinstance(norm_script, str):
             raise ValueError(f"Invalid script type: {type(norm_script)}")
@@ -41,11 +41,11 @@ class Parser:
         param_name: str,
         param_type: str,
         typer_cls: str,
-        aliases: Optional[list[str]] = None,
+        aliases: list[str] | None = None,
         default_val: Any = None,
         is_required: bool = False,
-        help: Optional[str] = None,
-        extra_params: Optional[str] = None,
+        help: str | None = None,
+        extra_params: str | None = None,
     ) -> str:
         """
         Builds a type-annotated parameter definition for Typer CLI command.
@@ -98,7 +98,7 @@ class Parser:
         parsed_param_type += "),"
         return parsed_param_type
 
-    def parse_param(self, param: Union[CommandParam, GenericCommandParam, SimpleCommandParam]) -> str:
+    def parse_param(self, param: CommandParam | GenericCommandParam | SimpleCommandParam) -> str:
         if isinstance(param, GenericCommandParam):
             return f"{param.root}, "
 

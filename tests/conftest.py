@@ -1,10 +1,12 @@
 import os
-from cliffy.cli import remove_all_command
 from shutil import rmtree
-from cliffy.homer import get_clis
-from click.testing import CliRunner
+
 import pytest
 import xdist
+from click.testing import CliRunner
+
+from cliffy.cli import remove_all_command
+from cliffy.homer import get_clis
 
 
 @pytest.hookimpl()
@@ -32,3 +34,13 @@ def pytest_sessionfinish(session, exitstatus):
     rmtree("test-builds", ignore_errors=True)
     rmtree("test-manifest-builds", ignore_errors=True)
     rmtree("test-manifest-builds-response", ignore_errors=True)
+
+
+@pytest.fixture
+def isolated_fs(tmp_path, monkeypatch):
+    """Run the test from an empty temporary working directory.
+
+    Replaces ``CliRunner.isolated_filesystem``, deprecated in Click 8.5 and removed in Click 9.
+    """
+    monkeypatch.chdir(tmp_path)
+    return tmp_path

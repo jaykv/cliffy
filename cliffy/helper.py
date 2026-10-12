@@ -6,17 +6,16 @@ import subprocess
 import sys
 from datetime import datetime
 from importlib.resources import files
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from tempfile import _TemporaryFileWrapper
-from typing import Any, NoReturn, Optional, Union, cast, IO
+from types import ModuleType
+from typing import IO, Any, NoReturn
 
-from click import secho, File
+from click import File, secho
 from click.core import Context, Parameter
-from click.types import _is_file_like
 from packaging import version
 from pydantic import BaseModel
-from types import ModuleType
-from importlib.util import spec_from_file_location, module_from_spec
 
 CLIFFY_CLI_DIR = files("cliffy").joinpath("clis")
 CLIFFY_METADATA_DIR = files("cliffy").joinpath("metadata")
@@ -39,22 +38,22 @@ TEMP_FILES: list[_TemporaryFileWrapper] = []
 
 class RequirementSpec(BaseModel):
     name: str
-    operator: Optional[str]
-    version: Optional[str]
+    operator: str | None
+    version: str | None
 
 
 class ManifestOrCLI(File):
     def convert(  # type: ignore[override]
-        self, value: Union[str, "os.PathLike[str]", IO[Any]], param: Optional[Parameter], ctx: Optional[Context]
-    ) -> Union[str, IO[Any]]:
-        if _is_file_like(value):
-            return value
+        self, value: str | os.PathLike[str] | IO[Any], param: Parameter | None, ctx: Context | None
+    ) -> str | IO[Any]:
+        if isinstance(value, str):
+            # a manifest path is opened, anything else is treated as the name of a loaded CLI
+            return super().convert(value, param, ctx) if value.endswith("yaml") else value
 
-        value = cast("Union[str, os.PathLike[str]]", value)
-
-        if isinstance(value, os.PathLike) or value.endswith("yaml"):
+        if isinstance(value, os.PathLike):
             return super().convert(value, param, ctx)
 
+        # already a file-like object
         return value
 
 
@@ -79,7 +78,7 @@ def import_module_from_path(filepath: str) -> ModuleType:
         spec.loader.exec_module(module)
         return module
     except Exception as e:
-        raise ImportError(f"Failed to import module from {filepath}: {e}")
+        raise ImportError(f"Failed to import module from {filepath}: {e}") from e
 
 
 def make_executable(path: str) -> None:
@@ -100,7 +99,7 @@ def indent_block(block: str, spaces: int = 4) -> str:
     return "\n".join([" " * spaces + line for line in block.splitlines()])
 
 
-def wrap_as_comment(text: str, split_on: Optional[str] = None) -> str:
+def wrap_as_comment(text: str, split_on: str | None = None) -> str:
     if split_on:
         joiner = "\n# "
         return f"# {joiner.join(text.split(split_on))}"
@@ -131,7 +130,7 @@ def parse_requirement(requirement: str) -> RequirementSpec:
     return RequirementSpec(name=requirement.strip(), operator=None, version=None)
 
 
-def compare_versions(version1: str, version2: str, op: Optional[str] = "=") -> bool:
+def compare_versions(version1: str, version2: str, op: str | None = "=") -> bool:
     v1 = version.parse(version1)
     v2 = version.parse(version2)
 

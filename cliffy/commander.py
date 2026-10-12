@@ -1,24 +1,24 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Iterator, ItemsView, ValuesView, Optional
+from collections import defaultdict
+from collections.abc import ItemsView, Iterator, ValuesView
+
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
-from collections import defaultdict
-
 
 from cliffy.manifest import (
-    ParamBlock,
     CLIManifest,
     Command,
-    CommandParam,
     CommandConfig,
+    CommandParam,
     GenericCommandParam,
+    ParamBlock,
     PostRunBlock,
     PreRunBlock,
     RunBlock,
-    SimpleCommandParam,
     RunBlockList,
+    SimpleCommandParam,
 )
 from cliffy.parser import Parser
 
@@ -33,7 +33,7 @@ class CLI(BaseModel):
 class BaseGroup(BaseModel):
     name: str
     short_name: str = ""
-    parent_group: Optional[BaseGroup] = None
+    parent_group: BaseGroup | None = None
     commands: list[Command] = []
     help: str = ""
 
@@ -94,15 +94,15 @@ class Commander(ABC):
     """Generates commands based on the command config"""
 
     __slots__ = (
+        "aliases_by_commands",
+        "base_imports",
+        "cli",
+        "commands",
+        "greedy",
+        "groups",
         "manifest",
         "parser",
-        "cli",
-        "groups",
-        "greedy",
         "root_commands",
-        "base_imports",
-        "aliases_by_commands",
-        "commands",
         "root_group",
     )
 

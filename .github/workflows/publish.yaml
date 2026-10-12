@@ -1,0 +1,57 @@
+name: Publish to PyPI
+
+# Publishes with PyPI trusted publishing (OIDC) - no API token is stored in the repository.
+# One-time setup on https://pypi.org/manage/project/cliffy/settings/publishing/ :
+#   owner: jaykv, repository: cliffy, workflow: publish.yaml, environment: pypi
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+      - name: Build sdist and wheel
+        run: uv build
+      - name: Check the release tag matches the package version
+        run: |
+          version="$(uv version --short)"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "::error::release tag '$GITHUB_REF_NAME' does not match pyproject version '$version'"
+            exit 1
+          fi
+      - name: Smoke test the wheel
+        run: uv run --isolated --no-project --with dist/*.whl cli --version
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Upload to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/cliffy/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.0
+      - name: Publish
+        run: uv publish --trusted-publishing always dist/*

@@ -1,22 +1,18 @@
 import datetime
-from typing import Union
-
-
-from cliffy.commander import Commander, BaseGroup
-from cliffy.manifest import Command
-
+import re
 
 from pybash.transformer import transform as transform_bash
 
+from cliffy.commander import BaseGroup, Commander
 from cliffy.manifest import (
     CLIManifest,
+    Command,
     CommandParam,
     GenericCommandParam,
     RunBlock,
     RunBlockList,
     SimpleCommandParam,
 )
-import re
 
 
 class ClickCommander(Commander):
@@ -44,7 +40,7 @@ def show_aliases(ctx, param, value):
     if not value:
         return
     print(\"\"\""""
-            max_command_length = max(len(x) for x in self.aliases_by_commands.keys())
+            max_command_length = max(len(x) for x in self.aliases_by_commands)
             self.cli += f"""
 {"Command".ljust(max_command_length + 7)}Aliases
 {"--------".ljust(max_command_length + 7)}--------
@@ -148,7 +144,7 @@ class ClickParser:
     def __init__(self, manifest: CLIManifest) -> None:
         self.manifest = manifest
 
-    def parse_run_block(self, script: Union[RunBlock, RunBlockList]) -> str:
+    def parse_run_block(self, script: RunBlock | RunBlockList) -> str:
         norm_script = script.to_script() if isinstance(script, RunBlockList) else script.root
         if not isinstance(norm_script, str):
             raise ValueError(f"Invalid script type: {type(norm_script)}")

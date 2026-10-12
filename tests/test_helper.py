@@ -1,4 +1,3 @@
-import pytest
 import os
 import platform
 from datetime import datetime, timedelta
@@ -6,28 +5,30 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from unittest.mock import patch
 
+import pytest
+
 from cliffy.helper import (
-    RequirementSpec,
-    write_to_file,
-    import_module_from_path,
-    make_executable,
-    delete_temp_files,
-    indent_block,
-    wrap_as_comment,
-    wrap_as_var,
-    get_installed_package_versions,
-    parse_requirement,
-    compare_versions,
-    out,
-    out_err,
-    exit_err,
-    age_datetime,
     CLIFFY_CLI_DIR,
     CLIFFY_METADATA_DIR,
+    OPERATOR_MAP,
     PYTHON_BIN,
     PYTHON_EXECUTABLE,
-    OPERATOR_MAP,
     TEMP_FILES,
+    RequirementSpec,
+    age_datetime,
+    compare_versions,
+    delete_temp_files,
+    exit_err,
+    get_installed_package_versions,
+    import_module_from_path,
+    indent_block,
+    make_executable,
+    out,
+    out_err,
+    parse_requirement,
+    wrap_as_comment,
+    wrap_as_var,
+    write_to_file,
 )
 
 
@@ -110,7 +111,7 @@ def test_make_executable(tmpdir):
 # Test for delete_temp_files
 def test_delete_temp_files():
     # Arrange
-    temp_file = NamedTemporaryFile(delete=False)
+    temp_file = NamedTemporaryFile(delete=False)  # noqa: SIM115
     TEMP_FILES.append(temp_file)
 
     # Act

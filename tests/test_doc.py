@@ -1,6 +1,7 @@
 import pytest
+
 from cliffy.doc import DocGenerator
-from cliffy.manifest import CLIManifest, Command, Example, RunBlock, SimpleCommandParam, CommandParam
+from cliffy.manifest import CLIManifest, Command, CommandParam, Example, RunBlock, SimpleCommandParam
 
 
 @pytest.fixture

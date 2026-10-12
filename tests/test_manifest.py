@@ -1,19 +1,20 @@
+import pytest
 from pydantic import ValidationError
+
 from cliffy.commanders.typer import TyperCommander
 from cliffy.manifest import (
     CLIManifest,
     Command,
-    CommandParam,
     CommandConfig,
+    CommandParam,
     CommandTemplate,
+    IncludeManifest,
     PostRunBlock,
     PreRunBlock,
     RunBlock,
-    SimpleCommandParam,
     RunBlockList,
-    IncludeManifest,
+    SimpleCommandParam,
 )
-import pytest
 
 
 def test_greedy_command_expand():
@@ -526,7 +527,8 @@ def test_invalid_command_param_type():
     """
     Test that an invalid parameter type raises a validation error.
 
-    This test verifies the input validation mechanism for command parameters by attempting to create a CLI manifest with an incorrectly specified parameter type.
+    This test verifies the input validation mechanism for command parameters by attempting to create
+    a CLI manifest with an incorrectly specified parameter type.
 
     Raises:
         ValidationError: When an invalid type is provided for a command parameter.

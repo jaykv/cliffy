@@ -1,16 +1,17 @@
 import pytest
+
 from cliffy.commanders.typer import TyperCommander
 from cliffy.manifest import (
     CLIManifest,
     Command,
-    CommandTemplate,
-    SimpleCommandParam,
-    RunBlock,
-    PreRunBlock,
-    PostRunBlock,
-    RunBlockList,
     CommandParam,
+    CommandTemplate,
     GenericCommandParam,
+    PostRunBlock,
+    PreRunBlock,
+    RunBlock,
+    RunBlockList,
+    SimpleCommandParam,
 )
 
 

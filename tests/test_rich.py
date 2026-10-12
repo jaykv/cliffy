@@ -1,4 +1,4 @@
-from cliffy.rich import print_rich_table, Table, Console
+from cliffy.rich import Console, Table, print_rich_table
 
 
 def test_print_rich_table_basic(capsys):
@@ -35,12 +35,13 @@ def test_import_error(monkeypatch):
 
     # Re-import the module to trigger the ImportError handling
     import importlib
+
     import cliffy.rich
 
     importlib.reload(cliffy.rich)
 
     # Test the fallback behavior
-    from cliffy.rich import Console, Table, ClickGroup
+    from cliffy.rich import ClickGroup, Console, Table
 
     console = Console()
     table = Table()
@@ -57,7 +58,7 @@ def test_table_creation():
     assert table.columns == []
     assert table.rows == []
     if hasattr(table, "styles"):
-        assert getattr(table, "styles") == []
+        assert table.styles == []
 
 
 def test_table_add_column():
@@ -65,7 +66,7 @@ def test_table_add_column():
     table.add_column("Name", style="red")
     assert table.columns
     if hasattr(table, "styles"):
-        assert getattr(table, "styles") == ["red"]
+        assert table.styles == ["red"]
 
 
 def test_table_add_row():

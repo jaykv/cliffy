@@ -1,6 +1,6 @@
 import datetime
 
-from cliffy.commander import Commander, BaseGroup
+from cliffy.commander import BaseGroup, Commander
 from cliffy.manifest import CLIManifest, Command
 
 
@@ -44,7 +44,7 @@ def version_callback(value: bool):
 def aliases_callback(value: bool):
     if value:
         print(\"\"\""""
-            max_command_length = max(len(x) for x in self.aliases_by_commands.keys())
+            max_command_length = max(len(x) for x in self.aliases_by_commands)
             self.cli += f"""
 {"Command".ljust(max_command_length + 7)}Aliases
 {"--------".ljust(max_command_length + 7)}--------

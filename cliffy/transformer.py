@@ -1,23 +1,22 @@
 import os
-from typing import Any, TextIO
+from typing import Any, Self, TextIO
 
 import yaml
 from jinja2 import BaseLoader, Environment, FileSystemLoader
 from pydantic import ValidationError
-from typing_extensions import Self
 
 from cliffy.commander import generate_cli
 from cliffy.commanders.click import ClickCommander
 from cliffy.commanders.typer import TyperCommander
 from cliffy.helper import compare_versions, exit_err, get_installed_package_versions, out, parse_requirement
-from cliffy.manifest import LATEST_SCHEMA_VERSION, IncludeManifest, CLIManifest
+from cliffy.manifest import LATEST_SCHEMA_VERSION, CLIManifest, IncludeManifest
 from cliffy.merger import cliffy_merger
 
 
 class Transformer:
     """Loads command manifest and transforms it into a CLI"""
 
-    __slots__ = ("manifest_io", "command_config", "manifest_version", "includes_config", "manifest", "cli")
+    __slots__ = ("cli", "command_config", "includes_config", "manifest", "manifest_io", "manifest_version")
 
     def __init__(
         self,
@@ -75,14 +74,15 @@ class Transformer:
 
     @classmethod
     def resolve_include_by_path(cls, path: str) -> Self:
-        with open(path, "r") as m:
+        with open(path) as m:
             return cls(m, as_include=True)
 
     @staticmethod
     def load_manifest(manifest_io: TextIO) -> dict[str, Any]:
         try:
             manifest_path = os.path.realpath(manifest_io.name)
-            all_vars = yaml.safe_load(open(manifest_path, "r")).get("vars", {})
+            with open(manifest_path) as manifest_file:
+                all_vars = yaml.safe_load(manifest_file).get("vars", {})
             all_vars["env"] = os.environ
             var_env = Environment(loader=BaseLoader())
             interpolated_vars = {

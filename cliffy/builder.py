@@ -1,24 +1,21 @@
-from io import TextIOWrapper
 import os
 import sys
+from io import TextIOWrapper
 from pathlib import Path
 from shutil import copy
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from typing import Optional
 
 from click.testing import CliRunner, Result
 from shiv import cli as shiv_cli
 from shiv import pip
 
-from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path
-
-from cliffy.transformer import Transformer
-
 from cliffy.commander import CLI
+from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path
+from cliffy.transformer import Transformer
 
 
 def build_cli_from_manifest(
-    manifestIO: TextIOWrapper, output_dir: Optional[str] = None, interpreter: str = "/usr/bin/env python3"
+    manifestIO: TextIOWrapper, output_dir: str | None = None, interpreter: str = "/usr/bin/env python3"
 ) -> tuple[CLI, Result]:
     T = Transformer(manifestIO, validate_requires=False)
     with NamedTemporaryFile(mode="w", prefix=f"{T.cli.name}_", suffix=".py", delete=False) as script:
@@ -36,8 +33,8 @@ def build_cli_from_manifest(
 def build_cli(
     cli_name: str,
     script_path: str,
-    deps: Optional[list[str]] = None,
-    output_dir: Optional[str] = None,
+    deps: list[str] | None = None,
+    output_dir: str | None = None,
     interpreter: str = "/usr/bin/env python3",
 ) -> Result:
     if deps is None:
@@ -48,9 +45,9 @@ def build_cli(
 
     with TemporaryDirectory() as tdist:
         copy(script_path, os.path.join(tdist, f"{cli_name}.py"))
-        pip_deps = ["typer"] + deps
+        pip_deps = ["typer", *deps]
 
-        pip.install(["--target", tdist] + pip_deps)
+        pip.install(["--target", tdist, *pip_deps])
 
         runner = CliRunner()
         output_file = os.path.join(output_dir, f"{cli_name}") if output_dir else cli_name
@@ -68,6 +65,6 @@ def run_cli(cli_name: str, script_code: str, args: tuple) -> None:
         TEMP_FILES.append(runner_file)
 
     delete_temp_files()
-    runner_argvs = [runner_file.name] + list(args)
+    runner_argvs = [runner_file.name, *list(args)]
     sys.argv = runner_argvs
     module.cli()

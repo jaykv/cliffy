@@ -7,7 +7,8 @@ import sys
 import pytest
 from click.testing import CliRunner
 
-from cliffy.cli import build_command, load_command, test_command
+from cliffy.cli import build_command, load_command
+from cliffy.cli import test_command as manifest_test_command
 from cliffy.homer import get_metadata
 
 try:
@@ -85,7 +86,7 @@ def test_cli_build_fails(cli_name):
     runner = CliRunner()
     result = runner.invoke(build_command, [f"{cli_name}", "-o", "test-builds"])
     assert result.exit_code == 0
-    assert f"~ {cli_name} not loaded" in result.stdout
+    assert f"~ {cli_name} not loaded" in result.output
 
 
 @pytest.mark.parametrize("cli_name", CLI_MANIFEST_BUILDS)
@@ -111,9 +112,8 @@ def test_cli_response_with_loads(cli_name):
 
             # run commands for loaded cli
             loaded_cli_result = subprocess.run(
-                [cli_name] + command["args"].split(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                [cli_name, *command["args"].split()],
+                capture_output=True,
                 encoding="utf-8",
                 env=environment,
             )
@@ -137,9 +137,8 @@ def test_cli_response_with_builds(cli_name):
         executable_path = os.path.join(os.getcwd(), BUILD_DIR_PATH, cli_name)
 
         built_manifest_result = subprocess.run(
-            [sys.executable, executable_path] + shlex.split(command["args"]),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            [sys.executable, executable_path, *shlex.split(command["args"])],
+            capture_output=True,
             encoding="utf-8",
             env=environment,
         )
@@ -149,6 +148,6 @@ def test_cli_response_with_builds(cli_name):
 @pytest.mark.parametrize("cli_name", CLI_WITH_MANIFEST_TESTS)
 def test_cli_tests_pass(cli_name):
     runner = CliRunner()
-    result = runner.invoke(test_command, [f"examples/{cli_name}.yaml"])
+    result = runner.invoke(manifest_test_command, [f"examples/{cli_name}.yaml"])
     assert "All tests passed" in result.output
     assert result.exit_code == 0
