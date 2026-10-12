@@ -11,6 +11,27 @@ from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validato
 from .helper import CLI_NAME_PATTERN, GENERATED_NAMES, wrap_as_comment
 
 LATEST_SCHEMA_VERSION = "v3"
+MIGRATION_GUIDE = "https://jaykv.github.io/cliffy/project/migration/"
+# schema version -> the cliffy release that stopped reading it
+DEPRECATED_SCHEMA_VERSIONS = {"v1": "0.4.0", "v2": "0.5.0"}
+
+
+def manifest_version_problem(value: object) -> str | None:
+    """Why a `manifestVersion` value cannot be used and what to change, or None when it is the current version."""
+    version = str(value).strip()
+    if version == LATEST_SCHEMA_VERSION:
+        return None
+
+    use_latest = f"set `manifestVersion: {LATEST_SCHEMA_VERSION}` or remove the line"
+    if version in DEPRECATED_SCHEMA_VERSIONS:
+        return (
+            f"The {version} schema is deprecated since cliffy {DEPRECATED_SCHEMA_VERSIONS[version]} and is no longer "
+            f"read. Update the manifest to the {LATEST_SCHEMA_VERSION} schema ({MIGRATION_GUIDE}), then {use_latest}."
+        )
+    return (
+        f"Unrecognized manifest version `{version}`. This version of cliffy reads `{LATEST_SCHEMA_VERSION}` "
+        f"manifests: {use_latest}."
+    )
 
 
 class Example(BaseModel):
@@ -386,16 +407,8 @@ class CLIManifest(BaseModel):
     @field_validator("manifestVersion", mode="after")
     @classmethod
     def is_v3(cls, value: str) -> str:
-        if value.strip() == "v1":
-            raise ValueError(
-                "v1 schema is deprecated with cliffy >= 0.4.0. Please upgrade the manifest to the v3 schema."
-            )
-        if value.strip() == "v2":
-            raise ValueError(
-                "v2 schema is deprecated with cliffy >= 0.5.0. Please upgrade the manifest to the v3 schema."
-            )
-        if value.strip() != "v3":
-            raise ValueError(f"Unrecognized manifest version {value}. Latest is {LATEST_SCHEMA_VERSION}.")
+        if problem := manifest_version_problem(value):
+            raise ValueError(problem)
         return value
 
     @model_validator(mode="after")

@@ -1,4 +1,6 @@
+import glob
 import os
+import re
 import tempfile
 
 import pytest
@@ -257,3 +259,66 @@ def test_requires_unmet(tmp_path, capsys, requirement, expected_error):
 
     error = capsys.readouterr().err
     assert f"requires `{requirement}` to be installed\n    {expected_error}" in error
+
+
+MANIFEST_BODY = "name: t\nversion: '1'\ncommands:\n  a: print(1)\n"
+SPEC_BLUEPRINT = (
+    "from cliffy.blueprint import Blueprint\n\n\n"
+    "class Spec(Blueprint):\n"
+    "    name: str\n\n"
+    "    def to_manifest(self):\n"
+    "        return {'name': self.name, 'version': '1', 'commands': {'a': 'print(1)'}}\n"
+)
+
+
+@pytest.mark.parametrize(
+    "version, expected_error",
+    [
+        ("v1", "v1 schema is deprecated"),
+        ("v2", "v2 schema is deprecated"),
+        ("v4", "Unrecognized manifest version `v4`"),
+        ("3", "Unrecognized manifest version `3`"),
+    ],
+)
+@pytest.mark.parametrize("where", ["manifest", "include", "blueprint_spec"])
+def test_unsupported_manifest_version_is_an_error(tmp_path, capsys, where, version, expected_error):
+    # the key was removed before validation, so `manifestVersion: v1` loaded as if it was v3
+    manifest_path = tmp_path / "main.yaml"
+    if where == "manifest":
+        manifest_path.write_text(f"manifestVersion: {version}\n" + MANIFEST_BODY)
+    elif where == "include":
+        (tmp_path / "shared.yaml").write_text(f"manifestVersion: {version}\ncommands:\n  b: print(2)\n")
+        manifest_path.write_text("includes: [shared.yaml]\n" + MANIFEST_BODY)
+    else:
+        (tmp_path / "spec.py").write_text(SPEC_BLUEPRINT)
+        manifest_path.write_text(f"blueprint: spec.py\nmanifestVersion: {version}\nname: t\n")
+
+    with pytest.raises(SystemExit):
+        load(manifest_path)
+
+    error = capsys.readouterr().err
+    assert expected_error in error
+    assert "manifestVersion: v3" in error
+    assert ("shared.yaml" if where == "include" else "main.yaml") in error
+
+
+@pytest.mark.parametrize("where", ["manifest", "include", "blueprint_spec"])
+def test_current_manifest_version_is_accepted(tmp_path, where):
+    manifest_path = tmp_path / "main.yaml"
+    if where == "manifest":
+        manifest_path.write_text("manifestVersion: v3\n" + MANIFEST_BODY)
+    elif where == "include":
+        (tmp_path / "shared.yaml").write_text("manifestVersion: v3\ncommands:\n  b: print(2)\n")
+        manifest_path.write_text("includes: [shared.yaml]\n" + MANIFEST_BODY)
+    else:
+        (tmp_path / "spec.py").write_text(SPEC_BLUEPRINT)
+        manifest_path.write_text("blueprint: spec.py\nmanifestVersion: v3\nname: t\n")
+
+    assert load(manifest_path).cli.name == "t"
+
+
+def test_example_manifests_use_the_current_version():
+    for path in sorted(glob.glob("examples/*.yaml")):
+        with open(path, encoding="utf-8") as manifest_file:
+            declared = re.findall(r"^manifestVersion:\s*(\S+)", manifest_file.read(), re.MULTILINE)
+        assert declared in ([], ["v3"]), path

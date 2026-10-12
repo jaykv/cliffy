@@ -17,7 +17,7 @@ from cliffy.commander import generate_cli
 from cliffy.commanders.click import ClickCommander
 from cliffy.commanders.typer import TyperCommander
 from cliffy.helper import check_requirement, exit_err, get_installed_package_versions, out
-from cliffy.manifest import LATEST_SCHEMA_VERSION, CLIManifest, IncludeManifest
+from cliffy.manifest import LATEST_SCHEMA_VERSION, CLIManifest, IncludeManifest, manifest_version_problem
 from cliffy.merger import cliffy_merger
 
 
@@ -51,7 +51,10 @@ class Transformer:
         # manifests that are being resolved right now, outermost first: used to detect include cycles
         self.include_chain = (*include_chain, self.manifest_path)
         self.command_config = self.load_manifest(manifest_io)
+        # checked here, for every kind of file: an include and a blueprint spec have no model field for it
         self.manifest_version = self.command_config.pop("manifestVersion", LATEST_SCHEMA_VERSION)
+        if problem := manifest_version_problem(self.manifest_version):
+            exit_err(f"~ error validating {manifest_io.name}: {problem}")
         self.blueprint: Blueprint | None = None
         self.blueprint_ref = None if as_include else self.find_blueprint_reference(blueprint)
         if not self.blueprint_ref and self.command_config.get("includes"):
