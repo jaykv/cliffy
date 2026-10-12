@@ -4,7 +4,21 @@ Notable changes per release. Entries before 0.7.0 were reconstructed from the gi
 because no changelog was kept at the time; they list the main changes, not every commit. Release
 artifacts are on [PyPI](https://pypi.org/project/cliffy/#history).
 
-## 0.7.0 (unreleased)
+## 0.7.1 (2026-10-12)
+
+### Added
+
+- `cli ai llms-txt` prints the documentation bundled with cliffy as one [llms.txt](https://llmstxt.org/)
+  file, for coding agents. It needs no model and no `ai` extra. The documentation site publishes the
+  same file at `/llms.txt`. See [AI commands](../ai.md).
+- `cli validate` warns when the `default`, `help` or `short` of a param is ignored because its type in
+  `types` is a complete Typer definition.
+
+### Fixed
+
+- `cli init` accepts names with a hyphen, as `cli init --raw` always did.
+
+## 0.7.0 (2026-10-12)
 
 The first release after a long pause. It brings the project up to date with current Python and
 dependency versions. Read the [migration notes](migration.md#from-06x-to-070) before upgrading.

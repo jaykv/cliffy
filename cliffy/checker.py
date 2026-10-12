@@ -8,6 +8,7 @@ import traceback
 import typer
 
 from cliffy.commander import CLI
+from cliffy.manifest import CLIManifest, Command, CommandParam
 
 GENERATED_FILE = "<generated CLI>"
 FUNCTION_DEFINITION = re.compile(r"(?:async\s+)?def (\w+)\(")
@@ -73,3 +74,29 @@ def check_generated_code(cli: CLI) -> None:
         ]
         line_number = generated_frames[-1].lineno if generated_frames else None
         raise GeneratedCodeError(describe(cli, e, line_number)) from e
+
+
+def ignored_param_settings(manifest: CLIManifest) -> list[str]:
+    """Params whose `default` or `help` is dropped because their type is a complete Typer definition."""
+    complete = {name for name, definition in manifest.types.items() if "typer." in definition}
+    problems = []
+    params = [("global_params", param) for param in manifest.global_params]
+    commands = manifest.commands
+    if isinstance(commands, list):
+        commands = {command.name: command for command in commands}
+    # a command can also be a bare run block, which has no params
+    params += [
+        (f"command `{name}`", param)
+        for name, command in commands.items()
+        if isinstance(command, Command)
+        for param in command.params
+    ]
+    for where, param in params:
+        if isinstance(param, CommandParam) and param.type in complete:
+            ignored = [setting for setting in ("default", "help", "short") if getattr(param, setting)]
+            if ignored:
+                problems.append(
+                    f"{where}, param `{param.name}`: `types.{param.type}` is a complete Typer definition, "
+                    f"so the param's {' and '.join(f'`{setting}`' for setting in ignored)} is ignored"
+                )
+    return problems

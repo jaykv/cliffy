@@ -85,6 +85,7 @@ HELLO, ADA!
 | `cli docs <manifest>` | Generate documentation for the CLI |
 | `cli list`, `info`, `update`, `remove` | Manage loaded CLIs |
 | `cli ai generate`, `cli ai ask` | Draft manifests with an LLM (needs the `ai` extra) |
+| `cli ai llms-txt` | Print cliffy's documentation as one text file for a coding agent (no extra needed) |
 
 Every command and option is described in the
 [CLI reference](https://jaykv.github.io/cliffy/reference/cli/).

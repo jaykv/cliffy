@@ -83,3 +83,17 @@ def test_validate_does_not_run_commands(tmp_path):
 
     assert result.exit_code == 0, result.output
     assert not marker.exists()
+
+
+def test_validate_warns_when_a_full_typer_type_swallows_param_settings(tmp_path):
+    body = (
+        "types:\n  Verbose: bool = typer.Option(False, '--verbose')\n"
+        "commands:\n  hello:\n    params:\n      - name: --verbose\n        type: Verbose\n        help: Be loud\n"
+        "    run: print(1)\n"
+    )
+    result = validate(tmp_path, body)
+
+    assert result.exit_code == 0, result.output
+    assert "command `hello`, param `--verbose`: `types.Verbose` is a complete Typer definition" in result.output
+    assert "`help` is ignored" in result.output
+    assert "is valid" in result.output

@@ -6,6 +6,10 @@ Three reference pages are generated so that they cannot drift from the code:
 * ``docs/reference/manifest.md``  from the pydantic models in ``cliffy.manifest``
 * ``docs/reference/examples.md``  from the manifests in ``examples/``
 
+One file that ships inside the package is generated as well:
+
+* ``cliffy/llms.txt``            the documentation as a single text file, printed by ``cli ai llms``
+
 Usage (from the repository root, with all extras installed)::
 
     uv run python scripts/docs.py generate   # rewrite the generated pages
@@ -273,8 +277,9 @@ A loaded CLI is documented from the manifest path recorded by `cli load`.
 See [Generating docs](../guides/generating-docs.md).
 """,
     "ai": """
-Only available when the `ai` extra is installed (`pip install "cliffy[ai]"`). Both commands send the
-manifest JSON schema to the model as part of the prompt and print token usage when they finish.
+`generate` and `ask` need the `ai` extra (`pip install "cliffy[ai]"`). Both send the manifest JSON
+schema to the model as part of the prompt and print token usage when they finish. `llms-txt` needs no
+extra and calls no model.
 
 Model names use the pydantic-ai `provider:model` form, and the API key of that provider must be set in
 the environment. Without `--model`, the `CLIFFY_AI_MODEL` environment variable is used, then a default
@@ -308,6 +313,19 @@ files written in the blueprint's spec.
 """,
     "ai ask": """
 `--preview` prints the prompt and exits without calling a model.
+""",
+    "ai llms-txt": """
+Prints the documentation that is bundled with the installed cliffy as one text file, in the
+[llms.txt](https://llmstxt.org/) layout. It needs no model, no API key and no `ai` extra, so it works
+offline and always matches the installed version.
+
+```console
+$ cli ai llms-txt > cliffy-llms.txt
+$ cli ai llms-txt | pbcopy
+```
+
+Give the output to a coding agent, or add it to a project's context, so that it can write manifests
+without looking anything up.
 """,
 }
 
@@ -840,6 +858,89 @@ def render_examples_gallery() -> str:
 
 
 # --------------------------------------------------------------------------------------------------
+# llms.txt
+# --------------------------------------------------------------------------------------------------
+
+LLMS_TXT = ROOT / "cliffy" / "llms.txt"
+
+LLMS_SUMMARY = (
+    "cliffy generates Python command-line tools from YAML manifests. A manifest lists commands, their params "
+    "and the Python or shell code each one runs; `cli load` turns it into a CLI (Typer by default, Click with "
+    "`use_click: true`) that can be tested, documented and built into a single file."
+)
+
+# The pages that make up llms.txt, in reading order. The changelog, contributing notes, migration notes and
+# the examples gallery are left out: they are about the project, not about writing a manifest.
+LLMS_PAGES = (
+    "index.md",
+    "quickstart.md",
+    "guides/manifest-basics.md",
+    "guides/params.md",
+    "guides/commands.md",
+    "guides/templates-and-global-params.md",
+    "guides/includes.md",
+    "guides/vars-and-jinja.md",
+    "guides/shell-commands.md",
+    "guides/backends.md",
+    "guides/testing.md",
+    "guides/dev-loop.md",
+    "guides/building.md",
+    "guides/generating-docs.md",
+    "blueprints.md",
+    "ai.md",
+    "reference/cli.md",
+    "reference/manifest.md",
+    "project/known-issues.md",
+)
+
+SNIPPET_INCLUDE = re.compile(r'^(?P<indent>[ \t]*)--8<--\s+"(?P<path>[^":]+)(?::(?P<section>[^"]+))?"[ \t]*$')
+SNIPPET_MARKER = re.compile(r"--8<-- \[(?:start|end):[^\]]+\]")
+
+
+def _snippet_lines(path: str, section: str | None) -> list[str]:
+    """The lines of a file pulled in with ``--8<--``: all of it, or what lies between a section's markers."""
+    lines = (ROOT / path).read_text().splitlines()
+    if section:
+        start = next(i for i, line in enumerate(lines) if f"--8<-- [start:{section}]" in line)
+        end = next(i for i, line in enumerate(lines) if f"--8<-- [end:{section}]" in line)
+        lines = lines[start + 1 : end]
+    return [line for line in lines if not SNIPPET_MARKER.search(line)]
+
+
+def _page_text(page: Path) -> str:
+    """A docs page as plain Markdown: front matter removed, ``--8<--`` includes replaced by the file."""
+    text = page.read_text()
+    if text.startswith("---\n"):
+        text = text.split("\n---\n", 1)[1]
+
+    lines: list[str] = []
+    for line in text.splitlines():
+        if include := SNIPPET_INCLUDE.match(line):
+            lines += [f"{include['indent']}{part}" for part in _snippet_lines(include["path"], include["section"])]
+        else:
+            lines.append(line)
+    # inline images (the logo) mean nothing in a text file
+    return re.sub(r"^!\[[^\]]*\]\([^)]*\)(\{[^}]*\})?\n", "", "\n".join(lines), flags=re.MULTILINE).strip()
+
+
+def render_llms_txt() -> str:
+    """The documentation as one text file, laid out as the llmstxt.org convention asks: title, summary, body."""
+    from cliffy.helper import cliffy_version
+
+    parts = [
+        "# cliffy",
+        "",
+        f"> {LLMS_SUMMARY}",
+        "",
+        f"This is the documentation of cliffy {cliffy_version()}, one section per page. Each section starts with a "
+        "`# <page title>` heading. Source and issues: https://github.com/jaykv/cliffy",
+    ]
+    for name in LLMS_PAGES:
+        parts += ["", f"<!-- docs/{name} -->", "", _page_text(DOCS / name)]
+    return "\n".join(parts) + "\n"
+
+
+# --------------------------------------------------------------------------------------------------
 # Commands
 # --------------------------------------------------------------------------------------------------
 
@@ -847,6 +948,9 @@ GENERATED = {
     DOCS / "reference" / "cli.md": render_cli_reference,
     DOCS / "reference" / "manifest.md": render_manifest_reference,
     DOCS / "reference" / "examples.md": render_examples_gallery,
+    LLMS_TXT: render_llms_txt,
+    # the same file, published at <docs site>/llms.txt where crawlers and agents look for it
+    DOCS / "llms.txt": render_llms_txt,
 }
 
 SNIPPET_REFERENCE = re.compile(r'--8<--\s+"([^":]+)(?::[^"]*)?"')

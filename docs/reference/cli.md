@@ -17,7 +17,7 @@ cli [OPTIONS] COMMAND [ARGS]...
 
 | Command | Description |
 |---|---|
-| [`cli ai`](#cli-ai) | AI-powered commands. Requires the `ai` extra: pip install 'cliffy[ai]' |
+| [`cli ai`](#cli-ai) | AI-powered commands. `generate` and `ask` require the `ai` extra: pip install 'cliffy[ai]' |
 | [`cli blueprint`](#cli-blueprint) | Work with blueprints: custom YAML specs that map onto a CLI |
 | [`cli build`](#cli-build) | Build a CLI manifest or a loaded CLI into a single file to hand to someone else |
 | [`cli dev`](#cli-dev) | Start hot-reloader for a manifest for active development. |
@@ -58,14 +58,15 @@ Aliases are hidden from `cli --help`. `cli --aliases` prints this list.
 
 ## `cli ai`
 
-AI-powered commands. Requires the `ai` extra: pip install 'cliffy[ai]'
+AI-powered commands. `generate` and `ask` require the `ai` extra: pip install 'cliffy[ai]'
 
 ```text
 cli ai [OPTIONS] COMMAND [ARGS]...
 ```
 
-Only available when the `ai` extra is installed (`pip install "cliffy[ai]"`). Both commands send the
-manifest JSON schema to the model as part of the prompt and print token usage when they finish.
+`generate` and `ask` need the `ai` extra (`pip install "cliffy[ai]"`). Both send the manifest JSON
+schema to the model as part of the prompt and print token usage when they finish. `llms-txt` needs no
+extra and calls no model.
 
 Model names use the pydantic-ai `provider:model` form, and the API key of that provider must be set in
 the environment. Without `--model`, the `CLIFFY_AI_MODEL` environment variable is used, then a default
@@ -110,6 +111,26 @@ cli ai generate [OPTIONS] CLI_NAME DESCRIPTION
 
 The reply of the model is validated before the manifest is written, and sent back with the reason when
 it is not a manifest cliffy can load. `--preview` prints the prompt and exits without calling a model.
+
+### `cli ai llms-txt`
+
+Print the bundled cliffy documentation as llms.txt. Needs no model.
+
+```text
+cli ai llms-txt [OPTIONS]
+```
+
+Prints the documentation that is bundled with the installed cliffy as one text file, in the
+[llms.txt](https://llmstxt.org/) layout. It needs no model, no API key and no `ai` extra, so it works
+offline and always matches the installed version.
+
+```console
+$ cli ai llms-txt > cliffy-llms.txt
+$ cli ai llms-txt | pbcopy
+```
+
+Give the output to a coding agent, or add it to a project's context, so that it can write manifests
+without looking anything up.
 
 ## `cli blueprint`
 

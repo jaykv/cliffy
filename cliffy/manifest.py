@@ -466,20 +466,20 @@ class CLIManifest(BaseModel):
 
         Args:
             cls (type): The class on which the method is called (typically CLIManifest).
-            cli_name (str): The name of the CLI, which must be a valid Python identifier.
+            cli_name (str): The name of the CLI: letters, digits, `_` and `-`, starting with a letter or `_`.
             json_schema (bool): Flag to include a JSON schema reference comment.
 
         Returns:
             str: A YAML-formatted manifest template with example configurations.
 
         Raises:
-            ValueError: If the provided CLI name is not a valid Python identifier.
+            ValueError: If the provided CLI name is not a valid CLI name.
 
         Example:
             manifest = CLIManifest.get_template("mycli", json_schema=True)
         """
-        if not cli_name.isidentifier():
-            raise ValueError("CLI name must be a valid Python identifier")
+        if not CLI_NAME_PATTERN.fullmatch(cli_name):
+            raise ValueError("CLI name must use letters, digits, `_` and `-`, starting with a letter or `_`")
 
         manifest = ""
         if json_schema:

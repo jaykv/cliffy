@@ -1,4 +1,4 @@
-## Generated taskmaster with cliffy 0.7.0
+## Generated taskmaster with cliffy 0.7.1
 from typing import Optional, Any
 import subprocess
 import typer

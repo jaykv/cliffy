@@ -1,4 +1,4 @@
-## Generated clickhello with cliffy 0.7.0
+## Generated clickhello with cliffy 0.7.1
 from typing import Optional, Any
 import subprocess
 try:
