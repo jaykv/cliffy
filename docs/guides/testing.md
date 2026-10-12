@@ -19,7 +19,7 @@ $ cli test testing.yaml
 0
 
 
-✅ 2 of 5
+✅ 1 of 5
 
 ...
 
@@ -96,8 +96,10 @@ step of its own.
         assert result.output == "count: 0\n"
     ```
 
-- **The counter in the output counts steps too.** `✅ 2 of 5` numbers every entry, including shell
-  steps, against the number of test cases, so it can read `6 of 5`. The final line is what counts.
+- **The counter counts test cases.** `✅ 2 of 5` is the second test case of five. Shell steps are run
+  but not counted, and a failed case keeps its number.
+- **Shell steps are not checked.** A step that exits with an error does not fail the run. Assert on
+  the state it should have produced in the next test case.
 
 ## The complete example
 

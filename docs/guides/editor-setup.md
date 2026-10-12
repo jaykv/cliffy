@@ -52,5 +52,6 @@ $ cli validate mycli.yaml
 Manifest mycli.yaml is valid
 ```
 
-`cli validate` checks the same schema, plus the `requires` of the manifest. See the
+`cli validate` checks the same schema, plus the `requires` of the manifest and the code that is
+generated from it. See the
 [CLI reference](../reference/cli.md#cli-validate).

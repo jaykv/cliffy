@@ -7,7 +7,7 @@ commands:
   hello|hi:
     help: Say hello
     params:
-      - name: str
+      - name: str!
       - --times: int = 1
     run: |
       for _ in range(times):
@@ -39,3 +39,11 @@ commands:
   db.migrate:
     help: Groups work the same way
     run: $ echo "migrating"
+
+tests:
+  - hello Ada --times 2: assert result.output == "hello Ada\nhello Ada\n"
+  - hi Ada: assert result.output == "hello Ada\n"
+  - resize cat.jpg -w 100: assert result.output == "cat.jpg 100\n"
+  - resize: assert result.exit_code == 2
+  - tag --loud a b: assert result.output == "A\nB\n"
+  - db migrate: assert result.exit_code == 0

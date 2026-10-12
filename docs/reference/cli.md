@@ -32,7 +32,7 @@ cli [OPTIONS] COMMAND [ARGS]...
 | [`cli run`](#cli-run) | Run CLI for a manifest |
 | [`cli test`](#cli-test) | Run tests defined in a manifest |
 | [`cli update`](#cli-update) | Reloads CLI by name |
-| [`cli validate`](#cli-validate) | Validate the syntax and structure of a CLI manifest |
+| [`cli validate`](#cli-validate) | Validate a CLI manifest: its structure, its requirements and the code generated from it |
 
 ## Global options
 
@@ -218,7 +218,8 @@ cli dev [OPTIONS] MANIFEST [RUN_CLI_ARGS]...
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
 
 Nothing is loaded when the command starts. The CLI is loaded the first time the file changes and
-again on every later change. Stop with Ctrl+C.
+again on every later change. The manifests it includes and the Python file of its blueprint are
+watched too. Stop with Ctrl+C.
 
 With `--run-cli`, the remaining arguments are passed to the freshly generated CLI after each reload.
 Put `--` before them when they include options.
@@ -282,8 +283,9 @@ $ cli init mycli --raw
 + mycli.yaml
 ```
 
-`--raw` writes a skeleton with every top-level key and no content. Without `--raw` the manifest is a
-commented tour of the format with example commands.
+`--raw` writes a skeleton with every top-level key, one `hello` command and one test. Without `--raw`
+the manifest is a commented tour of the format with example commands. Both run and pass `cli test` as
+written.
 
 `--json-schema` also writes `cliffy_schema.json` and adds a `# yaml-language-server` comment that points
 at it. See [Editor setup](../guides/editor-setup.md).
@@ -465,7 +467,7 @@ $ hello -h
 
 ## `cli validate`
 
-Validate the syntax and structure of a CLI manifest
+Validate a CLI manifest: its structure, its requirements and the code generated from it
 
 ```text
 cli validate [OPTIONS] MANIFEST
@@ -476,10 +478,20 @@ cli validate [OPTIONS] MANIFEST
 | `MANIFEST` | file | yes |  | Manifest file to validate. |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
 
-Checks that the file is valid YAML, matches the manifest schema and that its `requires` are installed.
-It does not check that the generated Python is valid; run `cli test` or `cli run` for that.
+Checks that the file is valid YAML, matches the manifest schema, that its `requires` are installed and
+that the generated code works: the code is compiled and imported, which defines the commands without
+running any of them. The code in `imports` and `functions` and the expressions in `vars` do run.
 
 ```console
 $ cli validate hello.yaml
 Manifest hello.yaml is valid
+```
+
+A problem in the generated code is reported against the part of the manifest it comes from:
+
+```console
+$ cli validate broken.yaml
+Manifest broken.yaml is invalid: the generated code does not work
+  commands.db.create: NameError: name 'Table' is not defined
+    def db_create(table: Table = typer.Argument(...)): 💔
 ```

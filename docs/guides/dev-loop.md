@@ -26,6 +26,10 @@ CLI:
 In a second terminal, with the same environment active, the `notes` command always reflects the
 last save. Stop the watcher with Ctrl+C.
 
+The watcher follows every file the CLI is generated from: the manifest, the manifests it lists under
+[`includes`](includes.md) and, for a file written in a [blueprint](../blueprints.md)'s spec, the
+blueprint's Python file. Saving any of them reloads the CLI.
+
 !!! note
     Nothing is loaded until the first change. Save the file once, or run `cli load notes.yaml`
     before starting, to get the command right away.

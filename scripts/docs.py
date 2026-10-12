@@ -159,8 +159,9 @@ $ cli init mycli --raw
 + mycli.yaml
 ```
 
-`--raw` writes a skeleton with every top-level key and no content. Without `--raw` the manifest is a
-commented tour of the format with example commands.
+`--raw` writes a skeleton with every top-level key, one `hello` command and one test. Without `--raw`
+the manifest is a commented tour of the format with example commands. Both run and pass `cli test` as
+written.
 
 `--json-schema` also writes `cliffy_schema.json` and adds a `# yaml-language-server` comment that points
 at it. See [Editor setup](../guides/editor-setup.md).
@@ -209,7 +210,8 @@ loaded CLI.
 """,
     "dev": """
 Nothing is loaded when the command starts. The CLI is loaded the first time the file changes and
-again on every later change. Stop with Ctrl+C.
+again on every later change. The manifests it includes and the Python file of its blueprint are
+watched too. Stop with Ctrl+C.
 
 With `--run-cli`, the remaining arguments are passed to the freshly generated CLI after each reload.
 Put `--` before them when they include options.
@@ -223,12 +225,22 @@ code is `0` only when every test passes. It is `1` when a test fails or when the
 See [Testing manifests](../guides/testing.md).
 """,
     "validate": """
-Checks that the file is valid YAML, matches the manifest schema and that its `requires` are installed.
-It does not check that the generated Python is valid; run `cli test` or `cli run` for that.
+Checks that the file is valid YAML, matches the manifest schema, that its `requires` are installed and
+that the generated code works: the code is compiled and imported, which defines the commands without
+running any of them. The code in `imports` and `functions` and the expressions in `vars` do run.
 
 ```console
 $ cli validate hello.yaml
 Manifest hello.yaml is valid
+```
+
+A problem in the generated code is reported against the part of the manifest it comes from:
+
+```console
+$ cli validate broken.yaml
+Manifest broken.yaml is invalid: the generated code does not work
+  commands.db.create: NameError: name 'Table' is not defined
+    def db_create(table: Table = typer.Argument(...)): 💔
 ```
 """,
     "docs": """
@@ -431,7 +443,8 @@ def render_cli_reference() -> str:
 
 # Descriptions for fields that have none in the model.
 FIELD_FALLBACK: dict[tuple[str, str], str] = {
-    ("CLIManifest", "manifestVersion"): "Manifest schema version. `v3` is the only version.",
+    ("CLIManifest", "manifestVersion"): "Manifest schema version. `v3` is the only version that is read; "
+    "any other value is an error.",
     ("Command", "run"): "The script to run. A string, or a list of strings that are joined with newlines. "
     "Lines starting with `$` or `>` are shell commands.",
     ("Example", "command"): "The command line to show.",
@@ -452,9 +465,11 @@ MODEL_NOTES: dict[str, str] = {
 - `name` and `version` are the only required keys. `version` must be a string, so quote values such as
   `"1.0"`. `commands` can be left out for a CLI that only has `callbacks`.
 - Unknown top-level keys are ignored.
-- `manifestVersion` is accepted and ignored when a manifest file is loaded.
-- `vars` values must be strings (quote numbers) or a one-key mapping such as `{"3"}` or `{os.getcwd()}`,
-  which is emitted as a Python expression. See [Vars and Jinja](../guides/vars-and-jinja.md).
+- `manifestVersion` can be left out. A value other than `v3` stops the load with an error that says
+  what to change. This also applies to include files and to files written in a blueprint's spec.
+- `vars` keys must be valid Python identifiers. A value is a string, a number, a boolean, or a one-key
+  mapping such as `{os.getcwd()}`, which is emitted as a Python expression. See
+  [Vars and Jinja](../guides/vars-and-jinja.md).
 - `cli_options` is passed as keyword arguments to `typer.Typer(...)`, or to `click.group(...)` when
   `use_click` is set. Useful Typer values are `add_completion: false` and `no_args_is_help: true`.
 - `commands` is usually a mapping. A list of [Command](#command) mappings that each set `name` is also
@@ -474,8 +489,9 @@ A command that has `help` and no `run`, and whose key is the name of a group, se
 that group.
 """,
     "CommandParam": """
-This is the explicit form. `short` is written with its dash (`-w`). A `str` default is quoted for you;
-other defaults are emitted as written.
+This is the explicit form. A `name` without `--` is a positional argument, with both backends. `short`
+is written with its dash (`-w`). A `str` default is quoted for you; other defaults are emitted as
+written.
 """,
     "Callback": """
 Callbacks for the same target run in the order given. Their params are options of the CLI or group
@@ -489,8 +505,8 @@ from the command override the template's. See
 [Command templates and global params](../guides/templates-and-global-params.md).
 """,
     "CommandConfig": """
-Only the keys you set are passed on, as keyword arguments of Typer's `command()`. The Click backend
-ignores `config`.
+Only the keys you set are passed on, as keyword arguments of the `command()` decorator of Typer or
+Click. With the Click backend `rich_help_panel` needs rich-click.
 """,
     "Example": """
 `examples` entries are only used by [`cli docs`](../guides/generating-docs.md). An entry can also be a
@@ -519,7 +535,7 @@ A one-key mapping: the key is the name, the value is the type.
 | `--name|-n` | Option with a short alias | `--count|-c: int` |
 | `type!` | Required | `source: str!` |
 | `type = value` | Default value, written as a Python expression | `target: str = "out.txt"` |
-| a name from `types` | Reuse a full Typer definition | `level: Level` |
+| a name from `types` | Reuse a type or a full definition | `level: Level` |
 
 Hyphens in a name become underscores in the Python variable (`--dry-run` is `dry_run`).
 
