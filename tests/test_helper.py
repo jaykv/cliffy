@@ -38,8 +38,8 @@ from cliffy.helper import (
         ("nested/directory/test.txt", "more content", False),  # id: nested_directory
     ],
 )
-def test_write_to_file(path, text, executable):
-    # Act
+def test_write_to_file(isolated_fs, path, text, executable):
+    # Act: in a temporary working directory. The test used to leave `nested/directory` in the repository
     write_to_file(path, text, executable)
 
     # Assert
@@ -48,15 +48,6 @@ def test_write_to_file(path, text, executable):
     assert file_path.read_text() == text
     if executable:
         assert os.access(path, os.X_OK)
-
-    # Cleanup
-    file_path.unlink()
-    if executable:
-        try:
-            file_path.parent.rmdir()
-            file_path.parent.parent.rmdir()
-        except OSError:
-            pass  # Directory not empty
 
 
 # Parametrized tests for import_module_from_path
