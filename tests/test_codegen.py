@@ -214,7 +214,11 @@ def test_manifest_text_is_not_executed(run, monkeypatch, manifest):
             "['a', 'b']",
             id="builtin_command",
         ),
-        pytest.param(BASE + "commands:\n  print: print('printed')\n", ["--version"], "t, 1", id="print_command"),
+        pytest.param(BASE + "commands:\n  print: print('printed')\n", ["print"], "printed", id="print_command"),
+        # --version is implemented with print(): a command named `print` must not replace it
+        pytest.param(
+            BASE + "commands:\n  print: print('printed')\n", ["--version"], "t, 1", id="print_command_version"
+        ),
         pytest.param(BASE + "commands:\n  my-group.sub: print(1)\n", ["my-group", "sub"], "1", id="dash_group"),
         pytest.param(BASE + "commands:\n  2fa.setup: print(1)\n", ["2fa", "setup"], "1", id="digit_group"),
         pytest.param(
