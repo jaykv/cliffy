@@ -450,6 +450,7 @@ cli test [OPTIONS] MANIFEST
 |---|---|---|---|---|
 | `MANIFEST` | file | yes |  | Manifest file whose `tests` section should run. |
 | `-x`, `--exitfirst` | flag | no |  | exit instantly on first error or failed test. |
+| `--traceback` | flag | no |  | Also print the full Python traceback of a command that raises. |
 | `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
 
 Runs the `tests` section of a manifest and prints each command, its output and the result. The exit

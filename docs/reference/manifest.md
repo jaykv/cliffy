@@ -33,7 +33,7 @@ The top level of a manifest file.
 | `callbacks` | list of [Callback](#callback) | `[]` | Code that runs before any command of the CLI, or of one command group. Callbacks for the same target run in the order given and their params are combined. The built-in --version and --aliases options are kept. |
 | `cli_options` | mapping | `{}` | Additional CLI configuration options |
 | `tests` | list of (string or mapping of name to string) | `[]` | Test cases for commands |
-| `examples` | list of (string or [Example](#example)) | `[]` | Example command usages to display in generated CLI docs. |
+| `examples` | list of (string or [Example](#example)) | `[]` | Example command lines of the CLI, with an optional description each. Shown at the end of the `--help` of the generated CLI and in the pages written by `cli docs`. |
 
 - `name` and `version` are the only required keys. `version` must be a string, so quote values such as
   `"1.0"`. `commands` can be left out for a CLI that only has `callbacks`.
@@ -181,8 +181,9 @@ an existing command group. See [Callbacks](../blueprints.md#callbacks).
 | `command` | string | **required** | The command line to show. |
 | `description` | string or null | `null` | A sentence describing what the command does. |
 
-`examples` entries are only used by [`cli docs`](../guides/generating-docs.md). An entry can also be a
-plain string, which is shown without a description.
+`examples` entries are shown at the end of the `--help` of the generated CLI, as
+`$ <command>  # <description>`, and in the pages written by [`cli docs`](../guides/generating-docs.md).
+An entry can also be a plain string, which is shown without a description.
 
 ## Include files
 

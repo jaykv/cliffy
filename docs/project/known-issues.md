@@ -18,8 +18,31 @@ problem against the command it comes from.
 
 ### `cli test` does not check shell steps
 
-A `$` or `>` step that exits with an error does not fail the run, and a step whose program does not
-exist ends the run with a traceback. See [Testing manifests](../guides/testing.md#things-to-know).
+A `$` or `>` step that exits with an error does not fail the run. A step whose program does not
+exist ends the run with an error message. See [Testing manifests](../guides/testing.md#things-to-know).
+
+### Examples are shown for the CLI, not per command
+
+`examples` belongs to the manifest. The generated CLI shows all of them at the end of its own
+`--help`; the help of a single command has no examples section, because a command has no `examples`
+key. With the Typer backend an example that contains an emoji code such as `:rocket:` is shown as
+the emoji, like the rest of the help text.
+
+### `cli remove` refuses when the launcher was changed
+
+The launcher of a loaded CLI is only deleted while it is exactly the file cliffy wrote. After an
+edit, or when another program replaced it, `cli remove` and `cli remove-all` remove nothing for that
+CLI and exit with 1.
+
+**Do this instead:** move or delete the file named in the message, then run `cli remove` again.
+
+### A file can still appear between cliffy's check and its write
+
+cliffy checks a launcher right before it replaces or deletes it, never follows a symbolic link and
+creates a new launcher only when nothing has the name. Replacing or deleting an existing launcher
+is a check followed by a rename or an unlink: a file that another process puts at exactly that path
+in between is replaced or removed. This needs write access to the environment's `bin` directory at
+that moment.
 
 ### `cli init` without `--raw` rejects names with a hyphen
 

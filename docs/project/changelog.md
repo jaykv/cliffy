@@ -69,6 +69,21 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
   removed with `cli rm`.
 - `make generate-clis` renders `examples/generated/` with `scripts/examples.py` and no longer installs
   packages. The `generate-cleanup` target is gone.
+- **`cli render` prints exactly the generated module.** Long lines are no longer broken, so
+  `cli render x.yaml > x.py` is the code that runs. The `# Rendered ...` line goes to stderr. The same
+  holds for `cli init --render`.
+- **`cli test` reports errors against the manifest instead of printing tracebacks.** A command that
+  raises is shown as `command <name> raised <Error>: <message>` with the line of its run block; an
+  assertion that raises or is not valid Python is shown with its line; a manifest that does not import
+  and a shell step that cannot be started end the run with an error message.
+- **`cli remove` removes a CLI completely or not at all.** When the launcher is not the file cliffy
+  wrote, nothing is removed, the CLI stays loaded and the command exits with 1. `cli remove-all` exits
+  with 1 when a CLI could not be removed.
+- **`cli load` only replaces a launcher it wrote itself**: a regular file with exactly the launcher
+  text for that CLI. A file that merely contained `from cliffy.clis.` used to count as cliffy's own.
+- A `requires` entry that starts with `-` is rejected. `requires` lists packages.
+- `cli dev` runs one reload at a time. A second save within a second of the first is no longer
+  dropped.
 
 ### Added
 
@@ -84,11 +99,20 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
   CLI or of a group, for both backends.
 - `vars` values can be numbers and booleans, and a var can be built from other vars in any order.
 - `cli dev` also watches included manifests and the Python file of a file blueprint.
+- The manifest's `examples` are shown at the end of the `--help` of the generated CLI, for both
+  backends. See [Generating docs](../guides/generating-docs.md#add-examples).
+- `cli test --traceback` prints the full Python traceback of a command that raises.
 
 ### Security
 
 - Text from a manifest (help, names, defaults, versions) is escaped in the generated code and names
   are validated, so manifest data cannot change the code that is generated.
+- The name given to `cli remove`, `update`, `info`, `build` and `docs` is validated. A name such as
+  `../x` could select and delete files outside of cliffy's own directories.
+- Launchers and generated modules are written to a temporary file and renamed into place, a new
+  launcher is only created when nothing has its name, and symbolic links are never followed.
+- `cli build` never passes a `requires` entry to pip as an option. An entry such as
+  `--index-url=...` used to change where pip installs from.
 
 ### Removed
 
@@ -108,6 +132,13 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
 - A Jinja error in a manifest is reported with file, line and the text of the line instead of a
   traceback.
 - The field descriptions in the JSON schema and the `cli init` template were wrong in places.
+- `cli dev`: a reload that started earlier can no longer finish last and load an older version of the
+  manifest over a newer one.
+- `cli dev --run-cli` and `cli test` on several threads no longer delete each other's temporary files.
+  Each run has a temporary directory of its own.
+- The MCP example blueprint answers a JSON-RPC message that is not an object, or a batch, with an
+  error instead of exiting.
+- Releases: the upload to PyPI can be re-run after it stopped half way.
 - cliffy type-checks and its test suite passes without the optional extras. The test suite no longer
   extracts zipapps into `~/.shiv`.
 - Compatibility with Click 8.2 and later, rich-click 1.9 and Python 3.12 and later (deprecated APIs

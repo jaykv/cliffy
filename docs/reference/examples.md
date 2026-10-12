@@ -30,7 +30,7 @@ described in [Blueprints](../blueprints.md#examples).
 | [todo.yaml](#todo) | Typer | `tabulate`, `rich` | no |
 | [requires.yaml](#requires) | Typer | `requests >= 2.30.0`, `six < 1.0.0` | no |
 | [callbacks.yaml](#callbacks) | Typer | nothing | yes |
-| [click_hello.yaml](#clickhello) | Click | nothing | no |
+| [click_hello.yaml](#clickhello) | Click | nothing | yes |
 | [aiprompt.yaml](#aiprompt) | Typer | `openai>=1.0.0`, `rich>=13.0.0`, `keyring>=24.0.0` | no |
 
 ## hello

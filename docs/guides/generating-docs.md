@@ -5,7 +5,20 @@ with its params and aliases, and the examples you provide.
 
 ## Add examples
 
-`examples` is a list of command lines with a description each. It is only used for documentation.
+`examples` is a list of command lines with a description each. They are part of the documentation
+`cli docs` writes, and the generated CLI shows them at the end of its own `--help`:
+
+```text
+ Examples:
+
+ $ notes add "buy milk" --tag home  # Add a note tagged home.
+
+ $ notes ls --tag home  # Show only the notes tagged home.
+```
+
+Write an example as you would type it, starting with the name of the CLI. It is shown as written:
+quotes, brackets and backslashes are not interpreted. The help of a single command does not repeat
+the examples.
 
 ```yaml
 --8<-- "docs/snippets/notes.yaml:examples"

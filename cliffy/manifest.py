@@ -370,7 +370,9 @@ class CLIManifest(BaseModel):
     tests: list[str | dict[str, str]] = Field(default=[], description="Test cases for commands")
 
     examples: list[str | Example] = Field(
-        default=[], description="Example command usages to display in generated CLI docs."
+        default=[],
+        description="Example command lines of the CLI, with an optional description each. "
+        "Shown at the end of the `--help` of the generated CLI and in the pages written by `cli docs`.",
     )
 
     @field_validator("requires", mode="after")
