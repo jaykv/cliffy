@@ -6,8 +6,19 @@ import sys
 import pytest
 import yaml
 from click.testing import CliRunner
+
+# pydantic-ai is an optional dependency (`cliffy[ai]`). Without it there is no model to run these tests
+# with, so the module is skipped. tests/test_ai_extra.py covers what cliffy does when the extra is missing.
+pytest.importorskip("pydantic_ai")
+
 from pydantic_ai.exceptions import ModelHTTPError
-from pydantic_ai.messages import ModelMessage, ModelResponse, RetryPromptPart, TextPart, UserPromptPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelResponse,
+    RetryPromptPart,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 

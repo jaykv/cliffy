@@ -1,15 +1,15 @@
-## Generated pydev on 2025-01-24 13:22:43.913532
-import subprocess
+## Generated pydev with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 import sys
 
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""Python developer utilities""")
-__version__ = '0.1.0'
-__cli_name__ = 'pydev'
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="Python developer utilities")
+__version__ = "0.1.0"
+__cli_name__ = "pydev"
 
 
 def version_callback(value: bool):
@@ -49,24 +49,24 @@ def write_to_file(file_name: str, contents: str):
 
 
 def clean():
-    subprocess.run(["find",".","-type","f","-name","*.pyc","-delete"])
-    subprocess.run(["find",".","-type","d","-name","__pycache__","-delete"])
-    subprocess.run(["echo","Cleaned!"])
+    subprocess.run(["find", ".", "-type", "f", "-name", "*.pyc", "-delete"])
+    subprocess.run(["find", ".", "-type", "d", "-name", "__pycache__", "-delete"])
+    subprocess.run(["echo", "Cleaned!"])
 
 
 cli.command("clean", help="Clean pycache artifacts",)(clean)
 
-def format():
-    subprocess.run(["black","."])
-    subprocess.run(["echo","Formatted!"])
+def format_():
+    subprocess.run(["black", "."])
+    subprocess.run(["echo", "Formatted!"])
 
 
-cli.command("format", help="Format code with black",)(format)
+cli.command("format", help="Format code with black",)(format_)
 
 def lint():
-    subprocess.run(["flake8","."])
-    subprocess.run(["black","--check","."])
-    subprocess.run(["mypy","."])
+    subprocess.run(["flake8", "."])
+    subprocess.run(["black", "--check", "."])
+    subprocess.run(["mypy", "."])
     print("Linting successful!")
 
 

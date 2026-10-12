@@ -16,17 +16,17 @@ The top level of a manifest file.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `manifestVersion` | string | `"v3"` | Manifest schema version. `v3` is the only version. |
+| `manifestVersion` | string | `"v3"` | Manifest schema version. `v3` is the only version that is read; any other value is an error. |
 | `name` | string | **required** | The name of the CLI, used when invoking from command line. |
 | `version` | string | **required** | CLI version |
 | `help` | string | `""` | Brief description of the CLI |
 | `use_click` | boolean | `false` | Generate CLI to Click instead of Typer |
 | `requires` | list of strings | `[]` | Python packages the CLI needs, as requirement specifiers such as `rich` or `tabulate>=0.9.0`. Checked when the manifest is loaded and bundled by `cli build`. |
-| `includes` | list of strings | `[]` | Paths of other manifest files to merge into this one. Keys set in this manifest win over included ones; lists are combined. |
-| `vars` | mapping of name to (string or `{expression}`) | `{}` | Variables for the manifest. Each one can be used anywhere in the file as `{{ name }}` and is also defined as a module-level Python variable in the generated CLI. Values are Jinja2 templates; `env` gives access to environment variables. |
+| `includes` | list of strings | `[]` | Paths of other manifest files to merge into this one, relative to this file. Keys set in this manifest win over included ones and lists are combined. When two included files set the same key, the first one listed wins. |
+| `vars` | mapping of name to (string or `{expression}`) | `{}` | Variables for the manifest. Each one can be used anywhere in the file as `{{ name }}` and is also defined as a module-level Python variable in the generated CLI. A value is a string, a number, a boolean, or a Python expression written as `{expression}`. String values are Jinja2 templates: they can use other vars, and `env` gives access to environment variables. |
 | `imports` | string or list of strings | `[]` | String block or list of strings containing any module imports. These can be used to import any python modules that the CLI depends on. |
 | `functions` | string or list of strings | `[]` | String block or list of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter. |
-| `types` | mapping of name to string | `{}` | A mapping containing any shared type definitions. These types can be referenced by name in the params section to provide type annotations for args and options defined in the params section. |
+| `types` | mapping of name to string | `{}` | A mapping containing any shared type definitions. These types can be referenced by name in the params section to provide type annotations for args and options defined in the params section. A value is a plain type such as `int`, optionally with a default (`int = 5`), or a complete definition: `str = typer.Option(...)` for Typer, a decorator such as `@click.option(...)` for Click. |
 | `global_params` | list of [params](#params) | `[]` | Parameters applied to all commands |
 | `command_templates` | mapping of name to [CommandTemplate](#commandtemplate) | `{}` | Reusable command templates |
 | `commands` | mapping of name to ([Command](#command), string or list of strings) or list of [Command](#command) | `{}` | The commands of the CLI, keyed by name. In a key, `.` separates groups, `\|` separates aliases and a leading `(*)` adds the command to every group. |
@@ -38,9 +38,11 @@ The top level of a manifest file.
 - `name` and `version` are the only required keys. `version` must be a string, so quote values such as
   `"1.0"`. `commands` can be left out for a CLI that only has `callbacks`.
 - Unknown top-level keys are ignored.
-- `manifestVersion` is accepted and ignored when a manifest file is loaded.
-- `vars` values must be strings (quote numbers) or a one-key mapping such as `{"3"}` or `{os.getcwd()}`,
-  which is emitted as a Python expression. See [Vars and Jinja](../guides/vars-and-jinja.md).
+- `manifestVersion` can be left out. A value other than `v3` stops the load with an error that says
+  what to change. This also applies to include files and to files written in a blueprint's spec.
+- `vars` keys must be valid Python identifiers. A value is a string, a number, a boolean, or a one-key
+  mapping such as `{os.getcwd()}`, which is emitted as a Python expression. See
+  [Vars and Jinja](../guides/vars-and-jinja.md).
 - `cli_options` is passed as keyword arguments to `typer.Typer(...)`, or to `click.group(...)` when
   `use_click` is set. Useful Typer values are `add_completion: false` and `no_args_is_help: true`.
 - `commands` is usually a mapping. A list of [Command](#command) mappings that each set `name` is also
@@ -56,7 +58,7 @@ Defines a single command within the CLI. It specifies the command's execution lo
 |---|---|---|---|
 | `run` | string or list of strings | `""` | The script to run. A string, or a list of strings that are joined with newlines. Lines starting with `$` or `>` are shell commands. |
 | `help` | string | `""` | A description of the command, displayed in the help output. |
-| `params` | list of [params](#params) | `[]` | The parameters of the command. See [Params](#params) for the three accepted forms. |
+| `params` | list of [params](#params) | `[]` | The parameters of the command. Each entry takes one of three forms: a shorthand mapping of the param name to its type, such as `name: str!` or `--count: int = 1`; an explicit mapping with the keys `name` and `type` and optionally `default`, `help`, `short` and `required`; or a string that is copied into the generated code as written (a signature entry for Typer, a decorator for Click). |
 | `template` | string | `""` | A reference to a command template defined in the `command_templates` section of the manifest. This allows for reusable command definitions. |
 | `pre_run` | string | `""` | Script to run before the command's run block. This can be used for setup tasks or preconditions. |
 | `post_run` | string | `""` | Script to run after the command's run block. This can be used for cleanup tasks or post-processing. |
@@ -89,7 +91,7 @@ A one-key mapping: the key is the name, the value is the type.
 | `--name|-n` | Option with a short alias | `--count|-c: int` |
 | `type!` | Required | `source: str!` |
 | `type = value` | Default value, written as a Python expression | `target: str = "out.txt"` |
-| a name from `types` | Reuse a full Typer definition | `level: Level` |
+| a name from `types` | Reuse a type or a full definition | `level: Level` |
 
 Hyphens in a name become underscores in the Python variable (`--dry-run` is `dry_run`).
 
@@ -118,8 +120,9 @@ Defines the structure of a command parameter. It is used within the `params` fie
 | `short` | string | `""` | Short option alias. i.e. '-v' for verbose. |
 | `required` | boolean | `false` | Whether the parameter is required. |
 
-This is the explicit form. `short` is written with its dash (`-w`). A `str` default is quoted for you;
-other defaults are emitted as written.
+This is the explicit form. A `name` without `--` is a positional argument, with both backends. `short`
+is written with its dash (`-w`). A `str` default is quoted for you; other defaults are emitted as
+written.
 
 ## CommandTemplate
 
@@ -153,8 +156,8 @@ Configuration options for a Cliffy command.
 | `deprecated` | boolean | `false` | If True, the command is marked as deprecated in help messages. |
 | `rich_help_panel` | string | `""` | Name of the panel this command is listed under in rich help output. |
 
-Only the keys you set are passed on, as keyword arguments of Typer's `command()`. The Click backend
-ignores `config`.
+Only the keys you set are passed on, as keyword arguments of the `command()` decorator of Typer or
+Click. With the Click backend `rich_help_panel` needs rich-click.
 
 ## Callback
 

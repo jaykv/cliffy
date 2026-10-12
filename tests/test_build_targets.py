@@ -37,6 +37,7 @@ from cliffy.builder import (
 )
 from cliffy.cli import cli
 from cliffy.homer import CLIMetadata
+from cliffy.transformer import Transformer
 
 EXAMPLES = Path(__file__).parent.parent / "examples"
 TYPER_PIN = f"typer=={metadata.version('typer')}"
@@ -133,7 +134,8 @@ def test_standalone_code_pastes_the_shell_helper_in(shell_manifest):
 
     assert "import pybash" not in code
     assert "class _pybash:" in code
-    assert code.startswith("## Generated piper with cliffy\n")
+    # the header names the cliffy version and nothing that changes between two builds
+    assert code.startswith(f"## Generated piper with cliffy {metadata.version('cliffy')}\n")
     # runs where pybash cannot be imported
     with patch.dict(sys.modules, {"pybash": None, "pybash.runtime": None}):
         namespace: dict = {"__name__": "piper"}
@@ -143,9 +145,27 @@ def test_standalone_code_pastes_the_shell_helper_in(shell_manifest):
 
 
 def test_standalone_code_leaves_a_cli_without_shell_operators_alone():
+    code = "## Generated demo with cliffy 0.7.0\nimport subprocess\nsubprocess.run(['ls'])\n"
+
+    assert get_standalone_code(code) == code
+
+
+def test_standalone_code_drops_the_timestamp_of_a_cli_loaded_by_an_older_cliffy():
+    # cliffy 0.6 wrote the time of generation into the header: a CLI loaded back then is built from that script
     code = "## Generated demo on 2026-01-01 00:00:00\nimport subprocess\nsubprocess.run(['ls'])\n"
 
     assert get_standalone_code(code) == "## Generated demo with cliffy\nimport subprocess\nsubprocess.run(['ls'])\n"
+
+
+def test_two_builds_of_a_manifest_ship_the_same_code(tmp_path):
+    manifest_path = tmp_path / "same.yaml"
+    manifest_path.write_text("name: same\nversion: '1'\ncommands:\n  a: $ echo a | tr a b\n")
+    shipped = []
+    for _ in range(2):
+        with open(manifest_path) as manifest_io:
+            shipped.append(get_standalone_code(Transformer(manifest_io).cli.code))
+
+    assert shipped[0] == shipped[1]
 
 
 def test_zipapp_bundles_the_shell_helper_instead_of_pybash(shell_manifest, tmp_path):
@@ -239,7 +259,7 @@ def test_script_target_writes_one_executable_file(shell_manifest, tmp_path):
     assert script.startswith(f"#!{SCRIPT_INTERPRETER}\n# /// script\n")
     assert inline_metadata(script) == {"requires-python": MIN_PYTHON, "dependencies": [TYPER_PIN]}
     # the generated CLI follows, readable, with the shell helper pasted in
-    assert "\n## Generated piper with cliffy\n" in script
+    assert f"\n## Generated piper with cliffy {metadata.version('cliffy')}\n" in script
     assert "class _pybash:" in script
     assert "import pybash" not in script
     assert "cliffy" not in script.replace("## Generated piper with cliffy", "")

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+import ast
 import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import ItemsView, Iterator, ValuesView
+from contextlib import contextmanager
 
 import pybash
 from pydantic import BaseModel
 
-from cliffy.helper import py_str, to_identifier
+from cliffy.helper import cliffy_version, py_str, to_identifier
 from cliffy.manifest import (
     Callback,
     CLIManifest,
@@ -23,7 +25,7 @@ from cliffy.manifest import (
     RunBlockList,
     SimpleCommandParam,
 )
-from cliffy.parser import Parser, transform_script
+from cliffy.parser import Parser, ScriptError, transform_script
 
 # The helper behind shell lines with operators (`|`, `&&`, `>` ...) or with values quoted for a `>` line.
 # Plain `$ command` lines are bare `subprocess` calls and do not use it.
@@ -42,6 +44,8 @@ class CLI(BaseModel):
     code: str
     requires: list[str] = []
     blueprint: str | None = None
+    # generated function name -> where it comes from in the manifest, i.e. {"db_create": "commands.db.create"}
+    functions: dict[str, str] = {}
 
 
 class BaseGroup(BaseModel):
@@ -50,11 +54,13 @@ class BaseGroup(BaseModel):
     parent_group: BaseGroup | None = None
     commands: list[Command] = []
     help: str = ""
+    # set by the Commander, which knows the other names of the generated module
+    var: str = ""
 
     @property
     def var_name(self) -> str:
         """Returns valid Python variable name for group app"""
-        return to_identifier(self.name + "_app")
+        return self.var or to_identifier(self.name + "_app")
 
 
 class Groups(BaseModel):
@@ -112,13 +118,16 @@ class Commander(ABC):
         "base_imports",
         "callbacks_by_group",
         "cli",
+        "command_functions",
         "commands",
+        "functions",
         "greedy",
         "groups",
         "manifest",
         "parser",
         "root_commands",
         "root_group",
+        "taken_names",
     )
 
     def __init__(self, manifest: CLIManifest) -> None:
@@ -148,6 +157,57 @@ class Commander(ABC):
         ]
         self.build_groups()
 
+        # Python names of the generated module. Every command function and group variable gets one that
+        # nothing else uses: two manifest names can map to the same identifier (`db-app` and the group `db`).
+        self.taken_names: set[str] = set(self.manifest.vars) | self.user_defined_names()
+        self.functions: dict[str, str] = {}
+        self.command_functions: dict[str, str] = {}
+        for group in self.groups.values():
+            group.var = self.unique_name(to_identifier(group.name + "_app"))
+
+    def user_defined_names(self) -> set[str]:
+        """Names bound by the `imports` and `functions` sections, as far as they can be read as Python."""
+        names: set[str] = set()
+        for section in (self.manifest.imports, self.manifest.functions):
+            for block in [section] if isinstance(section, str) else section:
+                try:
+                    tree = ast.parse(block)
+                except SyntaxError:
+                    # i.e. a function with shell lines. Its name cannot be known before it is transformed
+                    continue
+                for node in tree.body:
+                    if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                        names.add(node.name)
+                    elif isinstance(node, ast.Import | ast.ImportFrom):
+                        names.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+                    elif isinstance(node, ast.Assign):
+                        names.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        return names
+
+    def unique_name(self, name: str, source: str = "") -> str:
+        """Reserves a Python name for the generated module: `name`, or `name_2`, `name_3`, ... when it is taken.
+
+        Args:
+            name (str): The identifier to reserve.
+            source (str): Where a function with this name comes from in the manifest, i.e. `commands.db.create`.
+        """
+        unique, count = name, 1
+        while unique in self.taken_names:
+            count += 1
+            unique = f"{name}_{count}"
+        self.taken_names.add(unique)
+        if source:
+            self.functions[unique] = source
+        return unique
+
+    def command_func_name(self, command: Command) -> str:
+        """Name of the Python function generated for a command"""
+        if command.name not in self.command_functions:
+            self.command_functions[command.name] = self.unique_name(
+                self.parser.get_command_func_name(command), source=f"command `{command.name}`"
+            )
+        return self.command_functions[command.name]
+
     def _merge_command_template(self, command: Command) -> None:
         """Merge command with its template if specified."""
         if not command.template:
@@ -155,7 +215,9 @@ class Commander(ABC):
 
         template = self.manifest.command_templates.get(command.template)
         if not template:
-            raise ValueError(f"Template {command.template} undefined in command_templates")
+            raise ValueError(
+                f"command `{command.name}`: template `{command.template}` is not defined in `command_templates`"
+            )
 
         if template.params:
             command.params = template.params + (command.params or [])
@@ -213,7 +275,19 @@ class Commander(ABC):
         for group in self.groups.values():
             self.add_group(group)
             for subcommand in group.commands:
-                self.add_sub_command(subcommand, group)
+                with self.reported_against(subcommand):
+                    self.add_sub_command(subcommand, group)
+
+    @contextmanager
+    def reported_against(self, command: Command) -> Iterator[None]:
+        """Names the command in the manifest that a code generation error belongs to"""
+        try:
+            yield
+        except ScriptError:
+            # an error in a script already says which command and which of its blocks it is in
+            raise
+        except ValueError as e:
+            raise ValueError(f"command `{command.name}`: {e}") from e
 
     def generate_cli(self) -> None:
         self.add_base_imports()
@@ -231,9 +305,15 @@ class Commander(ABC):
         if SHELL_RUNTIME_REFERENCE.search(self.cli, base_imports_end):
             self.cli = self.cli[:base_imports_end] + SHELL_RUNTIME_IMPORT + self.cli[base_imports_end:]
 
+    def header(self) -> str:
+        """First line of the generated code. It holds nothing that changes between two runs, such as the time:
+        the same manifest gives the same code."""
+        return f"## Generated {self.manifest.name} with cliffy {cliffy_version()}\n"
+
     def add_root_commands(self) -> None:
         for root_command in self.root_group.commands:
-            self.add_root_command(root_command)
+            with self.reported_against(root_command):
+                self.add_root_command(root_command)
 
     def add_imports(self) -> None:
         if not self.manifest.imports:
@@ -254,8 +334,11 @@ class Commander(ABC):
             if isinstance(val, dict):
                 # `name: {expression: null}` is the documented way to assign a Python expression
                 self.cli += f"{var} = {next(iter(val))}\n"
-            else:
+            elif isinstance(val, str):
                 self.cli += f"{var} = {py_str(val)}\n"
+            else:
+                # a number or a boolean is written as the Python literal of the same value
+                self.cli += f"{var} = {val!r}\n"
         self.cli += "\n"
 
     def add_functions(self) -> None:
@@ -271,7 +354,8 @@ class Commander(ABC):
     def add_command(self, command: Command) -> None:
         if "." in command.name:
             group = command.name.rsplit(".", 1)[0]
-            self.add_sub_command(command, self.groups[group])
+            with self.reported_against(command):
+                self.add_sub_command(command, self.groups[group])
 
     def add_greedy_commands(self) -> None:
         """Greedy commands get lazy-loaded. Only supported for group-commands currently"""
@@ -402,4 +486,10 @@ def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Command
     """
     commander = commander_cls(manifest)
     commander.generate_cli()
-    return CLI(name=manifest.name, version=manifest.version, code=commander.cli, requires=manifest.requires)
+    return CLI(
+        name=manifest.name,
+        version=manifest.version,
+        code=commander.cli,
+        requires=manifest.requires,
+        functions=commander.functions,
+    )

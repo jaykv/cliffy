@@ -7,7 +7,7 @@ import platform
 import re
 import sys
 from datetime import datetime
-from importlib.metadata import distributions
+from importlib.metadata import PackageNotFoundError, distributions, version
 from importlib.resources import files
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -129,6 +129,16 @@ def py_str(value: object) -> str:
     return json.dumps(str(value), ensure_ascii=False)
 
 
+def clean_help(text: str) -> str:
+    """Help text as one line per paragraph: a line break becomes a space, a blank line stays a paragraph break.
+
+    Typer and Click reflow the lines of a paragraph and keep paragraphs apart, and both use the first
+    paragraph as the summary of a command in the command list.
+    """
+    paragraphs = (" ".join(paragraph.split()) for paragraph in re.split(r"\n\s*\n", text or ""))
+    return "\n\n".join(paragraph for paragraph in paragraphs if paragraph)
+
+
 def to_identifier(name: str) -> str:
     """Turns name into a Python identifier that does not hide a keyword, a builtin or a generated name.
 
@@ -142,6 +152,14 @@ def to_identifier(name: str) -> str:
     if not identifier.isidentifier():
         raise ValueError(f"Cannot turn {name!r} into a Python identifier")
     return identifier
+
+
+def cliffy_version() -> str:
+    """Version of the installed cliffy package"""
+    try:
+        return version("cliffy")
+    except PackageNotFoundError:  # pragma: no cover - cliffy is run from a source tree that is not installed
+        return "unknown"
 
 
 def get_installed_package_versions() -> dict[str, str]:

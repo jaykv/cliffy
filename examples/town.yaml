@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=cliffy_schema.json
 
-manifestVersion: v1 # optional (Default will be the latest)
+manifestVersion: v3 # optional (default is the latest)
 name: town
 version: 0.1.1
 

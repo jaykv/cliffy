@@ -10,8 +10,11 @@ vars:
   app: shop
   # Jinja expression, evaluated when the manifest is loaded
   region: "{{ env['DEPLOY_REGION'] or 'eu-west-1' }}"
+  # A var can build on other vars
+  image: "registry.example.com/{{ app }}:{{ region }}"
+  # Numbers and booleans keep their type
+  retries: 3
   # A value in braces is a Python expression instead of a string
-  retries: {"3"}
   workdir: {os.getcwd()}
 # --8<-- [end:vars]
 
@@ -20,7 +23,7 @@ commands:
   show:
     help: Print the resolved variables
     run: |
-      print("app={{ app }} region={{ region }}")
+      print("app={{ app }} region={{ region }} image={{ image }}")
       print(f"app={app} retries={retries + 1} cwd={workdir == os.getcwd()}")
   # --8<-- [end:use]
 
@@ -39,7 +42,11 @@ commands:
   # --8<-- [end:raw]
 
 tests:
-  - show: assert result.output == "app=shop region=eu-west-1\napp=shop retries=4 cwd=True\n"
+  - show: |
+      assert result.output.splitlines() == [
+          "app=shop region=eu-west-1 image=registry.example.com/shop:eu-west-1",
+          "app=shop retries=4 cwd=True",
+      ]
   - deploy staging: assert result.output == "deploying shop to staging in eu-west-1\n"
   - deploy production --help: assert "Deploy shop to production" in result.output
   - braces: assert "not a variable" in result.output

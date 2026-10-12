@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=cliffy_schema.json
 
-manifestVersion: v1 # optional (Default will be the latest)
+manifestVersion: v3 # optional (default is the latest)
 name: pydev
 version: 0.1.0
 help: Python developer utilities

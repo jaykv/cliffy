@@ -26,7 +26,10 @@ def click_parser(basic_manifest):
 def test_click_commander_initialization(click_commander):
     assert click_commander.manifest.name == "test-cli"
     assert click_commander.manifest.version == "1.0.0"
-    assert "import rich_click as click" in click_commander.base_imports
+    # rich-click is optional: the import falls back to plain click (it used to be a hard import)
+    click_commander.add_base_imports()
+    assert "try:\n    import rich_click as click\nexcept ImportError:" in click_commander.cli
+    assert click_commander.cli.endswith("\n    import click\n")
 
 
 def test_parse_simple_param():
@@ -57,8 +60,9 @@ def test_parse_command_with_params():
     command = manifest.commands["greet"]
     parsed_params = parser.parse_params(command)
 
-    assert "--name" in parsed_params
-    assert "type=str" in parsed_params
+    # an explicit param without `--` is a positional argument, as it is for Typer (it used to become `--name`)
+    assert "@click.argument('name', type=str, help='Name to greet')" in parsed_params
+    assert "--name" not in parsed_params
     assert "--count" in parsed_params
     assert "type=int" in parsed_params
 

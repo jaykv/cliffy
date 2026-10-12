@@ -130,6 +130,12 @@ def normalize_reference(reference: str, base_dir: str | os.PathLike[str] | None 
     return f"{resolved}:{attr}" if attr else resolved
 
 
+def blueprint_file(reference: str, base_dir: str | os.PathLike[str] | None = None) -> str | None:
+    """Absolute path of the Python file a reference points to, or None when it names a module or a plugin."""
+    target, _ = _split_reference(normalize_reference(reference, base_dir))
+    return target if _is_file_reference(target) else None
+
+
 def resolve_blueprint(reference: str, base_dir: str | os.PathLike[str] | None = None) -> type[Blueprint]:
     """Resolve a blueprint reference to a ``Blueprint`` subclass.
 

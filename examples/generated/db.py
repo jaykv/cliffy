@@ -1,6 +1,6 @@
-## Generated db on 2025-01-24 13:22:43.887264
-import subprocess
+## Generated db with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 from rich.console import Console
 console = Console()
@@ -8,9 +8,9 @@ console = Console()
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, add_completion=False, help="""Database CLI""")
-__version__ = '0.1.0'
-__cli_name__ = 'db'
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, add_completion=False, help="Database CLI")
+__version__ = "0.1.0"
+__cli_name__ = "db"
 
 
 def version_callback(value: bool):
@@ -20,14 +20,7 @@ def version_callback(value: bool):
 
 def aliases_callback(value: bool):
     if value:
-        print("""
-Command      Aliases
---------     --------
-create       mk
-delete       rm
-list         ls
-view         v
-""")
+        print("\nCommand      Aliases\n--------     --------\ncreate       mk\ndelete       rm\nlist         ls\nview         v\n")
         raise typer.Exit()
 
 @cli.callback()
@@ -61,14 +54,14 @@ cli.command("delete", )(delete)
 
 cli.command("rm", hidden=True, epilog="Alias for delete")(delete)
 
-def list():
+def list_():
     """List databases"""
     print("Listing all databases")
 
 
-cli.command("list", )(list)
+cli.command("list", )(list_)
 
-cli.command("ls", hidden=True, epilog="Alias for list")(list)
+cli.command("ls", hidden=True, epilog="Alias for list")(list_)
 
 def view(name: str = typer.Option(..., prompt="What is the name of the database?", confirmation_prompt=True), table: str = typer.Option(..., prompt="What is the name of the table?")):
     """View database table"""

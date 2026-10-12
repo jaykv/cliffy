@@ -2,8 +2,11 @@
 # ruff: noqa: E501
 # the manifests are one-line strings on purpose: their quoting and escaping is what is being tested
 
+import itertools
 import os
+import re
 import textwrap
+from importlib import metadata
 
 import pytest
 from click.testing import CliRunner as ClickCliRunner
@@ -240,11 +243,104 @@ def test_names_become_valid_identifiers(run, manifest, args, expected_output):
     assert expected_output in result.output
 
 
+MULTILINE_HELP = "Greet\\nthe user.\\n\\nSecond\\n  paragraph."
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+@pytest.mark.parametrize(
+    "commands, args",
+    [
+        (f'  a:\n    help: "{MULTILINE_HELP}"\n    run: print(1)\n', ["a", "-h"]),
+        (f'  g:\n    help: "{MULTILINE_HELP}"\n  g.a: print(1)\n', ["g", "-h"]),
+        (f'  g.a:\n    help: "{MULTILINE_HELP}"\n    run: print(1)\n', ["g", "a", "-h"]),
+    ],
+    ids=["command", "group", "subcommand"],
+)
+def test_help_line_breaks_become_spaces_and_paragraphs_are_kept(run, base, commands, args):
+    result = run(base + "commands:\n" + commands, args)
+
+    assert result.exit_code == 0, result.output
+    lines = [line.strip(" │") for line in result.output.splitlines()]
+    assert "Greet the user." in lines
+    assert "Second paragraph." in lines
+    # each paragraph is rendered on its own (Typer puts a blank line in between, rich-click does not)
+    assert lines.index("Second paragraph.") > lines.index("Greet the user.")
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_help_overview_shows_the_first_paragraph(run, base):
+    result = run(base + f'commands:\n  a:\n    help: "{MULTILINE_HELP}"\n    run: print(1)\n', ["-h"])
+
+    assert "Greet the user." in result.output
+    assert "Greetthe" not in result.output
+
+
+COLLIDING_NAMES = [
+    # a root command and a group that both used to be the Python name `db_app`
+    pytest.param("commands:\n  db-app: print(1)\n  db.x: print(2)\n", ["db-app"], "1", id="command_vs_group_var"),
+    pytest.param("commands:\n  db-app: print(1)\n  db.x: print(2)\n", ["db", "x"], "2", id="group_var_vs_command"),
+    pytest.param("commands:\n  db.x: print(2)\n  db-app: print(1)\n", ["db", "x"], "2", id="group_var_declared_first"),
+    pytest.param("commands:\n  a-b: print(1)\n  a_b: print(2)\n", ["a-b"], "1", id="dash_vs_underscore"),
+    pytest.param("commands:\n  a.b: print(1)\n  a_b: print(2)\n", ["a", "b"], "1", id="subcommand_vs_command"),
+    pytest.param("commands:\n  a.b.x: print(1)\n  a_b.y: print(2)\n", ["a", "b", "x"], "1", id="group_vs_group"),
+    pytest.param("commands:\n  a.b.x: print(1)\n  a_b.y: print(2)\n", ["a_b", "y"], "2", id="group_vs_group_second"),
+    pytest.param(
+        "imports: import json\ncommands:\n  json: print(1)\n  dump: print(json.dumps([2]))\n",
+        ["dump"],
+        "[2]",
+        id="command_vs_import",
+    ),
+    pytest.param(
+        "vars:\n  status: up\ncommands:\n  status: print(1)\n  show: print(status)\n",
+        ["show"],
+        "up",
+        id="command_vs_var",
+    ),
+    pytest.param(
+        "functions:\n  - |\n    def helper():\n        return 3\ncommands:\n  helper: print(1)\n  show: print(helper())\n",
+        ["show"],
+        "3",
+        id="command_vs_function",
+    ),
+    pytest.param(
+        "commands:\n  rm|rm-x: print(1)\n  rm-rm-x: print(2)\n  rm_rm_x: print(3)\n",
+        ["rm-x"],
+        "1",
+        id="alias_vs_command",
+    ),
+]
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+@pytest.mark.parametrize("manifest, args, expected_output", COLLIDING_NAMES)
+def test_names_that_collide_get_distinct_identifiers(run, base, manifest, args, expected_output):
+    result = run(base + manifest, args)
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == expected_output
+
+
+@pytest.mark.parametrize(
+    "name, hint",
+    [("my-var", "my_var"), ("2nd", ""), ("class", ""), ("cli", ""), ("typer", ""), ("has space", "")],
+)
+def test_var_name_must_be_a_python_identifier(generate, capsys, name, hint):
+    # a var becomes a module-level Python variable: `my-var = "x"` was a SyntaxError in the generated code
+    with pytest.raises(SystemExit):
+        generate(BASE + f"vars:\n  {name}: x\ncommands:\n  a: print(1)\n")
+
+    error = capsys.readouterr()
+    assert f"vars.{name}" in error.out + error.err
+    assert hint in error.out + error.err
+
+
 @pytest.mark.parametrize("use_click", [False, True])
-def test_keyword_param_name_is_rejected(generate, use_click):
+def test_keyword_param_name_is_rejected(generate, capsys, use_click):
     manifest = (CLICK if use_click else BASE) + "commands:\n  a:\n    params: [--from: str = 'x']\n    run: print(1)\n"
-    with pytest.raises(ValueError, match="Invalid param name: --from"):
+    # reported against the manifest and the command, like an error in a script: no traceback
+    with pytest.raises(SystemExit):
         generate(manifest)
+
+    assert "manifest0.yaml: command `a`: Invalid param name: --from" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
@@ -398,8 +494,9 @@ def test_greedy_commands(run, manifest, args, expected_output):
 @pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
 def test_generated_imports_are_sorted(generate, base):
     code = generate(base + "commands:\n  a: print(1)\n").cli.code
-    base_imports = code.splitlines()[1:4]
-    assert all(line.startswith(("import ", "from ")) for line in base_imports)
+    # the import block right after the header line. (Click's own import follows it, in a try block.)
+    base_imports = list(itertools.takewhile(lambda line: line.startswith(("import ", "from ")), code.splitlines()[1:]))
+    assert len(base_imports) >= 2
     assert base_imports == sorted(base_imports)
 
 
@@ -445,3 +542,15 @@ def test_py_str_round_trips(text):
 def test_to_identifier(name, expected_output):
     assert to_identifier(name) == expected_output
     assert to_identifier(name).isidentifier()
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_generated_code_is_reproducible(generate, base):
+    # the first line used to hold the time of generation, so no two renders were the same
+    manifest = base + "commands:\n  a: print(1)\n  g.b|c: print(2)\n"
+
+    first, second = generate(manifest).cli.code, generate(manifest).cli.code
+
+    assert first == second
+    assert first.splitlines()[0] == f"## Generated t with cliffy {metadata.version('cliffy')}"
+    assert not re.search(r"\d{4}-\d{2}-\d{2}", first)

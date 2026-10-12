@@ -1,9 +1,13 @@
+import glob
+import json
 import os
+import re
 import tempfile
 
 import pytest
 import yaml
 
+from cliffy.manifest import CLIManifest
 from cliffy.transformer import Transformer
 
 
@@ -232,7 +236,9 @@ def write_requires_manifest(tmp_path, requires: list[str]):
         "pyyaml>=5,<99",  # InvalidVersion: only one specifier was understood
         "click~=8.0",  # reported as missing: `~=` was not understood
         "typer[all]>=0.9",  # reported as missing: extras were part of the name
-        "rich_click",  # reported as missing: `_` and `-` are the same in package names
+        # reported as missing: `_` and `-` are the same in package names. (A dependency of pydantic:
+        # the test must not need an optional extra.)
+        "typing_inspection",
         "Jinja2",
         "pywin32>=1; sys_platform == 'no-such-platform'",
     ],
@@ -257,3 +263,183 @@ def test_requires_unmet(tmp_path, capsys, requirement, expected_error):
 
     error = capsys.readouterr().err
     assert f"requires `{requirement}` to be installed\n    {expected_error}" in error
+
+
+MANIFEST_BODY = "name: t\nversion: '1'\ncommands:\n  a: print(1)\n"
+SPEC_BLUEPRINT = (
+    "from cliffy.blueprint import Blueprint\n\n\n"
+    "class Spec(Blueprint):\n"
+    "    name: str\n\n"
+    "    def to_manifest(self):\n"
+    "        return {'name': self.name, 'version': '1', 'commands': {'a': 'print(1)'}}\n"
+)
+
+
+@pytest.mark.parametrize(
+    "version, expected_error",
+    [
+        ("v1", "v1 schema is deprecated"),
+        ("v2", "v2 schema is deprecated"),
+        ("v4", "Unrecognized manifest version `v4`"),
+        ("3", "Unrecognized manifest version `3`"),
+    ],
+)
+@pytest.mark.parametrize("where", ["manifest", "include", "blueprint_spec"])
+def test_unsupported_manifest_version_is_an_error(tmp_path, capsys, where, version, expected_error):
+    # the key was removed before validation, so `manifestVersion: v1` loaded as if it was v3
+    manifest_path = tmp_path / "main.yaml"
+    if where == "manifest":
+        manifest_path.write_text(f"manifestVersion: {version}\n" + MANIFEST_BODY)
+    elif where == "include":
+        (tmp_path / "shared.yaml").write_text(f"manifestVersion: {version}\ncommands:\n  b: print(2)\n")
+        manifest_path.write_text("includes: [shared.yaml]\n" + MANIFEST_BODY)
+    else:
+        (tmp_path / "spec.py").write_text(SPEC_BLUEPRINT)
+        manifest_path.write_text(f"blueprint: spec.py\nmanifestVersion: {version}\nname: t\n")
+
+    with pytest.raises(SystemExit):
+        load(manifest_path)
+
+    error = capsys.readouterr().err
+    assert expected_error in error
+    assert "manifestVersion: v3" in error
+    assert ("shared.yaml" if where == "include" else "main.yaml") in error
+
+
+@pytest.mark.parametrize("where", ["manifest", "include", "blueprint_spec"])
+def test_current_manifest_version_is_accepted(tmp_path, where):
+    manifest_path = tmp_path / "main.yaml"
+    if where == "manifest":
+        manifest_path.write_text("manifestVersion: v3\n" + MANIFEST_BODY)
+    elif where == "include":
+        (tmp_path / "shared.yaml").write_text("manifestVersion: v3\ncommands:\n  b: print(2)\n")
+        manifest_path.write_text("includes: [shared.yaml]\n" + MANIFEST_BODY)
+    else:
+        (tmp_path / "spec.py").write_text(SPEC_BLUEPRINT)
+        manifest_path.write_text("blueprint: spec.py\nmanifestVersion: v3\nname: t\n")
+
+    assert load(manifest_path).cli.name == "t"
+
+
+def test_example_manifests_use_the_current_version():
+    for path in sorted(glob.glob("examples/*.yaml")):
+        with open(path, encoding="utf-8") as manifest_file:
+            declared = re.findall(r"^manifestVersion:\s*(\S+)", manifest_file.read(), re.MULTILINE)
+        assert declared in ([], ["v3"]), path
+
+
+def write_and_load(tmp_path, content: str) -> Transformer:
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(content)
+    return load(manifest_path)
+
+
+def test_scalar_vars_keep_their_type(tmp_path):
+    # `port: 8080` was rejected: only strings were allowed
+    T = write_and_load(
+        tmp_path,
+        "name: t\nversion: '1'\nvars:\n  port: 8080\n  debug: true\n  ratio: 0.5\n  label: 'x'\n"
+        "commands:\n  a: print('{{ port }} {{ debug }} {{ ratio }} {{ port + 1 }}')\n",
+    )
+
+    assert T.manifest.vars == {"port": 8080, "debug": True, "ratio": 0.5, "label": "x"}
+    assert '\nport = 8080\ndebug = True\nratio = 0.5\nlabel = "x"\n' in T.cli.code
+    assert "print('8080 True 0.5 8081')" in T.cli.code
+
+
+@pytest.mark.parametrize("value", ["[1, 2]", "", "{a: 1}", "{a: null, b: null}"])
+def test_var_values_that_are_not_scalars_are_rejected(tmp_path, capsys, value):
+    with pytest.raises(SystemExit):
+        write_and_load(tmp_path, f"name: t\nversion: '1'\nvars:\n  v: {value}\ncommands:\n  a: print(1)\n")
+
+    assert "error validating" in capsys.readouterr().err
+
+
+def test_json_schema_file_matches_the_models():
+    with open("examples/cliffy_schema.json", encoding="utf-8") as schema_file:
+        assert json.load(schema_file) == CLIManifest.model_json_schema(), "run `make generate-schema`"
+
+
+CHAINED_VARS = {"c": "{{ b }}z", "a": "x", "b": "{{ a }}y"}
+
+
+@pytest.mark.parametrize("order", [["a", "b", "c"], ["c", "b", "a"], ["b", "c", "a"]], ids="".join)
+def test_vars_can_build_on_computed_vars(tmp_path, order):
+    # vars were rendered in one pass: `{{ c }}` came out as the literal text `{{ a }}yz`
+    declared = "".join(f'  {name}: "{CHAINED_VARS[name]}"\n' for name in order)
+    T = write_and_load(
+        tmp_path, f"name: t\nversion: '1'\nvars:\n{declared}help: '{{{{ c }}}}'\ncommands:\n  a: print(1)\n"
+    )
+
+    assert T.manifest.help == "xyz"
+    assert T.manifest.vars == {"a": "x", "b": "xy", "c": "xyz"}
+
+
+def test_var_can_build_on_a_var_computed_from_the_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("CLIFFY_REGION", "eu")
+    T = write_and_load(
+        tmp_path,
+        "name: t\nversion: '1'\nvars:\n  url: 'https://{{ region }}.example.com'\n"
+        "  region: \"{{ env['CLIFFY_REGION'] }}\"\nhelp: '{{ url }}'\ncommands:\n  a: print(1)\n",
+    )
+
+    assert T.manifest.help == "https://eu.example.com"
+
+
+@pytest.mark.parametrize(
+    "declared, cycle",
+    [
+        ("  a: '{{ b }}'\n  b: '{{ c }}'\n  c: '{{ a }}'\n", "a -> b -> c -> a"),
+        ("  ok: fine\n  name: '{{ name }}!'\n", "name -> name"),
+    ],
+    ids=["three_vars", "self_reference"],
+)
+def test_circular_vars_are_an_error(tmp_path, capsys, declared, cycle):
+    with pytest.raises(SystemExit):
+        write_and_load(tmp_path, f"name: t\nversion: '1'\nvars:\n{declared}commands:\n  a: print(1)\n")
+
+    error = capsys.readouterr().err
+    assert "manifest.yaml" in error
+    assert f"vars reference each other in a circle: {cycle}" in error
+
+
+def test_jinja_syntax_error_in_a_var_names_the_var(tmp_path, capsys):
+    with pytest.raises(SystemExit):
+        write_and_load(tmp_path, "name: t\nversion: '1'\nvars:\n  ok: fine\n  bad: '{{ ok'\ncommands:\n  a: print(1)\n")
+
+    error = capsys.readouterr().err
+    assert "manifest.yaml" in error
+    assert "vars.bad" in error
+
+
+@pytest.mark.parametrize(
+    "line, problem",
+    [
+        ("# use {{ }} for placeholders", "Expected an expression"),
+        ("help: '{{ name | no_such_filter }}'", "no_such_filter"),
+        ("help: '{{ 1 / 0 }}'", "ZeroDivisionError"),
+        ("help: '{% if %}'", "Expected an expression"),
+    ],
+    ids=["braces_in_comment", "unknown_filter", "runtime_error", "bad_statement"],
+)
+def test_jinja_error_names_the_line_of_the_manifest(tmp_path, capsys, line, problem):
+    # the whole file is a template, comments included: this used to end in a Jinja traceback
+    with pytest.raises(SystemExit):
+        write_and_load(tmp_path, f"name: t\nversion: '1'\n{line}\ncommands:\n  a: print(1)\n")
+
+    error = capsys.readouterr().err
+    assert "manifest.yaml, line 3" in error
+    assert problem in error
+    assert line in error
+    assert "{% raw %}" in error
+
+
+def test_jinja_statements_in_comments_are_rendered(tmp_path):
+    # documented in the vars guide: a loop is written in comments so that the file stays valid YAML
+    T = write_and_load(
+        tmp_path,
+        "name: t\nversion: '1'\ncommands:\n  # {% for stage in ['dev', 'prod'] %}\n"
+        "  deploy.{{ stage }}: print('{{ stage }}')\n  # {% endfor %}\n",
+    )
+
+    assert list(T.manifest.commands) == ["deploy.dev", "deploy.prod"]

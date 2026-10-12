@@ -83,8 +83,25 @@ that read that output need to be adjusted. The file itself is built as before; t
 
 ### Manifests
 
-The manifest format did not change. Manifests written for 0.5.x and 0.6.x (schema v3) load without
-changes, apart from the shell lines described above.
+The manifest format is still schema v3, and most manifests written for 0.5.x and 0.6.x load without
+changes, apart from the shell lines described above. A few things that used to be accepted silently are now checked, and the Click backend
+follows the documented meaning of params.
+
+| What | Before | Now | Action |
+|---|---|---|---|
+| `manifestVersion: v1` or `v2` | Ignored | An error | Set `manifestVersion: v3` or remove the line. |
+| A `vars` key such as `my-var`, `cli` or `class` | Generated code that did not compile | An error | Rename the var, for example to `my_var`. |
+| A var that refers to itself | Left as literal `{{ }}` text | An error | Remove the reference, or wrap literal braces in `{% raw %}`. |
+| `types: {Count: int}` with `--n: Count` (Typer) | The positional argument `n` | The option `--n` | None if you meant an option. For an argument, write `n: Count`. |
+| `types: {Count: int = 1}` with `n: Count` (Typer) | The option `--n` | An optional argument | Write `--n: Count` for an option. |
+| `use_click`: explicit param `name: width` | The option `--width` | A positional argument | Write `name: --width`. |
+| `use_click`: shorthand `name: str` | A required argument | An optional argument, `None` when omitted | Write `name: str!`. |
+| `use_click`: `config` on a command | Ignored | Applied | Remove settings you did not mean, such as `hidden: true`. |
+| `use_click`: a `typer.Option(...)` definition | Copied into code that failed at run time | An error when the manifest is loaded | Write a Click decorator, see [Click and Typer backends](../guides/backends.md). |
+| First line of the generated code | `## Generated <name> on <time>` | `## Generated <name> with cliffy <version>` | None, unless a script of yours reads that line. |
+
+Run `cli validate` on each manifest after upgrading. It now also compiles and imports the generated
+code.
 
 ## From 0.4.x to 0.5.0 (schema v3)
 
@@ -98,5 +115,5 @@ run `cli validate` on the manifest to find anything else the schema no longer ac
 Manifests written for 0.3.x use the v1 format, which later releases do not read.
 
 **Action:** rewrite the manifest in the current format. The [Quickstart](../quickstart.md) and the
-[manifest reference](../reference/manifest.md) describe it, and `cli init mycli --raw` writes an empty
-skeleton to start from.
+[manifest reference](../reference/manifest.md) describe it, and `cli init mycli --raw` writes a
+minimal manifest to start from.

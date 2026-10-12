@@ -36,6 +36,20 @@ def pytest_sessionfinish(session, exitstatus):
     rmtree("test-manifest-builds-response", ignore_errors=True)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def shiv_root(tmp_path_factory):
+    """Zipapps built by the tests extract themselves here instead of into ``~/.shiv``.
+
+    A shiv zipapp unpacks its bundled packages into ``SHIV_ROOT`` (default ``~/.shiv``) on every run
+    of a new build, and nothing removes them. Set in ``os.environ`` so that it also reaches the
+    subprocesses the tests start; each xdist worker runs this fixture for itself.
+    """
+    root = tmp_path_factory.mktemp("shiv-root")
+    with pytest.MonkeyPatch.context() as environment:
+        environment.setenv("SHIV_ROOT", str(root))
+        yield root
+
+
 @pytest.fixture
 def isolated_fs(tmp_path, monkeypatch):
     """Run the test from an empty temporary working directory.
