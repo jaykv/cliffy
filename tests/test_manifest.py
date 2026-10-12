@@ -275,7 +275,7 @@ def test_command_config_partial():
     assert "rich_help_panel=" not in cmdr.cli  # Other options should not be present
 
 
-def test_command_config_help_newline_removed():
+def test_command_help_newline_becomes_a_space():
     manifest = CLIManifest(
         name="test",
         version="0.1.0",
@@ -292,7 +292,8 @@ def test_command_config_help_newline_removed():
 
     cmdr = TyperCommander(manifest=manifest)
     cmdr.generate_cli()
-    assert 'help="Test commandwith newline",' in cmdr.cli
+    # the newline used to be removed, which glued the words together: "Test commandwith newline"
+    assert 'help="Test command with newline",' in cmdr.cli
 
 
 def test_command_pre_run_post_run():

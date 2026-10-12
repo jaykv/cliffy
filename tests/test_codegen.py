@@ -240,6 +240,38 @@ def test_names_become_valid_identifiers(run, manifest, args, expected_output):
     assert expected_output in result.output
 
 
+MULTILINE_HELP = "Greet\\nthe user.\\n\\nSecond\\n  paragraph."
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+@pytest.mark.parametrize(
+    "commands, args",
+    [
+        (f'  a:\n    help: "{MULTILINE_HELP}"\n    run: print(1)\n', ["a", "-h"]),
+        (f'  g:\n    help: "{MULTILINE_HELP}"\n  g.a: print(1)\n', ["g", "-h"]),
+        (f'  g.a:\n    help: "{MULTILINE_HELP}"\n    run: print(1)\n', ["g", "a", "-h"]),
+    ],
+    ids=["command", "group", "subcommand"],
+)
+def test_help_line_breaks_become_spaces_and_paragraphs_are_kept(run, base, commands, args):
+    result = run(base + "commands:\n" + commands, args)
+
+    assert result.exit_code == 0, result.output
+    lines = [line.strip(" │") for line in result.output.splitlines()]
+    assert "Greet the user." in lines
+    assert "Second paragraph." in lines
+    # each paragraph is rendered on its own (Typer puts a blank line in between, rich-click does not)
+    assert lines.index("Second paragraph.") > lines.index("Greet the user.")
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_help_overview_shows_the_first_paragraph(run, base):
+    result = run(base + f'commands:\n  a:\n    help: "{MULTILINE_HELP}"\n    run: print(1)\n', ["-h"])
+
+    assert "Greet the user." in result.output
+    assert "Greetthe" not in result.output
+
+
 COLLIDING_NAMES = [
     # a root command and a group that both used to be the Python name `db_app`
     pytest.param("commands:\n  db-app: print(1)\n  db.x: print(2)\n", ["db-app"], "1", id="command_vs_group_var"),
