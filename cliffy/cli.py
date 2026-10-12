@@ -13,6 +13,7 @@ from cliffy.helper import (
     CLI_NAME_PATTERN,
     ManifestOrCLI,
     age_datetime,
+    cliffy_version,
     exit_err,
     indent_block,
     out,
@@ -58,7 +59,8 @@ blueprint_option = click.option(
 
 
 @click.group(context_settings=CONTEXT_SETTINGS)
-@click.version_option()
+# the version is passed in: with rich-click installed, the automatic lookup finds rich-click's own version
+@click.version_option(cliffy_version(), package_name="cliffy")
 @click.option("--aliases", type=bool, is_flag=True, is_eager=True, callback=show_aliases_callback)
 def cli(aliases: bool) -> None:
     pass

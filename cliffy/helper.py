@@ -7,7 +7,7 @@ import platform
 import re
 import sys
 from datetime import datetime
-from importlib.metadata import distributions
+from importlib.metadata import PackageNotFoundError, distributions, version
 from importlib.resources import files
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -141,6 +141,14 @@ def to_identifier(name: str) -> str:
     if not identifier.isidentifier():
         raise ValueError(f"Cannot turn {name!r} into a Python identifier")
     return identifier
+
+
+def cliffy_version() -> str:
+    """Version of the installed cliffy package"""
+    try:
+        return version("cliffy")
+    except PackageNotFoundError:  # pragma: no cover - cliffy is run from a source tree that is not installed
+        return "unknown"
 
 
 def get_installed_package_versions() -> dict[str, str]:

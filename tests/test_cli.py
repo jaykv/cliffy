@@ -3,6 +3,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime
+from importlib import metadata
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -46,6 +47,8 @@ def test_cli_version():
     runner = CliRunner()
     result = runner.invoke(cli, ["--version"])  # type: ignore
     assert result.exit_code == 0
+    # with the rich extra installed this used to print the version of rich-click
+    assert result.output.strip() == f"cli, version {metadata.version('cliffy')}"
 
 
 def test_cli_init():
