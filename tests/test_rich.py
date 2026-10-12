@@ -112,3 +112,31 @@ def test_print_rich_table_single_column(capsys):
 
     assert "Data" in result_out
     assert "Header" in result_out
+
+
+def test_fallback_table_can_be_rendered_twice(monkeypatch):
+    import importlib
+    import sys
+
+    import cliffy.rich
+
+    original_import = __import__
+
+    def mock_import(name, *args):
+        if name in ("rich_click", "rich.console", "rich.table"):
+            raise ImportError(f"No module named '{name}'")
+        return original_import(name, *args)
+
+    monkeypatch.setattr(sys, "modules", sys.modules.copy())
+    monkeypatch.setattr("builtins.__import__", mock_import)
+    importlib.reload(cliffy.rich)
+
+    table = cliffy.rich.Table()
+    table.add_column("Name", style="cyan")
+    table.add_column("Plain")
+    table.add_row("hello", "world")
+
+    first = str(table)
+    # rendering used to consume the column styles: the second call raised IndexError
+    assert str(table) == first
+    assert "Name" in first and "Plain" in first and "hello" in first

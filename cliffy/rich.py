@@ -42,7 +42,15 @@ except ImportError:
             self.rows.append([*row])
 
         def __str__(self) -> str:
-            text = "".join([click.style(f"{col:10}", fg=self.styles.pop(0)) for col in self.columns]) + "\n"
+            text = (
+                "".join(
+                    [
+                        click.style(f"{col:10}", fg=style or None)
+                        for col, style in zip(self.columns, self.styles, strict=True)
+                    ]
+                )
+                + "\n"
+            )
             for row in self.rows:
                 for col in row:
                     text += f"{col:10}"
