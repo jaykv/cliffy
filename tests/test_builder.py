@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import zipfile
 from importlib import metadata
 from pathlib import Path
@@ -12,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
+import cliffy.helper as IMPORT_OWNER
 from cliffy.builder import (
     build_cli,
     build_cli_from_manifest,
@@ -21,7 +23,6 @@ from cliffy.builder import (
     run_cli,
 )
 from cliffy.cli import cli
-from cliffy.helper import TEMP_FILES
 from cliffy.transformer import Transformer
 
 EXAMPLES = Path(__file__).parent.parent / "examples" / "blueprints"
@@ -310,7 +311,41 @@ def test_run_cli_removes_temp_file_when_import_fails(temp_dir):
         run_cli("broken", "import no_such_module_for_cliffy", ())
 
     assert glob.glob(f"{temp_dir}/broken_*") == []
-    assert TEMP_FILES == []
+    # the run has a temporary directory of its own: neither the file nor the directory is left behind
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_concurrent_runs_keep_their_own_temp_files(temp_dir, monkeypatch):
+    # every run cleaned up a process-wide list of temp files: a run that finished deleted the file
+    # another run, i.e. a reload of `cli dev --run-cli` on another thread, was about to import
+    first_is_importing, second_is_done = threading.Event(), threading.Event()
+    real_import = IMPORT_OWNER.import_module_from_path
+
+    def slow_import(path):
+        if os.path.basename(path).startswith("first"):
+            first_is_importing.set()
+            assert second_is_done.wait(10)
+        return real_import(path)
+
+    monkeypatch.setattr(IMPORT_OWNER, "import_module_from_path", slow_import)
+    monkeypatch.setattr(sys, "argv", list(sys.argv))
+    errors: list[BaseException] = []
+
+    def first_run():
+        try:
+            run_cli("first", "cli = lambda: None", ())
+        except BaseException as e:
+            errors.append(e)
+
+    thread = threading.Thread(target=first_run)
+    thread.start()
+    assert first_is_importing.wait(10)
+    run_cli("second", "cli = lambda: None", ())
+    second_is_done.set()
+    thread.join(10)
+
+    assert errors == []
+    assert list(temp_dir.iterdir()) == []
 
 
 def test_build_removes_temp_file_when_build_fails(temp_dir, tmp_path):
@@ -327,7 +362,6 @@ def test_build_removes_temp_file_when_build_fails(temp_dir, tmp_path):
     assert glob.glob(f"{temp_dir}/buildme_*") == []
     # the script is written into a temporary directory: neither it nor the directory is left behind
     assert list(temp_dir.iterdir()) == []
-    assert TEMP_FILES == []
 
 
 @pytest.mark.parametrize(

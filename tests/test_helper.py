@@ -2,7 +2,6 @@ import os
 import platform
 from datetime import datetime, timedelta
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,13 +11,12 @@ from cliffy.helper import (
     CLIFFY_METADATA_DIR,
     PYTHON_BIN,
     PYTHON_EXECUTABLE,
-    TEMP_FILES,
     age_datetime,
     check_requirement,
     cli_name_problem,
-    delete_temp_files,
     exit_err,
     get_installed_package_versions,
+    import_generated_code,
     import_module_from_path,
     indent_block,
     make_executable,
@@ -98,18 +96,24 @@ def test_make_executable(tmpdir):
     assert os.access(str(temp_file), os.X_OK)
 
 
-# Test for delete_temp_files
-def test_delete_temp_files():
-    # Arrange
-    temp_file = NamedTemporaryFile(delete=False)  # noqa: SIM115
-    TEMP_FILES.append(temp_file)
+def test_import_generated_code_removes_its_file(tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
 
-    # Act
-    delete_temp_files()
+    module, module_path = import_generated_code("answer = 42", "generated_cli")
 
-    # Assert
-    assert not Path(temp_file.name).exists()
-    assert TEMP_FILES == []
+    assert module.answer == 42
+    assert module.__name__ == "generated_cli" and os.path.basename(module_path) == "generated_cli.py"
+    assert not os.path.exists(module_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_import_generated_code_removes_its_file_when_the_import_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
+
+    with pytest.raises(ImportError):
+        import_generated_code("import no_such_module_for_cliffy", "generated_cli")
+
+    assert list(tmp_path.iterdir()) == []
 
 
 # Parametrized tests for indent_block
@@ -286,7 +290,6 @@ def test_constants():
     assert isinstance(CLIFFY_METADATA_DIR, Path)
     assert isinstance(PYTHON_BIN, str)
     assert isinstance(PYTHON_EXECUTABLE, str)
-    assert isinstance(TEMP_FILES, list)
 
     if platform.system() == "Windows":
         assert "Scripts" in PYTHON_BIN

@@ -7,7 +7,6 @@ from click.testing import CliRunner
 from pybash.transformer import transform as transform_bash
 
 from cliffy.cli import test_command as manifest_test_command
-from cliffy.helper import TEMP_FILES
 from cliffy.tester import ShellScript
 from cliffy.tester import Tester as ManifestTester
 
@@ -35,7 +34,8 @@ def test_tester_removes_temp_file_when_import_fails(monkeypatch, tmp_path):
         ManifestTester(str(manifest_path))
 
     assert glob.glob(f"{temp_dir}/broken_*") == []
-    assert TEMP_FILES == []
+    # the run has a temporary directory of its own: neither the file nor the directory is left behind
+    assert list(temp_dir.iterdir()) == []
 
 
 def test_manifest_tests_run_for_click_cli(tmp_path):

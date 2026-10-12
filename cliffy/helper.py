@@ -12,7 +12,7 @@ from importlib.metadata import PackageNotFoundError, distributions, version
 from importlib.resources import files
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
-from tempfile import _TemporaryFileWrapper
+from tempfile import TemporaryDirectory
 from types import ModuleType
 from typing import IO, Any, NoReturn
 
@@ -48,7 +48,6 @@ GENERATED_NAMES = frozenset(
     }
 )
 CLI_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
-TEMP_FILES: list[_TemporaryFileWrapper] = []
 
 
 class ManifestOrCLI(File):
@@ -159,12 +158,19 @@ def make_executable(path: str) -> None:
     os.chmod(path, mode)
 
 
-def delete_temp_files() -> None:
-    for file in TEMP_FILES:
-        with contextlib.suppress(Exception):
-            file.close()
-            os.unlink(file.name)
-    TEMP_FILES.clear()
+def import_generated_code(code: str, module_name: str) -> tuple[ModuleType, str]:
+    """Import generated code from a file, as the module it is when it is loaded.
+
+    The file is in a temporary directory that belongs to this call and is removed before it returns,
+    also when the import fails. Runs on other threads have their own and cannot remove this one.
+
+    Returns:
+        The module, and the path it was imported from: the file name in its tracebacks.
+    """
+    with TemporaryDirectory(prefix="cliffy_") as directory:
+        path = os.path.join(directory, f"{module_name}.py")
+        Path(path).write_text(code, encoding="utf-8")
+        return import_module_from_path(path), path
 
 
 def indent_block(block: str, spaces: int = 4) -> str:

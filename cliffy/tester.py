@@ -1,6 +1,5 @@
 import inspect
 from collections.abc import Generator
-from tempfile import NamedTemporaryFile
 from typing import cast
 
 import pybash
@@ -10,7 +9,7 @@ from click.testing import Result
 from pydantic import BaseModel, field_validator
 from typer.testing import CliRunner
 
-from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path
+from cliffy.helper import import_generated_code
 from cliffy.manifest import CLIManifest, Command, RunBlock
 from cliffy.parser import Parser
 from cliffy.transformer import Transformer
@@ -42,17 +41,10 @@ class Tester:
         with open(manifest_path, encoding="utf-8") as manifest_io:
             self.T = Transformer(manifest_io, blueprint=blueprint)
 
-        with NamedTemporaryFile(
-            mode="w", prefix=f"{self.T.cli.name}_test_", suffix=".py", delete=False, encoding="utf-8"
-        ) as runner_file:
-            TEMP_FILES.append(runner_file)
-            try:
-                runner_file.write(self.T.cli.code)
-                runner_file.flush()
-                self.module = import_module_from_path(runner_file.name)
-            finally:
-                # also when the generated code fails to import
-                delete_temp_files()
+        # module_path is the file name of the generated code in tracebacks. The file itself is gone
+        self.module, self.module_path = import_generated_code(
+            self.T.cli.code, f"{self.T.cli.name.replace('-', '_')}_test"
+        )
 
         self.module_funcs = inspect.getmembers(self.module, inspect.isfunction)
 
