@@ -1,0 +1,45 @@
+name: deployer
+version: 0.1.0
+help: Variables and Jinja templating
+
+imports:
+  - import os
+
+# --8<-- [start:vars]
+vars:
+  app: shop
+  # Jinja expression, evaluated when the manifest is loaded
+  region: "{{ env['DEPLOY_REGION'] or 'eu-west-1' }}"
+  # A value in braces is a Python expression instead of a string
+  retries: {"3"}
+  workdir: {os.getcwd()}
+# --8<-- [end:vars]
+
+commands:
+  # --8<-- [start:use]
+  show:
+    help: Print the resolved variables
+    run: |
+      print("app={{ app }} region={{ region }}")
+      print(f"app={app} retries={retries + 1} cwd={workdir == os.getcwd()}")
+  # --8<-- [end:use]
+
+  # --8<-- [start:loop]
+  # {% for stage in ['staging', 'production'] %}
+  deploy.{{ stage }}:
+    help: Deploy {{ app }} to {{ stage }}
+    run: print("deploying {{ app }} to {{ stage }} in {{ region }}")
+  # {% endfor %}
+  # --8<-- [end:loop]
+
+  # --8<-- [start:raw]
+  braces:
+    help: Print literal double braces
+    run: print({% raw %}"{{ not a variable }}"{% endraw %})
+  # --8<-- [end:raw]
+
+tests:
+  - show: assert result.output == "app=shop region=eu-west-1\napp=shop retries=4 cwd=True\n"
+  - deploy staging: assert result.output == "deploying shop to staging in eu-west-1\n"
+  - deploy production --help: assert "Deploy shop to production" in result.output
+  - braces: assert "not a variable" in result.output

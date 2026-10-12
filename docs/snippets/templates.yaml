@@ -1,0 +1,54 @@
+name: files
+version: 0.1.0
+help: Command templates and global params
+
+types:
+  Verbose: bool = typer.Option(False, "--verbose", "-v", help="Print extra detail")
+
+# --8<-- [start:global]
+global_params:
+  - verbose: Verbose
+# --8<-- [end:global]
+
+# --8<-- [start:template]
+command_templates:
+  destructive:
+    params:
+      - --yes|-y: bool = False
+    pre_run: |
+      if not yes:
+          typer.confirm("Are you sure?", abort=True)
+    post_run: print("done")
+    config:
+      epilog: This command changes files on disk.
+# --8<-- [end:template]
+
+# --8<-- [start:commands]
+commands:
+  delete|rm:
+    help: Delete a file
+    template: destructive
+    params:
+      - path: str!
+    pre_run: |
+      if verbose:
+          print(f"about to delete {path}")
+    run: print(f"deleted {path}")
+    post_run: print("cleaning up")
+
+  wipe:
+    help: Delete everything
+    template: destructive
+    run: print("wiped")
+    config:
+      epilog: There is no undo.
+# --8<-- [end:commands]
+
+tests:
+  - delete notes.txt --yes: assert result.output == "deleted notes.txt\ncleaning up\ndone\n"
+  - rm notes.txt -y -v: assert result.output == "about to delete notes.txt\ndeleted notes.txt\ncleaning up\ndone\n"
+  - wipe -y: assert result.output == "wiped\ndone\n"
+  - wipe: assert result.exit_code == 1
+  - delete --help: assert "This command changes files on disk." in result.output
+  - wipe --help: assert "There is no undo." in result.output
+  - wipe --help: assert "--verbose" in result.output

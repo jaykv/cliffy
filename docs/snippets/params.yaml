@@ -1,0 +1,75 @@
+name: params
+version: 0.1.0
+help: One command per way of declaring parameters
+
+types:
+  Level: int = typer.Option(1, "--level", "-l", min=1, max=5, help="Compression level")
+  Source: str = typer.Argument(..., help="File to read")
+
+commands:
+  # --8<-- [start:shorthand]
+  copy:
+    help: Shorthand params
+    params:
+      - source: str!              # required argument
+      - target: str = "out.txt"   # optional argument with a default
+      - label: str                # optional argument, None when omitted
+      - --count|-c: int = 1       # option with a short alias and a default
+      - --force|-f: bool = False  # boolean flag
+      - --owner: str!             # required option
+      - --dry-run: bool = False   # hyphens become underscores in Python
+    run: |
+      print(source, target, label, count, force, owner, dry_run)
+  # --8<-- [end:shorthand]
+
+  # --8<-- [start:explicit]
+  resize:
+    help: Explicit params
+    params:
+      - name: image
+        type: str
+        required: true
+        help: Image to resize
+      - name: --width
+        type: int
+        default: 800
+        short: -w
+        help: Target width in pixels
+      - name: --format
+        type: str
+        default: png
+        help: Output format
+    run: |
+      print(image, width, format)
+  # --8<-- [end:explicit]
+
+  # --8<-- [start:types]
+  pack:
+    help: Params that reuse the types section
+    params:
+      - source: Source
+      - level: Level
+    run: |
+      print(source, level)
+  # --8<-- [end:types]
+
+  # --8<-- [start:generic]
+  tail:
+    help: Raw Typer signatures
+    params:
+      - 'path: str = typer.Argument(..., help="File to follow")'
+      - 'lines: int = typer.Option(10, "--lines", "-n", min=1, help="Lines to show")'
+    run: |
+      print(path, lines)
+  # --8<-- [end:generic]
+
+tests:
+  - copy a.txt --owner me: assert result.output == "a.txt out.txt None 1 False me False\n"
+  - copy a.txt b.txt c -c 3 -f --owner me --dry-run: assert result.output == "a.txt b.txt c 3 True me True\n"
+  - copy a.txt: assert result.exit_code == 2
+  - resize cat.jpg: assert result.output == "cat.jpg 800 png\n"
+  - resize cat.jpg -w 100 --format gif: assert result.output == "cat.jpg 100 gif\n"
+  - pack data.csv: assert result.output == "data.csv 1\n"
+  - pack data.csv -l 9: assert result.exit_code == 2
+  - tail app.log: assert result.output == "app.log 10\n"
+  - tail app.log -n 2: assert result.output == "app.log 2\n"

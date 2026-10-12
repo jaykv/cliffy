@@ -1,0 +1,14 @@
+name: notes
+version: 0.1.0
+help: Keep short notes in a JSON file
+
+commands:
+  add:
+    help: Add a note
+    params:
+      - text: str!
+    run: |
+      print(f"Added {text}")
+
+tests:
+  - add "buy milk": assert result.output == "Added buy milk\n"
