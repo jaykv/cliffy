@@ -115,3 +115,23 @@ def test_shell_step_error_describes_the_prefixes_correctly():
     assert re.search(r"Use > to run it through a shell", message)
     assert "subprocess.run([" in transform_bash("$ echo hi")
     assert "shell=True" in transform_bash("> echo hi")
+
+
+def test_assertions_see_output_without_ansi_styles(tmp_path):
+    # rich styles help output on a CI runner (GITHUB_ACTIONS), which splits `--name` into styled pieces:
+    # a manifest test that passed locally failed there
+    manifest_path = tmp_path / "styled.yaml"
+    manifest_path.write_text(
+        "name: styled\nversion: '1'\ncommands:\n"
+        "  show: print('\\x1b[1m--\\x1b[0m\\x1b[36mverbose\\x1b[0m')\n"
+        "tests:\n"
+        "  - show: |\n"
+        "      assert result.output == '--verbose\\n'\n"
+        "      assert result.stdout == '--verbose\\n'\n"
+        "      assert result_text == '--verbose'\n"
+    )
+
+    result = CliRunner().invoke(manifest_test_command, [str(manifest_path)])
+
+    assert "All tests passed" in result.output, result.output
+    assert result.exit_code == 0

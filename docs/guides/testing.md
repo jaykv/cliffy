@@ -83,6 +83,8 @@ step of its own.
 
 ## Things to know
 
+- **Colors and styles are removed from the output** before your assertions run, so a test gives the
+  same result in a terminal and on a CI system.
 - **Tests run in the current directory** and are not isolated from each other. A command that
   writes a file really writes it. Clean up with shell steps, as the example does.
 - **Output of `$` lines is not captured.** It goes to the terminal and is not in `result.output`.

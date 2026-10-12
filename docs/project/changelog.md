@@ -85,6 +85,8 @@ dependency versions. Read the [migration notes](migration.md#from-06x-to-070) be
 - Two manifest names that map to the same Python name (command `db-app` and group `db`, a command and
   a name from `imports`, `functions` or `vars`) no longer break the generated module.
 - The `cli test` counter counts test cases only; it could print `10 of 9`.
+- `cli test` removes colors and styles from the output before the assertions run. On a CI system rich
+  styles help output, which made tests that passed locally fail there.
 - A Jinja error in a manifest is reported with file, line and the text of the line instead of a
   traceback.
 - The field descriptions in the JSON schema and the `cli init` template were wrong in places.

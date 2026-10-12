@@ -3,6 +3,7 @@ from collections.abc import Generator
 from tempfile import NamedTemporaryFile
 from typing import cast
 
+from click import unstyle
 from click.testing import CliRunner as ClickCliRunner
 from click.testing import Result
 from pybash import transformer
@@ -79,6 +80,14 @@ class Tester:
 
     def invoke_test(self, command: str, script: str) -> Generator[Result, None, None]:
         result = self.runner.invoke(self.module.cli, command)
+        # Assertions compare text. rich styles help output when it thinks it runs on a CI system, so the
+        # same test would see `--name` on one machine and escape codes inside it on another.
+        for stream in ("stdout_bytes", "stderr_bytes", "output_bytes"):
+            captured = getattr(result, stream, None)
+            if isinstance(captured, bytes):
+                setattr(
+                    result, stream, unstyle(captured.decode(self.runner.charset, "replace")).encode(self.runner.charset)
+                )
         yield result
         code = compile(script, f"test_{self.T.cli.name}.py", "exec")
         exec(code, {}, {"result": result, "result_text": result.output.strip()})
