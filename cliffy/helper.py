@@ -35,6 +35,7 @@ GENERATED_NAMES = frozenset(
         "Any",
         "CONTEXT_SETTINGS",
         "Optional",
+        "_pybash",
         "aliases_callback",
         "cli",
         "click",

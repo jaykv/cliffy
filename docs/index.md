@@ -80,7 +80,8 @@ The `tests` section at the bottom of the manifest is optional. `cli test hello.y
 - **Tests next to the commands.** `cli test` runs the assertions you keep in the manifest. See
   [Testing manifests](guides/testing.md).
 - **One file to ship.** `cli build` packs the CLI and its dependencies into a single executable
-  zipapp. See [Building executables](guides/building.md).
+  zipapp, a single Python script or a native executable. See
+  [Building executables](guides/building.md).
 
 ## How it works
 

@@ -172,12 +172,15 @@ Field descriptions (`Field(description=...)`) show up as hover documentation.
 ## Building a single-file executable
 
 `cli build` applies the blueprint at build time and bundles the generated CLI with its dependencies into one
-executable [zipapp](https://docs.python.org/3/library/zipapp.html).
+executable [zipapp](https://docs.python.org/3/library/zipapp.html). With `--target script` or `--target native`
+the same file becomes a single Python script or a compiled executable instead; see
+[Building executables](guides/building.md).
 
 ```
 $ cli build tasks.yaml -o dist
 + tasks built 📦
-  dist/tasks (single file, needs Python >=3.10)
+  dist/tasks (single file, needs Python >=3.10, 1.8 MB)
+  run it with: ./dist/tasks
 
 $ ./dist/tasks greet
 hello from tasks

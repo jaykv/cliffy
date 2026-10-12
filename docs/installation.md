@@ -98,7 +98,7 @@ generated manifest and `cli ai ask` are covered in [AI commands](ai.md); the opt
 | pydantic | Validating manifests |
 | PyYAML, Jinja2, deepmerge | Reading, templating and merging manifests |
 | pybash | Translating `$` lines into `subprocess` calls |
-| shiv | `cli build` |
+| shiv | `cli build` (the `zipapp` target) |
 | watchdog | `cli dev` |
 | packaging | Checking `requires` versions |
 

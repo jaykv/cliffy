@@ -80,7 +80,7 @@ def test_load_valid_manifest(isolated_fs):
     commands:
         hello:
             help: Say hello
-            run: echo "Hello"
+            run: $ echo "Hello"
     """
     with open("test.yaml", "w") as f:
         f.write(manifest_content)
@@ -304,7 +304,7 @@ def test_update_command(isolated_fs):
     commands:
         hello:
             help: Say hello
-            run: echo "Hello"
+            run: $ echo "Hello"
     """
 
     manifest_content_update = """
@@ -313,7 +313,7 @@ def test_update_command(isolated_fs):
     commands:
         world:
             help: Say world
-            run: echo "World"
+            run: $ echo "World"
     """
     with open("test.yaml", "w") as f:
         f.write(manifest_content)

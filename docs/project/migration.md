@@ -53,10 +53,38 @@ it only runs when the flag is given.
 
 **Action:** add `--run-cli` to your `cli dev` command if you relied on the old behavior.
 
+### Shell lines follow shell quoting
+
+cliffy 0.7.0 uses pybash 0.4, which parses `$` lines the way a shell does. Most lines behave as
+before. These changed:
+
+| Line | Before | Now |
+|---|---|---|
+| `$ echo 'a\nb'` | Python read the backslash: two lines of output | The command gets `a\nb`, as in a shell |
+| `> echo f{name}` | The value was pasted into the shell command | The value is quoted and is always one word |
+| `> grep "two words" file` | The quotes were removed before the shell saw them | The shell gets the line as written |
+| `out = $ ls \| wc -l` | `out` was a process object | `out` is the output of the pipeline, as `bytes` |
+| `$ echo a > one.txt > two.txt` | The second file got a copy of the first | Both files get the output |
+| `$ make && echo ok` | `NotImplementedError` | Runs `echo ok` when `make` succeeds |
+
+**Action:** run `cli test` on your manifests. If a `>` line relied on a value being pasted in as
+shell syntax, for example a glob pattern, see
+[When you need a real shell](../guides/shell-commands.md#when-you-need-a-real-shell).
+
+A script that is not valid Python, or a `$` line that cannot be translated, now stops `cli load`
+with a message that names the command and the line. Before, the CLI was generated and failed when
+it ran.
+
+### `cli build` output
+
+`cli build` prints two more things after a build, the size of the file and how to run it. Scripts
+that read that output need to be adjusted. The file itself is built as before; the new
+`--target` option is described in [Building executables](../guides/building.md).
+
 ### Manifests
 
 The manifest format did not change. Manifests written for 0.5.x and 0.6.x (schema v3) load without
-changes.
+changes, apart from the shell lines described above.
 
 ## From 0.4.x to 0.5.0 (schema v3)
 

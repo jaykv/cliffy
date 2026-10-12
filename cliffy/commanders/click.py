@@ -2,7 +2,7 @@ import ast
 import datetime
 import re
 
-from cliffy.commander import BaseGroup, Commander
+from cliffy.commander import BaseGroup, Commander, callback_label
 from cliffy.helper import py_str
 from cliffy.manifest import (
     Callback,
@@ -87,7 +87,8 @@ def cli({self.parse_callback_param_names(callbacks)}):
         return [param for callback in callbacks for param in callback.params]
 
     def parse_callback_run(self, callbacks: list[Callback]) -> str:
-        return "".join(self.click_parser.parse_run_block(callback.run) for callback in callbacks) or "    pass\n"
+        parse = self.click_parser.parse_run_block
+        return "".join(parse(callback.run, callback_label(callback)) for callback in callbacks) or "    pass\n"
 
     def define_groups(self) -> None:
         for group in self.groups.values():
