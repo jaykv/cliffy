@@ -50,7 +50,7 @@ class ScriptedModel:
         self.instructions.append(info.instructions)
         return ModelResponse(parts=[TextPart(self.replies[min(len(self.requests), len(self.replies)) - 1])])
 
-    def parts(self, part_type: type) -> list[str]:
+    def parts(self, part_type: type[UserPromptPart] | type[RetryPromptPart]) -> list[str]:
         """Content of all parts of a type in the last request, i.e. the whole conversation so far."""
         return [
             str(part.content) for message in self.requests[-1] for part in message.parts if isinstance(part, part_type)
@@ -186,6 +186,17 @@ def test_model_flag_wins_over_env_var(runner, monkeypatch):
     assert result.exit_code == 0
 
 
+def test_missing_provider_sdk_is_reported(runner, monkeypatch):
+    def no_sdk(model: str) -> None:
+        raise ImportError("Please install `groq` to use the Groq provider")
+
+    monkeypatch.setattr("pydantic_ai.models.infer_model", no_sdk)
+    result = runner.invoke(ai, ["ask", "What is cliffy?", "-m", "groq:some-model"])
+    assert result.exit_code == 1
+    assert "cannot use AI model `groq:some-model`: Please install `groq`" in result.output
+    assert "Traceback" not in result.output
+
+
 def test_resolve_model_returns_a_pydantic_ai_model():
     assert isinstance(cliffy_ai.resolve_model("test"), TestModel)
 
@@ -319,6 +330,19 @@ def test_generate_reports_a_failed_request(runner, monkeypatch, isolated_fs):
     assert not (isolated_fs / "greeter.yaml").exists()
 
 
+def test_generate_reports_an_empty_reply(runner, monkeypatch, isolated_fs):
+    def silent(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        return ModelResponse(parts=[])
+
+    monkeypatch.setattr(cliffy_ai, "resolve_model", lambda name: FunctionModel(silent))
+    result = runner.invoke(ai, ["generate", "greeter", "Greets people", "--retries", "0"])
+
+    assert result.exit_code == 1
+    assert "failed" in result.output
+    assert "Traceback" not in result.output
+    assert not (isolated_fs / "greeter.yaml").exists()
+
+
 def test_generate_passes_max_tokens_to_the_model(runner, monkeypatch, isolated_fs):
     seen: list[object] = []
 
@@ -355,6 +379,15 @@ def test_validate_accepts_a_valid_manifest():
 def test_validate_explains_what_is_wrong(reply, problem):
     with pytest.raises(ManifestOutputError, match=problem):
         validate_manifest_yaml(reply, "greeter")
+
+
+def test_validate_reports_manifests_the_commander_cannot_handle(monkeypatch):
+    def broken(*args: object, **kwargs: object) -> None:
+        raise KeyError("no such template")
+
+    monkeypatch.setattr("cliffy.commander.generate_cli", broken)
+    with pytest.raises(ManifestOutputError, match="could not generate a CLI from the manifest: 'no such template'"):
+        validate_manifest_yaml(VALID_MANIFEST, "greeter")
 
 
 def test_validate_does_not_render_or_compile_jinja_manifests():
