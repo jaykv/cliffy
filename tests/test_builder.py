@@ -74,6 +74,17 @@ def run_artifact(
     )
 
 
+def pinned(package: str) -> str:
+    """The requirement the builder adds for a framework: pinned to the installed version, when it is installed.
+
+    rich-click is an optional extra, so in an install without extras it is requested without a pin.
+    """
+    try:
+        return f"{package}=={metadata.version(package)}"
+    except metadata.PackageNotFoundError:
+        return package
+
+
 def test_build_requirements_pin_the_framework():
     requirements = get_build_requirements(TYPER_CODE, ["requests>=2", "six"])
 
@@ -82,8 +93,7 @@ def test_build_requirements_pin_the_framework():
     assert requirements[2].startswith("typer==")
 
     click_requirements = get_build_requirements(CLICK_CODE, [])
-    assert len(click_requirements) == 1
-    assert click_requirements[0].startswith("rich-click==")
+    assert click_requirements == [pinned("rich-click")]
 
 
 def test_build_requirements_keep_the_users_framework_pin():
@@ -306,7 +316,7 @@ def test_build_installs_the_framework_the_cli_imports(tmp_path, manifest, framew
     pip_args = mock_pip_run.call_args.args[0]
     assert pip_args[pip_args.index("--target") + 1] != str(output_dir)
     # only the framework of the generated code, pinned to the version installed next to cliffy
-    assert pip_requirements(mock_pip_run) == [f"{framework}=={metadata.version(framework)}"]
+    assert pip_requirements(mock_pip_run) == [pinned(framework)]
 
 
 def test_framework_requirements_and_deps_are_combined(tmp_path):
@@ -316,7 +326,7 @@ def test_framework_requirements_and_deps_are_combined(tmp_path):
     with skip_pip() as mock_pip_run:
         build_cli("script", str(script_path), deps=["requests>=2,<3"], output_dir=str(tmp_path / "out"))
 
-    assert pip_requirements(mock_pip_run) == ["requests>=2,<3", f"rich-click=={metadata.version('rich-click')}"]
+    assert pip_requirements(mock_pip_run) == ["requests>=2,<3", pinned("rich-click")]
 
 
 def test_build_creates_nested_output_dir(tmp_path):

@@ -236,7 +236,9 @@ def write_requires_manifest(tmp_path, requires: list[str]):
         "pyyaml>=5,<99",  # InvalidVersion: only one specifier was understood
         "click~=8.0",  # reported as missing: `~=` was not understood
         "typer[all]>=0.9",  # reported as missing: extras were part of the name
-        "rich_click",  # reported as missing: `_` and `-` are the same in package names
+        # reported as missing: `_` and `-` are the same in package names. (A dependency of pydantic:
+        # the test must not need an optional extra.)
+        "typing_inspection",
         "Jinja2",
         "pywin32>=1; sys_platform == 'no-such-platform'",
     ],
