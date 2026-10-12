@@ -51,7 +51,7 @@ class SimpleCommandParam(RootModel):
 
     @property
     def type(self) -> str:
-        parsed_type = self.raw_type.split("=")[0].strip() if "=" in self.raw_type else self.raw_type
+        parsed_type = self.raw_type.split("=", 1)[0].strip()
         return parsed_type.rstrip("!")
 
     @property
@@ -60,7 +60,8 @@ class SimpleCommandParam(RootModel):
 
     @property
     def default(self) -> str | None:
-        return self.raw_type.split("=")[1].strip() if "=" in self.raw_type else None
+        # only the first `=` separates type and default: the default itself may contain one
+        return self.raw_type.split("=", 1)[1].strip() if "=" in self.raw_type else None
 
     @property
     def short(self) -> str | None:

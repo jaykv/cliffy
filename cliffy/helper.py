@@ -118,6 +118,30 @@ def wrap_as_var(text: str) -> str:
     return "{{" + text + "}}"
 
 
+def py_str(value: object) -> str:
+    """Returns a double-quoted Python string literal for value.
+
+    Manifest text (help, defaults, versions, ...) must go through this (or `repr`) before it is
+    placed in generated source, so quotes, backslashes and newlines cannot break out of the literal.
+    """
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def to_identifier(name: str) -> str:
+    """Turns name into a Python identifier that does not hide a keyword, a builtin or a generated name.
+
+    a-b -> a_b, 2fa -> _2fa, import -> import_, list -> list_, cli -> cli_
+    """
+    identifier = re.sub(r"\W", "_", name)
+    if not identifier or identifier[0].isdigit():
+        identifier = f"_{identifier}"
+    if keyword.iskeyword(identifier) or identifier in GENERATED_NAMES or hasattr(builtins, identifier):
+        identifier += "_"
+    if not identifier.isidentifier():
+        raise ValueError(f"Cannot turn {name!r} into a Python identifier")
+    return identifier
+
+
 def get_installed_package_versions() -> dict[str, str]:
     """Installed distributions of the running interpreter, keyed by normalized (PEP 503) name."""
     installed_packages: dict[str, str] = {}
