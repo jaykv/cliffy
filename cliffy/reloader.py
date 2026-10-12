@@ -1,3 +1,4 @@
+import itertools
 import os
 import threading
 import time
@@ -13,6 +14,15 @@ from cliffy.homer import save_metadata
 from cliffy.loader import Loader
 from cliffy.transformer import Transformer, source_files
 
+# One reload at a time, for all manifests: a reload reads the manifest and writes the launcher, the module
+# and the metadata record, and two of them must not interleave.
+RELOAD_LOCK = threading.Lock()
+GENERATIONS = itertools.count(1)
+# manifest path -> generation of the newest change a reload was started for
+NEWEST_GENERATION: dict[str, int] = {}
+
+FileSignature = tuple[int, int] | None
+
 
 class Reloader(FileSystemEventHandler):
     def __init__(self, manifest_path: str, run_cli: bool, run_cli_args: tuple, blueprint: str | None = None) -> None:
@@ -26,6 +36,8 @@ class Reloader(FileSystemEventHandler):
         self.scheduled_directories: set[str] = set()
         # the manifest, the manifests it includes and the Python file of its blueprint
         self.watched_files: set[str] = set()
+        # what the watched files looked like at the last change a reload was started for
+        self.reloaded_signature: dict[str, FileSignature] | None = None
         self.refresh_watched_files()
 
         super().__init__()
@@ -49,16 +61,21 @@ class Reloader(FileSystemEventHandler):
         if not isinstance(event, FileModifiedEvent):
             return
 
-        if datetime.now() - self.last_modified < timedelta(seconds=1):
+        # A save is reported more than once. Within a second of the last reload an event is only a new
+        # change when a watched file differs from what that reload was started for.
+        signature = self.watched_signature()
+        if datetime.now() - self.last_modified < timedelta(seconds=1) and signature == self.reloaded_signature:
             return
 
         self.last_modified = datetime.now()
         self.refresh_watched_files()
+        self.reloaded_signature = self.watched_signature()
 
+        generation = next(GENERATIONS)
         t = threading.Thread(
             target=self.reload,
             args=(self.manifest_path, self.run_cli, self.run_cli_args),
-            kwargs={"blueprint": self.blueprint},
+            kwargs={"blueprint": self.blueprint, "generation": generation},
             daemon=True,
         )
         try:
@@ -66,6 +83,20 @@ class Reloader(FileSystemEventHandler):
         except RuntimeError as e:
             # Log the error or handle it as needed
             out_err(f"Failed to start thread: {e}")
+            return
+        # only once its reload runs: reloads of older changes that are still waiting can then be skipped
+        NEWEST_GENERATION[self.manifest_realpath] = max(generation, NEWEST_GENERATION.get(self.manifest_realpath, 0))
+
+    def watched_signature(self) -> dict[str, FileSignature]:
+        """Modification time and size of every watched file, None for one that cannot be read."""
+        signature: dict[str, FileSignature] = {}
+        for path in sorted(self.watched_files):
+            try:
+                status = os.stat(path)
+                signature[path] = (status.st_mtime_ns, status.st_size)
+            except OSError:
+                signature[path] = None
+        return signature
 
     @classmethod
     def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple, blueprint: str | None = None) -> None:
@@ -86,12 +117,36 @@ class Reloader(FileSystemEventHandler):
             observer.join()
 
     @staticmethod
-    def reload(manifest_path: str, run_cli: bool, run_cli_args: tuple, blueprint: str | None = None) -> None:
-        with open(manifest_path, encoding="utf-8") as manifest_io:
-            T = Transformer(manifest_io, blueprint=blueprint) if blueprint else Transformer(manifest_io)
-        Loader.load_from_cli(T.cli)
-        save_metadata(manifest_path, T.cli)
-        out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
+    def reload(
+        manifest_path: str,
+        run_cli: bool,
+        run_cli_args: tuple,
+        blueprint: str | None = None,
+        generation: int | None = None,
+    ) -> None:
+        """Generate the CLI from the manifest as it is now and load it.
 
-        if run_cli:
+        Reloads run one after the other, and each reads the manifest only once it is its turn: the one
+        that runs last loads the newest text, whatever order the threads were started in.
+
+        Args:
+            generation: Number of the change this reload was started for. A reload is skipped when a
+                reload for a newer change of the same manifest has been started: that one does the work.
+        """
+
+        def superseded() -> bool:
+            newest = NEWEST_GENERATION.get(os.path.realpath(manifest_path), 0)
+            return generation is not None and generation < newest
+
+        with RELOAD_LOCK:
+            if superseded():
+                return
+            with open(manifest_path, encoding="utf-8") as manifest_io:
+                T = Transformer(manifest_io, blueprint=blueprint) if blueprint else Transformer(manifest_io)
+            Loader.load_from_cli(T.cli)
+            save_metadata(manifest_path, T.cli)
+            out(f"✨ Reloaded {T.cli.name} CLI v{T.cli.version} ✨", fg="green")
+
+        # not under the lock: a CLI that keeps running must not hold up the next reload
+        if run_cli and not superseded():
             cli_runner(T.cli.name, T.cli.code, run_cli_args)

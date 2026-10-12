@@ -1,4 +1,5 @@
 import io
+import threading
 import time
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -481,3 +482,101 @@ def test_watch_schedules_every_watched_directory(mock_sleep, MockObserver, tmp_p
 
     scheduled = {call.kwargs["path"] for call in MockObserver.return_value.schedule.call_args_list}
     assert scheduled == {str(tmp_path.resolve()), str((tmp_path / "bp").resolve())}
+
+
+class FakeTransformer:
+    """Stands in for the Transformer: the "CLI" is the text of the manifest at the time it was read."""
+
+    reading = threading.Event()
+    release_first = threading.Event()
+    calls = 0
+
+    def __init__(self, manifest_io, **kwargs):
+        type(self).calls += 1
+        call = type(self).calls
+        content = manifest_io.read().strip()
+        self.cli = MagicMock(code=content, version=content)
+        self.cli.name = "raced"
+        if call == 1:
+            # the first reload has read the manifest and is still busy generating
+            type(self).reading.set()
+            assert type(self).release_first.wait(10)
+
+
+@pytest.fixture
+def fake_transformer():
+    FakeTransformer.reading, FakeTransformer.release_first = threading.Event(), threading.Event()
+    FakeTransformer.calls = 0
+    return FakeTransformer
+
+
+@patch("cliffy.reloader.out")
+@patch("cliffy.reloader.save_metadata")
+@patch("cliffy.reloader.Loader.load_from_cli")
+def test_older_reload_does_not_overwrite_a_newer_one(mock_load, mock_save, mock_out, fake_transformer, tmp_path):
+    # every change started a reload of its own: one that had read the old manifest could load its CLI last
+    manifest_path = tmp_path / "raced.yaml"
+    manifest_path.write_text("old")
+
+    with patch("cliffy.reloader.Transformer", fake_transformer):
+        older = threading.Thread(target=Reloader.reload, args=(str(manifest_path), False, ()))
+        older.start()
+        assert fake_transformer.reading.wait(10)
+
+        manifest_path.write_text("new")
+        newer = threading.Thread(target=Reloader.reload, args=(str(manifest_path), False, ()))
+        newer.start()
+        # the newer reload has to wait for the older one. Without that it is done well within this time
+        newer.join(0.5)
+        fake_transformer.release_first.set()
+        older.join(10)
+        newer.join(10)
+
+    assert not older.is_alive() and not newer.is_alive()
+    assert [call.args[0].code for call in mock_load.call_args_list][-1] == "new"
+    assert [call.args[1].code for call in mock_save.call_args_list][-1] == "new"
+
+
+@patch("cliffy.reloader.out")
+@patch("cliffy.reloader.save_metadata")
+@patch("cliffy.reloader.Loader.load_from_cli")
+def test_reloads_queued_behind_a_newer_change_are_skipped(mock_load, mock_save, mock_out, tmp_path):
+    manifest_path = tmp_path / "queued.yaml"
+    manifest_path.write_text("name: queued\nversion: '1'\ncommands:\n  a: print(1)\n")
+    reloader = Reloader(str(manifest_path), False, ())
+    started: list[dict] = []
+
+    with patch("threading.Thread") as mock_thread:
+        for _ in range(3):
+            reloader.last_modified = datetime.now() - timedelta(seconds=2)
+            reloader.on_modified(modified(manifest_path))
+        started = [call.kwargs for call in mock_thread.call_args_list]
+
+    # three changes were accepted before any of their reloads got to run
+    assert len(started) == 3
+    for thread in started:
+        thread["target"](*thread["args"], **thread["kwargs"])
+
+    # the last one reads the manifest as it is now: the two before it have nothing left to do
+    assert mock_load.call_count == 1
+    assert mock_save.call_count == 1
+
+
+def test_a_second_save_within_the_debounce_time_is_not_lost(tmp_path):
+    # an event within a second of the last one was dropped as a duplicate, also when the file had
+    # changed again: the CLI then stayed on the older text until the next save
+    manifest_path = tmp_path / "quick.yaml"
+    manifest_path.write_text("name: quick\nversion: '1'\ncommands:\n  a: print(1)\n")
+    reloader = Reloader(str(manifest_path), False, ())
+    reloader.last_modified = datetime.now() - timedelta(seconds=2)
+
+    with patch("threading.Thread") as mock_thread:
+        reloader.on_modified(modified(manifest_path))
+        # the same save reported twice, as file system watchers do
+        reloader.on_modified(modified(manifest_path))
+        assert mock_thread.call_count == 1
+
+        manifest_path.write_text("name: quick\nversion: '2'\ncommands:\n  a: print(1)\n  b: print(2)\n")
+        reloader.on_modified(modified(manifest_path))
+        reloader.on_modified(modified(manifest_path))
+        assert mock_thread.call_count == 2

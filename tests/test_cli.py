@@ -7,6 +7,7 @@ from importlib import metadata
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -28,6 +29,7 @@ from cliffy.cli import (
 from cliffy.homer import get_metadata
 from cliffy.loader import Loader
 from cliffy.manifest import CLIMetadata
+from cliffy.transformer import Transformer
 
 ANSI_RE = re.compile(r"(?:\x1B[@-_]|[\x80-\x9F])[0-?]*[ -/]*[@-~]")
 
@@ -471,3 +473,68 @@ def test_init_template_loads_runs_and_passes_its_own_tests(isolated_fs, flags):
     tested = runner.invoke(manifest_test_command, ["mycli.yaml"])
     assert "All tests passed" in tested.output
     assert tested.exit_code == 0
+
+
+LONG_LINE = "print('" + "long line " * 30 + "')"
+WIDE_MANIFEST = f"name: wide\nversion: '1'\nhelp: {'wide help ' * 20}\ncommands:\n  a: {LONG_LINE}\n"
+
+
+def generated_code(manifest_path) -> str:
+    with open(manifest_path, encoding="utf-8") as manifest_io:
+        return Transformer(manifest_io).cli.code
+
+
+def test_render_prints_exactly_the_generated_code(tmp_path):
+    # the code was printed through rich with overflow="fold": lines longer than the terminal (80 columns
+    # when redirected) were cut in two, so `cli render x.yaml > x.py` was not the code that runs
+    manifest_path = tmp_path / "wide.yaml"
+    manifest_path.write_text(WIDE_MANIFEST)
+
+    result = CliRunner().invoke(render_command, [str(manifest_path)])
+
+    assert result.exit_code == 0, result.output
+    assert result.stdout == generated_code(manifest_path)
+    assert f"    {LONG_LINE}" in result.stdout.splitlines()
+    compile(result.stdout, "rendered", "exec")
+    # the status line is not part of the code
+    assert "Rendered wide CLI v1" in result.stderr
+    assert "Rendered" not in result.stdout
+
+
+def test_render_redirected_to_a_file_is_the_module(tmp_path):
+    manifest_path = tmp_path / "wide.yaml"
+    manifest_path.write_text(WIDE_MANIFEST)
+    rendered_path = tmp_path / "rendered.py"
+
+    with open(rendered_path, "wb") as rendered:
+        subprocess.run(
+            [sys.executable, "-m", "cliffy", "render", str(manifest_path)],
+            stdout=rendered,
+            stderr=subprocess.PIPE,
+            check=True,
+            env={**os.environ, "PYTHONIOENCODING": "utf-8", "COLUMNS": "40", "FORCE_COLOR": "1"},
+        )
+
+    assert rendered_path.read_bytes() == generated_code(manifest_path).encode("utf-8")
+    ran = subprocess.run([sys.executable, str(rendered_path), "a"], capture_output=True, text=True)
+    assert ran.returncode == 0, ran.stderr
+    assert ran.stdout.strip() == ("long line " * 30).strip()
+
+
+def test_render_on_a_terminal_does_not_break_lines(tmp_path, monkeypatch):
+    manifest_path = tmp_path / "wide.yaml"
+    manifest_path.write_text(WIDE_MANIFEST)
+    monkeypatch.setattr("cliffy.cli.stdout_is_terminal", lambda: True)
+
+    result = CliRunner().invoke(render_command, [str(manifest_path)], env={"COLUMNS": "40"})
+
+    assert result.exit_code == 0, result.output
+    assert click.unstyle(result.stdout) == generated_code(manifest_path)
+
+
+def test_init_render_prints_the_template_as_it_is_written(isolated_fs):
+    rendered = CliRunner().invoke(init_command, ["wide", "--render"], env={"COLUMNS": "40"})
+    written = CliRunner().invoke(init_command, ["wide"])
+
+    assert rendered.exit_code == 0 and written.exit_code == 0
+    assert rendered.stdout == (isolated_fs / "wide.yaml").read_text()

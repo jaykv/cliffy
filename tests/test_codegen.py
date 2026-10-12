@@ -8,6 +8,7 @@ import re
 import textwrap
 from importlib import metadata
 
+import click
 import pytest
 from click.testing import CliRunner as ClickCliRunner
 from typer.testing import CliRunner as TyperCliRunner
@@ -214,7 +215,11 @@ def test_manifest_text_is_not_executed(run, monkeypatch, manifest):
             "['a', 'b']",
             id="builtin_command",
         ),
-        pytest.param(BASE + "commands:\n  print: print('printed')\n", ["--version"], "t, 1", id="print_command"),
+        pytest.param(BASE + "commands:\n  print: print('printed')\n", ["print"], "printed", id="print_command"),
+        # --version is implemented with print(): a command named `print` must not replace it
+        pytest.param(
+            BASE + "commands:\n  print: print('printed')\n", ["--version"], "t, 1", id="print_command_version"
+        ),
         pytest.param(BASE + "commands:\n  my-group.sub: print(1)\n", ["my-group", "sub"], "1", id="dash_group"),
         pytest.param(BASE + "commands:\n  2fa.setup: print(1)\n", ["2fa", "setup"], "1", id="digit_group"),
         pytest.param(
@@ -554,3 +559,114 @@ def test_generated_code_is_reproducible(generate, base):
     assert first == second
     assert first.splitlines()[0] == f"## Generated t with cliffy {metadata.version('cliffy')}"
     assert not re.search(r"\d{4}-\d{2}-\d{2}", first)
+
+
+EXAMPLES = """\
+examples:
+  - command: t greet "Ada Lovelace" --shout
+    description: Greet someone, loudly.
+  - t list --tag [home] --pattern '*.txt'
+  - command: 't say "it''s \\\\n" ''''''x'''''''
+    description: |
+      Quotes and backslashes
+      are shown as written.
+commands:
+  greet: print(1)
+  sub.show: print(2)
+"""
+# as `help_text` returns them: with single spaces
+EXAMPLE_LINES = [
+    '$ t greet "Ada Lovelace" --shout # Greet someone, loudly.',
+    "$ t list --tag [home] --pattern '*.txt'",
+    "$ t say \"it's \\\\n\" '''x''' # Quotes and backslashes are shown as written.",
+]
+
+
+def help_text(result) -> str:
+    """Help output as plain text on one line per paragraph: styles and line wrapping differ between renderers"""
+    return " ".join(click.unstyle(result.output).split())
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_examples_are_shown_in_the_help_of_the_cli(run, base):
+    # SOUL principle 7: "examples in the help". They were only used by `cli docs`.
+    result = run(base + EXAMPLES, ["--help"])
+
+    assert result.exit_code == 0, result.output
+    text = help_text(result)
+    assert "Examples:" in text
+    for line in EXAMPLE_LINES:
+        assert line in text
+    # after the commands, in the order of the manifest
+    positions = [text.index(marker) for marker in ("greet", "Examples:", *EXAMPLE_LINES)]
+    assert positions == sorted(positions)
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_examples_are_not_repeated_in_the_help_of_commands(run, base):
+    for args in (["greet", "--help"], ["sub", "--help"], ["sub", "show", "--help"]):
+        result = run(base + EXAMPLES, args)
+        assert result.exit_code == 0, result.output
+        assert "Examples:" not in help_text(result)
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_help_has_no_examples_section_without_examples(generate, run, base):
+    manifest = base + "commands:\n  greet: print(1)\n"
+
+    assert "Examples" not in help_text(run(manifest, ["--help"]))
+    assert "epilog" not in generate(manifest).cli.code
+    assert "epilog" not in generate(manifest + "examples: []\n").cli.code
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_examples_follow_an_epilog_from_cli_options(run, base):
+    manifest = base + "cli_options:\n  epilog: Made with cliffy.\n" + EXAMPLES
+
+    text = help_text(run(manifest, ["--help"]))
+
+    assert text.index("Made with cliffy.") < text.index("Examples:") < text.index(EXAMPLE_LINES[0])
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+@pytest.mark.parametrize(
+    "example",
+    [
+        '\'"+__import__("os").environ.__setitem__("CLIFFY_PWNED","1")+"\'',
+        '\'"""+__import__("os").environ.__setitem__("CLIFFY_PWNED","1")+"""\'',
+        '"\\")\\n__import__(\\"os\\").environ.__setitem__(\\"CLIFFY_PWNED\\",\\"1\\")\\n(\\""',
+    ],
+    ids=["quote", "triple_quote", "newline"],
+)
+@pytest.mark.parametrize("field", ["command", "description", "string"])
+def test_example_text_is_not_executed(run, monkeypatch, base, example, field):
+    monkeypatch.delenv("CLIFFY_PWNED", raising=False)
+    if field == "string":
+        examples = f"examples:\n  - {example}\n"
+    elif field == "command":
+        examples = f"examples:\n  - command: {example}\n"
+    else:
+        examples = f"examples:\n  - command: t a\n    description: {example}\n"
+
+    for args in (["a"], ["--help"]):
+        result = run(base + examples + "commands:\n  a: print(1)\n", args)
+        assert result.exit_code == 0, result.output
+
+    assert "CLIFFY_PWNED" not in os.environ
+    assert "CLIFFY_PWNED" in help_text(result)
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_example_is_generated_as_one_paragraph_with_its_description(generate, base):
+    code = generate(base + EXAMPLES).cli.code
+
+    assert r"$ t greet \"Ada Lovelace\" --shout  # Greet someone, loudly.\n\n$ t list" in code
+
+
+@pytest.mark.parametrize("mode", ["null", "rich"])
+def test_typer_example_brackets_are_shown_whatever_the_markup_mode(run, mode):
+    # rich markup reads `[home]` as a tag and drops it. Without markup an escaped `\[home]` would show the backslash.
+    result = run(BASE + f"cli_options:\n  rich_markup_mode: {mode}\n" + EXAMPLES, ["--help"])
+
+    assert result.exit_code == 0, result.output
+    assert EXAMPLE_LINES[1] in help_text(result)

@@ -22,8 +22,10 @@ class TyperCommander(Commander):
         self.cli += """
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS"""
-        if self.manifest.cli_options:
-            self.cli += f",{self.parser.to_args(self.manifest.cli_options)}"
+        # Typer shows help text as rich markup unless the manifest chooses another mode
+        rich_markup = self.manifest.cli_options.get("rich_markup_mode", "rich") == "rich"
+        if cli_options := self.cli_options_with_examples(escape_markup=rich_markup):
+            self.cli += f",{self.parser.to_args(cli_options)}"
         if self.manifest.help:
             self.cli += f", help={py_str(self.manifest.help)}"
         self.cli += f""")
@@ -48,6 +50,7 @@ def aliases_callback(value: bool):
 """
         callbacks = self.callbacks_for()
         self.functions["main"] = "callback of the CLI"
+        self.record_callback_blocks("main", callbacks)
         self.cli += f"""
 @cli.callback({self.parse_callback_options(callbacks)})
 def main({self.parse_callback_params(callbacks)}"""
@@ -118,6 +121,7 @@ cli.command({py_str(alias)}, hidden=True, epilog={alias_epilog})({parsed_command
                 callback_name = self.unique_name(
                     f"{group.var_name}_callback", source=f"callback of group `{group.name}`"
                 )
+                self.record_callback_blocks(callback_name, callbacks)
                 self.cli += f"""
 @{group.var_name}.callback({self.parse_callback_options(callbacks)})
 def {callback_name}({self.parse_callback_params(callbacks)}

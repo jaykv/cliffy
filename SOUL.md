@@ -39,7 +39,11 @@ write and a developer can review. That overlap is the project.
 
 Everything about a tool lives in its manifest: commands, parameters, help, dependencies, examples and tests.
 There is no second place to look and no hidden state that changes what a manifest means.
-The same manifest produces the same CLI on every machine, every time.
+A manifest names its inputs itself: the files it lists under `includes`, its blueprint,
+and the environment variables it reads with `{{ env[...] }}`.
+The same manifest with the same inputs, read by the same version of cliffy, produces the same CLI
+on every machine, every time.
+Cliffy adds nothing of its own: not the time, not the machine, not the order something happened to be read in.
 
 ### 2. Nothing is hidden
 

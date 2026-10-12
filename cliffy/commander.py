@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import ItemsView, Iterator, ValuesView
 from contextlib import contextmanager
+from typing import Any
 
 import pybash
 from pydantic import BaseModel
@@ -38,14 +39,23 @@ def callback_label(callback: Callback) -> str:
     return f"callback of group `{callback.group}`, run" if callback.group else "callback of the CLI, run"
 
 
+def script_text(script: RunBlock | RunBlockList) -> str:
+    """A run block as the one script it is generated from"""
+    return script.to_script() if isinstance(script, RunBlockList) else str(script.root)
+
+
 class CLI(BaseModel):
     name: str
     version: str
     code: str
     requires: list[str] = []
     blueprint: str | None = None
-    # generated function name -> where it comes from in the manifest, i.e. {"db_create": "commands.db.create"}
+    # generated function name -> where it comes from in the manifest, i.e. {"db_create": "command `db.create`"}
     functions: dict[str, str] = {}
+    # generated function name -> the scripts its body is generated from, in order, as (key in the manifest,
+    # script): {"db_create": [("pre_run", "..."), ("run", "...")]}. Lets a line of the generated code be
+    # reported as a line of the manifest.
+    blocks: dict[str, list[tuple[str, str]]] = {}
 
 
 class BaseGroup(BaseModel):
@@ -116,6 +126,7 @@ class Commander(ABC):
     __slots__ = (
         "aliases_by_commands",
         "base_imports",
+        "blocks",
         "callbacks_by_group",
         "cli",
         "command_functions",
@@ -161,6 +172,7 @@ class Commander(ABC):
         # nothing else uses: two manifest names can map to the same identifier (`db-app` and the group `db`).
         self.taken_names: set[str] = set(self.manifest.vars) | self.user_defined_names()
         self.functions: dict[str, str] = {}
+        self.blocks: dict[str, list[tuple[str, str]]] = {}
         self.command_functions: dict[str, str] = {}
         for group in self.groups.values():
             group.var = self.unique_name(to_identifier(group.name + "_app"))
@@ -206,7 +218,17 @@ class Commander(ABC):
             self.command_functions[command.name] = self.unique_name(
                 self.parser.get_command_func_name(command), source=f"command `{command.name}`"
             )
+            self.blocks[self.command_functions[command.name]] = self.command_blocks(command)
         return self.command_functions[command.name]
+
+    @staticmethod
+    def command_blocks(command: Command) -> list[tuple[str, str]]:
+        """The scripts of a command in the order `Parser.parse_command_run` writes them."""
+        scripts = [("pre_run", command.pre_run), ("run", command.run), ("post_run", command.post_run)]
+        return [(key, script_text(script)) for key, script in scripts if script or key == "run"]
+
+    def record_callback_blocks(self, function_name: str, callbacks: list[Callback]) -> None:
+        self.blocks[function_name] = [("run", script_text(callback.run)) for callback in callbacks]
 
     def _merge_command_template(self, command: Command) -> None:
         """Merge command with its template if specified."""
@@ -304,6 +326,46 @@ class Commander(ABC):
         # imported only by a CLI that uses it, so that the others read as plain subprocess calls
         if SHELL_RUNTIME_REFERENCE.search(self.cli, base_imports_end):
             self.cli = self.cli[:base_imports_end] + SHELL_RUNTIME_IMPORT + self.cli[base_imports_end:]
+
+    # A rich markup tag, as rich.markup finds it: `[bold]`, `[/]`, `[#ff0000]`, `[@click]`
+    MARKUP_TAG = re.compile(r"(\\*)(\[[a-z#/@][^[]*?])")
+
+    def examples_epilog(self, escape_markup: bool = False) -> str:
+        """Text for the end of the CLI's `--help`: the manifest's `examples`, one paragraph each.
+
+        `$ notes add "buy milk"  # Add a note.` A paragraph per example, because the help renderers
+        (Click, rich-click and Typer) agree on nothing else: they join or re-wrap the lines within one.
+
+        Args:
+            escape_markup: Typer reads `[...]` in help text as rich markup and would drop `[home]` from
+                `--tag [home]`. An example is a command line to copy: it is shown as written.
+        """
+        lines = []
+        for example in self.manifest.examples:
+            command, description = (
+                (example, None) if isinstance(example, str) else (example.command, example.description)
+            )
+            line = "$ " + " ".join(command.splitlines()).strip()
+            if description and description.strip():
+                line += "  # " + " ".join(description.split())
+            lines.append(line)
+        if not lines:
+            return ""
+
+        epilog = "\n\n".join(["Examples:", *lines])
+        if escape_markup:
+            epilog = self.MARKUP_TAG.sub(lambda tag: f"{tag.group(1) * 2}\\{tag.group(2)}", epilog)
+        return epilog
+
+    def cli_options_with_examples(self, escape_markup: bool = False) -> dict[str, Any]:
+        """`cli_options` with the examples in `epilog`, after an epilog the manifest sets itself."""
+        options = dict(self.manifest.cli_options)
+        if examples := self.examples_epilog(escape_markup):
+            own_epilog = options.get("epilog")
+            options["epilog"] = (
+                f"{own_epilog}\n\n{examples}" if isinstance(own_epilog, str) and own_epilog else examples
+            )
+        return options
 
     def header(self) -> str:
         """First line of the generated code. It holds nothing that changes between two runs, such as the time:
@@ -492,4 +554,5 @@ def generate_cli(manifest: CLIManifest, commander_cls: type[Commander] = Command
         code=commander.cli,
         requires=manifest.requires,
         functions=commander.functions,
+        blocks=commander.blocks,
     )

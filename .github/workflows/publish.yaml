@@ -29,6 +29,10 @@ jobs:
             echo "::error::release tag '$GITHUB_REF_NAME' does not match pyproject version '$version'"
             exit 1
           fi
+      - name: Check that the distributions ship the type hints marker
+        run: |
+          unzip -l dist/*.whl | grep -q ' cliffy/py\.typed$'
+          tar -tzf dist/*.tar.gz | grep -q '/cliffy/py\.typed$'
       - name: Smoke test the wheel
         run: uv run --isolated --no-project --with dist/*.whl cli --version
       - uses: actions/upload-artifact@v7
@@ -53,5 +57,9 @@ jobs:
           path: dist/
       - name: Install uv
         uses: astral-sh/setup-uv@v10.3.0
+      # --check-url: a file that is on PyPI already, with the same content, is skipped. An upload that
+      # stopped half way (the sdist is up, the wheel is not) can then be finished with "Re-run failed
+      # jobs". Without it the files that made it are rejected as duplicates and the retry fails.
+      # A file with the same name and different content still fails: a release is never replaced.
       - name: Publish
-        run: uv publish --trusted-publishing always dist/*
+        run: uv publish --trusted-publishing always --check-url https://pypi.org/simple/ dist/*

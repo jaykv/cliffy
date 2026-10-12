@@ -530,8 +530,9 @@ Only the keys you set are passed on, as keyword arguments of the `command()` dec
 Click. With the Click backend `rich_help_panel` needs rich-click.
 """,
     "Example": """
-`examples` entries are only used by [`cli docs`](../guides/generating-docs.md). An entry can also be a
-plain string, which is shown without a description.
+`examples` entries are shown at the end of the `--help` of the generated CLI, as
+`$ <command>  # <description>`, and in the pages written by [`cli docs`](../guides/generating-docs.md).
+An entry can also be a plain string, which is shown without a description.
 """,
     "IncludeManifest": """
 Files listed under `includes` are validated against this smaller model. A relative path is looked up

@@ -39,7 +39,7 @@ hello world
 | `cli_options` | Options for the CLI application object. | [below](#cli-options) |
 | `use_click` | Generate Click code instead of Typer. | [Click and Typer backends](backends.md) |
 | `tests` | Commands to run and assertions to check. | [Testing manifests](testing.md) |
-| `examples` | Example command lines for generated docs. | [Generating docs](generating-docs.md) |
+| `examples` | Example command lines, shown in `--help` and in generated docs. | [Generating docs](generating-docs.md) |
 
 Keys that cliffy does not know are ignored. The [manifest reference](../reference/manifest.md) lists
 every key with its type and default.
@@ -63,6 +63,9 @@ To read the generated module for any manifest:
 ```console
 $ cli render hello.yaml
 ```
+
+The output is the module itself, so `cli render hello.yaml > hello.py` writes a file you can run. The
+closing `# Rendered ...` line goes to the error stream and does not end up in that file.
 
 ## Imports and functions
 

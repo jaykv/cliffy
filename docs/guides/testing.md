@@ -70,6 +70,27 @@ A failing assertion is reported with its line:
 💔 AssertionError: (line 1) > assert result.output == "1\n"
 ```
 
+So is an assertion that raises something else, or that is not valid Python:
+
+```text
+💔 NameError: name 'reslt' is not defined (line 1) > assert reslt.exit_code == 0
+```
+
+When the command itself raises, the exception is reported against the manifest: the command, the
+exception, and the line of the `run`, `pre_run` or `post_run` block it was raised on.
+
+```text
+💥 command `add` raised KeyError: 'notes'
+    run, line 2: data["notes"].append(text)
+```
+
+No Python traceback is printed. The assertions still run, so a test can expect the exception with
+`assert isinstance(result.exception, KeyError)`. To see the full traceback of the command as well:
+
+```console
+$ cli test testing.yaml --traceback
+```
+
 The run ends with one of three messages:
 
 | Last line | Meaning | Exit code |
@@ -101,7 +122,8 @@ step of its own.
 - **The counter counts test cases.** `✅ 2 of 5` is the second test case of five. Shell steps are run
   but not counted, and a failed case keeps its number.
 - **Shell steps are not checked.** A step that exits with an error does not fail the run. Assert on
-  the state it should have produced in the next test case.
+  the state it should have produced in the next test case. A step whose program cannot be started at
+  all (it does not exist) ends the run with an error.
 
 ## The complete example
 

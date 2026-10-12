@@ -2,7 +2,6 @@ import os
 import platform
 from datetime import datetime, timedelta
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,12 +11,12 @@ from cliffy.helper import (
     CLIFFY_METADATA_DIR,
     PYTHON_BIN,
     PYTHON_EXECUTABLE,
-    TEMP_FILES,
     age_datetime,
     check_requirement,
-    delete_temp_files,
+    cli_name_problem,
     exit_err,
     get_installed_package_versions,
+    import_generated_code,
     import_module_from_path,
     indent_block,
     make_executable,
@@ -25,6 +24,7 @@ from cliffy.helper import (
     out_err,
     wrap_as_comment,
     wrap_as_var,
+    write_atomically,
     write_to_file,
 )
 
@@ -96,18 +96,24 @@ def test_make_executable(tmpdir):
     assert os.access(str(temp_file), os.X_OK)
 
 
-# Test for delete_temp_files
-def test_delete_temp_files():
-    # Arrange
-    temp_file = NamedTemporaryFile(delete=False)  # noqa: SIM115
-    TEMP_FILES.append(temp_file)
+def test_import_generated_code_removes_its_file(tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
 
-    # Act
-    delete_temp_files()
+    module, module_path = import_generated_code("answer = 42", "generated_cli")
 
-    # Assert
-    assert not Path(temp_file.name).exists()
-    assert TEMP_FILES == []
+    assert module.answer == 42
+    assert module.__name__ == "generated_cli" and os.path.basename(module_path) == "generated_cli.py"
+    assert not os.path.exists(module_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_import_generated_code_removes_its_file_when_the_import_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
+
+    with pytest.raises(ImportError):
+        import_generated_code("import no_such_module_for_cliffy", "generated_cli")
+
+    assert list(tmp_path.iterdir()) == []
 
 
 # Parametrized tests for indent_block
@@ -284,9 +290,49 @@ def test_constants():
     assert isinstance(CLIFFY_METADATA_DIR, Path)
     assert isinstance(PYTHON_BIN, str)
     assert isinstance(PYTHON_EXECUTABLE, str)
-    assert isinstance(TEMP_FILES, list)
 
     if platform.system() == "Windows":
         assert "Scripts" in PYTHON_BIN
     else:
         assert "bin" in PYTHON_BIN
+
+
+def test_write_atomically_replaces_a_link_instead_of_writing_through_it(tmp_path):
+    target = tmp_path / "target"
+    target.write_text("untouched")
+    link = tmp_path / "link"
+    try:
+        link.symlink_to(target)
+    except (OSError, NotImplementedError) as e:
+        pytest.skip(f"symbolic links cannot be created here: {e}")
+
+    write_atomically(str(link), "new")
+
+    assert target.read_text() == "untouched"
+    assert not link.is_symlink() and link.read_text() == "new"
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["link", "target"]
+
+
+def test_write_atomically_without_replace_keeps_an_existing_file(tmp_path):
+    existing = tmp_path / "existing"
+    existing.write_text("kept")
+
+    with pytest.raises(FileExistsError):
+        write_atomically(str(existing), "new", replace=False)
+
+    assert existing.read_text() == "kept"
+    assert [path.name for path in tmp_path.iterdir()] == ["existing"]
+
+    write_atomically(str(tmp_path / "sub" / "created"), "new", executable=True, replace=False)
+    assert (tmp_path / "sub" / "created").read_text() == "new"
+    assert os.access(tmp_path / "sub" / "created", os.X_OK)
+
+
+@pytest.mark.parametrize("name", ["hello", "my-cli", "_x1"])
+def test_cli_name_problem_accepts_names(name):
+    assert cli_name_problem(name) is None
+
+
+@pytest.mark.parametrize("name", ["", ".", "..", "../x", "a/b", "a\\b", "-x", "a b", "a.b", "*", "x\n", None])
+def test_cli_name_problem_rejects_paths_and_patterns(name):
+    assert "not a valid CLI name" in (cli_name_problem(name) or "")

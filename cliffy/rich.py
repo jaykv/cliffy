@@ -19,7 +19,7 @@ class PlainConsole:
         if isinstance(text, PlainTable):
             click.echo(text)
         else:
-            print(text)
+            print(text, end=kwargs.get("end", "\n"))
 
 
 class PlainTable:

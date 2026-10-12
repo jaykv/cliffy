@@ -223,7 +223,8 @@ not need cliffy. With `--target script` you get a single Python script instead, 
 --8<-- "docs/snippets/notes.yaml"
 ```
 
-The `examples` section at the end is used by [`cli docs`](guides/generating-docs.md).
+The `examples` section at the end is shown at the end of `notes --help` and is used by
+[`cli docs`](guides/generating-docs.md).
 
 ## Next steps
 

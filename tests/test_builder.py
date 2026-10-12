@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 import zipfile
 from importlib import metadata
 from pathlib import Path
@@ -12,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
+import cliffy.helper as IMPORT_OWNER
 from cliffy.builder import (
     build_cli,
     build_cli_from_manifest,
@@ -21,7 +23,6 @@ from cliffy.builder import (
     run_cli,
 )
 from cliffy.cli import cli
-from cliffy.helper import TEMP_FILES
 from cliffy.transformer import Transformer
 
 EXAMPLES = Path(__file__).parent.parent / "examples" / "blueprints"
@@ -51,7 +52,9 @@ def pip_requirements(mock_pip_run: MagicMock) -> list[str]:
     pip_args = mock_pip_run.call_args.args[0]
     assert pip_args[:3] == [sys.executable, "-m", "pip"]
     assert "install" in pip_args
-    return pip_args[pip_args.index("--target") + 2 :]
+    # the requirements follow `--`, which ends the options of pip
+    assert pip_args[pip_args.index("--target") + 2] == "--"
+    return pip_args[pip_args.index("--") + 1 :]
 
 
 def run_artifact(
@@ -310,7 +313,41 @@ def test_run_cli_removes_temp_file_when_import_fails(temp_dir):
         run_cli("broken", "import no_such_module_for_cliffy", ())
 
     assert glob.glob(f"{temp_dir}/broken_*") == []
-    assert TEMP_FILES == []
+    # the run has a temporary directory of its own: neither the file nor the directory is left behind
+    assert list(temp_dir.iterdir()) == []
+
+
+def test_concurrent_runs_keep_their_own_temp_files(temp_dir, monkeypatch):
+    # every run cleaned up a process-wide list of temp files: a run that finished deleted the file
+    # another run, i.e. a reload of `cli dev --run-cli` on another thread, was about to import
+    first_is_importing, second_is_done = threading.Event(), threading.Event()
+    real_import = IMPORT_OWNER.import_module_from_path
+
+    def slow_import(path):
+        if os.path.basename(path).startswith("first"):
+            first_is_importing.set()
+            assert second_is_done.wait(10)
+        return real_import(path)
+
+    monkeypatch.setattr(IMPORT_OWNER, "import_module_from_path", slow_import)
+    monkeypatch.setattr(sys, "argv", list(sys.argv))
+    errors: list[BaseException] = []
+
+    def first_run():
+        try:
+            run_cli("first", "cli = lambda: None", ())
+        except BaseException as e:
+            errors.append(e)
+
+    thread = threading.Thread(target=first_run)
+    thread.start()
+    assert first_is_importing.wait(10)
+    run_cli("second", "cli = lambda: None", ())
+    second_is_done.set()
+    thread.join(10)
+
+    assert errors == []
+    assert list(temp_dir.iterdir()) == []
 
 
 def test_build_removes_temp_file_when_build_fails(temp_dir, tmp_path):
@@ -327,7 +364,6 @@ def test_build_removes_temp_file_when_build_fails(temp_dir, tmp_path):
     assert glob.glob(f"{temp_dir}/buildme_*") == []
     # the script is written into a temporary directory: neither it nor the directory is left behind
     assert list(temp_dir.iterdir()) == []
-    assert TEMP_FILES == []
 
 
 @pytest.mark.parametrize(
@@ -372,3 +408,64 @@ def test_build_creates_nested_output_dir(tmp_path):
 
     assert result.exit_code == 0, result.output
     assert (output_dir / "script").exists()
+
+
+OPTION_LIKE = ["--index-url=https://packages.invalid/simple", "-r/etc/hosts", "  -e .", "--no-deps"]
+
+
+@pytest.mark.parametrize("requirement", OPTION_LIKE)
+def test_requirement_that_is_an_option_is_rejected_by_the_manifest(tmp_path, requirement):
+    # `cli build` does not check `requires` against the installed packages, so the entry went to pip
+    # as it was: an option, which changed where pip installs from
+    manifest = tmp_path / "optioned.yaml"
+    manifest.write_text(f"name: optioned\nversion: '1'\nrequires: [{requirement!r}, rich]\ncommands:\n  a: print(1)\n")
+
+    with patch("cliffy.builder.subprocess.run") as run:
+        result = CliRunner().invoke(cli, ["build", str(manifest), "-o", str(tmp_path / "out")])
+
+    assert result.exit_code == 1
+    run.assert_not_called()
+    assert f"`{requirement.strip()}` is an option, not a requirement" in result.output
+    assert "requires" in result.output
+    assert not (tmp_path / "out").exists()
+
+
+@pytest.mark.parametrize("requirement", OPTION_LIKE)
+def test_requirement_that_is_an_option_is_rejected_in_an_include(tmp_path, requirement):
+    (tmp_path / "shared.yaml").write_text(f"requires: [{requirement!r}]\n")
+    manifest = tmp_path / "optioned.yaml"
+    manifest.write_text("name: optioned\nversion: '1'\nincludes: [shared.yaml]\ncommands:\n  a: print(1)\n")
+
+    result = CliRunner().invoke(cli, ["render", str(manifest)])
+
+    assert result.exit_code == 1
+    assert f"`{requirement.strip()}` is an option, not a requirement" in result.output
+
+
+@pytest.mark.parametrize("requirement", OPTION_LIKE)
+def test_build_does_not_pass_an_option_to_pip(tmp_path, requirement):
+    # the requirements of a loaded CLI come from its metadata record, not from a validated manifest
+    script = tmp_path / "demo.py"
+    script.write_text(TYPER_CODE)
+
+    with patch("cliffy.builder.subprocess.run") as run:
+        result = build_cli(
+            "demo", script_path=str(script), deps=["rich", requirement], output_dir=str(tmp_path / "out")
+        )
+
+    run.assert_not_called()
+    assert result.exit_code == 1
+    assert f"`{requirement.strip()}` is an option, not a requirement" in result.output
+
+
+def test_requirements_follow_the_end_of_pip_options(tmp_path):
+    script = tmp_path / "demo.py"
+    script.write_text(TYPER_CODE)
+
+    with skip_pip() as run:
+        build_cli("demo", script_path=str(script), deps=["rich>=13"], output_dir=str(tmp_path / "out"))
+
+    command = run.call_args.args[0]
+    assert command[command.index("--") + 1] == "rich>=13"
+    assert all(not argument.startswith("-") for argument in command[command.index("--") + 1 :])
+    assert "shell" not in run.call_args.kwargs

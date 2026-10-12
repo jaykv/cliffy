@@ -258,3 +258,29 @@ def test_corrupt_metadata_can_be_removed(metadata_dir: Path, command: str):
     assert result.exit_code == 0, result.output
     assert not Path(metadata_path).exists()
     assert list(get_clis()) == []
+
+
+@pytest.mark.parametrize("name", ["../first", "*/../first", "first/../first", "..", "a/b"])
+def test_metadata_is_not_looked_up_or_removed_by_a_path(metadata_dir: Path, name: str):
+    # `cli rm ../x` used to select <metadata dir>/x.json and delete x.* next to it
+    save_cli(metadata_dir, "first")
+    stray = metadata_dir / "first.json"
+    stray.write_text(Path(str(get_metadata_path("first"))).read_text())
+
+    assert get_metadata_path(name) is None
+    assert get_metadata(name) is None
+    remove_metadata(name)
+
+    assert stray.exists()
+    assert [cli.cli_name for cli in get_clis()] == ["first"]
+
+
+def test_listed_name_is_the_name_of_the_record_file(metadata_dir: Path):
+    # the name inside an edited record must not decide which CLI `cli rm-all` removes
+    save_cli(metadata_dir, "first")
+    metadata_path = Path(str(get_metadata_path("first")))
+    record = json.loads(metadata_path.read_text())
+    record["cli_name"] = "../../somewhere-else"
+    metadata_path.write_text(json.dumps(record))
+
+    assert [cli.cli_name for cli in get_clis()] == ["first"]

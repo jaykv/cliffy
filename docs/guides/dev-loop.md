@@ -71,5 +71,14 @@ $ cli remove-all      # uninstall everything cliffy loaded
 `cli ls`, `cli reload`, `cli rm` and `cli rm-all` are aliases for these. Details are in the
 [CLI reference](../reference/cli.md).
 
+Loading writes a small launcher script named after the CLI into the `bin` directory of the
+environment. cliffy only replaces or deletes that file while it is exactly the launcher it wrote. If
+a file with the name of your CLI is already there (`pip`, say), `cli load` stops and asks you to
+rename the CLI. If you edited the launcher, `cli remove` removes nothing, tells you which file is in
+the way and leaves the CLI loaded and working; move or delete that file and remove the CLI again.
+
+While `cli dev` runs, reloads happen one at a time and each one reads the manifest when it starts,
+so after a burst of saves the loaded CLI is the one of the last save.
+
 Loaded CLIs belong to the Python environment cliffy is installed in. They are available whenever
 that environment is active and disappear with it.

@@ -6,4 +6,11 @@ help: Hello World with Click!
 commands:
   hello | hl: $ echo "world"
 
+examples:
+  - command: clickhello hello
+    description: Print "world".
+  - clickhello hl
 
+tests:
+  - hello: assert result.exit_code == 0
+  - --help: assert "Examples:" in result.output and "$ clickhello hl" in result.output

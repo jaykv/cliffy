@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from importlib import metadata
 from io import TextIOWrapper
 from pathlib import Path
-from tempfile import NamedTemporaryFile, TemporaryDirectory
+from tempfile import TemporaryDirectory
 from typing import ClassVar
 
 import pybash
@@ -24,7 +24,7 @@ from packaging.version import InvalidVersion, Version
 from shiv import cli as shiv_cli
 
 from cliffy.commander import CLI, SHELL_RUNTIME_IMPORT
-from cliffy.helper import TEMP_FILES, delete_temp_files, import_module_from_path, make_executable
+from cliffy.helper import import_generated_code, make_executable, option_like_requirement
 from cliffy.transformer import Transformer
 
 DEFAULT_TARGET = "zipapp"
@@ -115,7 +115,10 @@ class ZipappTarget(BuildTarget):
 
         with TemporaryDirectory() as staging:
             pip_install = [sys.executable, "-m", "pip", "--disable-pip-version-check", "install", "--no-compile"]
-            pip = subprocess.run([*pip_install, "--target", staging, *job.requirements], capture_output=True, text=True)
+            # `--` ends the options of pip: whatever follows is a requirement, also if it starts with `-`
+            pip = subprocess.run(
+                [*pip_install, "--target", staging, "--", *job.requirements], capture_output=True, text=True
+            )
             if pip.returncode != 0:
                 return self.failed(f"could not install {', '.join(job.requirements)}:\n{last_lines(pip)}")
 
@@ -348,6 +351,9 @@ def build_cli(
     """
     if target not in TARGETS:
         return BuildResult(1, f"unknown build target `{target}`: choose one of {', '.join(TARGETS)}", target=target)
+    if problem := option_like_requirement(deps or []):
+        # a manifest is checked when it is read. The requirements of a loaded CLI come from its metadata record
+        return BuildResult(1, f"`requires` of {cli_name}: {problem}", target=target)
     try:
         code = Path(script_path).read_text(encoding="utf-8")
     except OSError as e:
@@ -540,18 +546,6 @@ if not sys.version_info[:2] {"==" if exact else ">="} (3, {minor}):
 
 
 def run_cli(cli_name: str, script_code: str, args: tuple) -> None:
-    with NamedTemporaryFile(
-        mode="w", prefix=f"{cli_name}_", suffix=".py", delete=False, encoding="utf-8"
-    ) as runner_file:
-        TEMP_FILES.append(runner_file)
-        try:
-            runner_file.write(script_code)
-            runner_file.flush()
-            module = import_module_from_path(runner_file.name)
-        finally:
-            # also when the generated code fails to import
-            delete_temp_files()
-
-    runner_argvs = [runner_file.name, *list(args)]
-    sys.argv = runner_argvs
+    module, module_path = import_generated_code(script_code, f"{cli_name.replace('-', '_')}_cli")
+    sys.argv = [module_path, *list(args)]
     module.cli()

@@ -48,11 +48,30 @@ def _call_tool(name, arguments):
     return _render_result(TOOLS[name]["function"](**arguments))
 
 
+def _error(message_id, code, text):
+    return {"jsonrpc": "2.0", "id": message_id, "error": {"code": code, "message": text}}
+
+
 def _handle_message(message):
     """Answer one JSON-RPC message. Returns None for notifications, which get no reply."""
-    method, params, message_id = message.get("method"), message.get("params") or {}, message.get("id")
+    if isinstance(message, list):
+        # MCP has no batches since revision 2025-06-18: one message per line
+        return _error(None, -32600, "Invalid Request: batch messages are not supported, send one message per line")
+    if not isinstance(message, dict):
+        return _error(None, -32600, "Invalid Request: a message must be a JSON object")
+
+    method, params, message_id = message.get("method"), message.get("params"), message.get("id")
+    if not isinstance(method, str):
+        # a response to a request is not answered: this server never sends one
+        if "result" in message or "error" in message:
+            return None
+        return _error(message_id, -32600, "Invalid Request: `method` must be a string")
     if message_id is None:
         return None
+    if params is None:
+        params = {}
+    if not isinstance(params, dict):
+        return _error(message_id, -32602, "Invalid params: `params` must be an object")
 
     if method == "initialize":
         result = {
@@ -65,13 +84,18 @@ def _handle_message(message):
     elif method == "tools/list":
         result = {"tools": _describe_tools()}
     elif method == "tools/call":
+        arguments = params.get("arguments")
+        if arguments is None:
+            arguments = {}
+        if not isinstance(arguments, dict):
+            return _error(message_id, -32602, "Invalid params: `arguments` must be an object")
         try:
-            text, failed = _call_tool(params.get("name"), params.get("arguments") or {}), False
+            text, failed = _call_tool(params.get("name"), arguments), False
         except Exception as e:
             text, failed = f"{type(e).__name__}: {e}", True
         result = {"content": [{"type": "text", "text": text}], "isError": failed}
     else:
-        return {"jsonrpc": "2.0", "id": message_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}
+        return _error(message_id, -32601, f"Method not found: {method}")
     return {"jsonrpc": "2.0", "id": message_id, "result": result}
 
 
@@ -80,9 +104,11 @@ def _serve():
         if not line.strip():
             continue
         try:
-            reply = _handle_message(json.loads(line))
+            message = json.loads(line)
         except ValueError:
-            reply = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}
+            reply = _error(None, -32700, "Parse error")
+        else:
+            reply = _handle_message(message)
         if reply is not None:
             sys.stdout.write(json.dumps(reply) + "\\n")
             sys.stdout.flush()

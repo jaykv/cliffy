@@ -7,7 +7,6 @@ from click.testing import CliRunner
 from pybash.transformer import transform as transform_bash
 
 from cliffy.cli import test_command as manifest_test_command
-from cliffy.helper import TEMP_FILES
 from cliffy.tester import ShellScript
 from cliffy.tester import Tester as ManifestTester
 
@@ -35,7 +34,8 @@ def test_tester_removes_temp_file_when_import_fails(monkeypatch, tmp_path):
         ManifestTester(str(manifest_path))
 
     assert glob.glob(f"{temp_dir}/broken_*") == []
-    assert TEMP_FILES == []
+    # the run has a temporary directory of its own: neither the file nor the directory is left behind
+    assert list(temp_dir.iterdir()) == []
 
 
 def test_manifest_tests_run_for_click_cli(tmp_path):
@@ -135,3 +135,148 @@ def test_assertions_see_output_without_ansi_styles(tmp_path):
 
     assert "All tests passed" in result.output, result.output
     assert result.exit_code == 0
+
+
+RAISING_MANIFEST = """\
+name: raising
+version: '1'
+use_click: {use_click}
+functions:
+  - |
+    def parse(text):
+        import json
+        return json.loads(text)
+commands:
+  boom:
+    help: Raises on its second line
+    pre_run: prepared = True
+    run: |
+
+      value = 1
+      raise RuntimeError("the user's own problem")
+  deep:
+    run: |
+      print("before")
+      parse("{{")
+  quit: raise SystemExit(3)
+tests:
+{tests}
+"""
+
+
+def run_manifest_tests(tmp_path, tests: str, *args: str, use_click: bool = False, manifest: str = RAISING_MANIFEST):
+    manifest_path = tmp_path / "raising.yaml"
+    manifest_path.write_text(manifest.format(use_click=str(use_click).lower(), tests=tests))
+    return CliRunner().invoke(manifest_test_command, [str(manifest_path), *args])
+
+
+def assert_no_traceback(output: str) -> None:
+    """Nothing of cliffy itself and nothing of the generated module is shown: SOUL principle 3"""
+    assert "Traceback" not in output, output
+    assert 'File "' not in output, output
+    for internal in ("tester.py", "cli.py", "helper.py", "_test.py", "site-packages", "<Result"):
+        assert internal not in output, output
+
+
+@pytest.mark.parametrize("use_click", [False, True], ids=["typer", "click"])
+def test_command_that_raises_is_reported_in_manifest_terms(tmp_path, use_click):
+    # it was shown as `<Result RuntimeError(...)>`: nothing said where in the manifest it came from
+    result = run_manifest_tests(tmp_path, "  - boom: assert result.exit_code == 0\n", use_click=use_click)
+
+    assert result.exit_code == 1
+    assert "command `boom` raised RuntimeError: the user's own problem" in result.output
+    # line 3 of the run block as it is written in the manifest: the blank first line counts
+    assert 'run, line 3: raise RuntimeError("the user\'s own problem")' in result.output
+    assert "AssertionError: (line 1) > assert result.exit_code == 0" in result.output
+    assert_no_traceback(result.output)
+
+
+@pytest.mark.parametrize("use_click", [False, True], ids=["typer", "click"])
+def test_exception_from_a_helper_names_the_command_and_the_helper(tmp_path, use_click):
+    result = run_manifest_tests(tmp_path, "  - deep: assert result.exit_code == 0\n", use_click=use_click)
+
+    assert result.exit_code == 1
+    assert "command `deep` raised JSONDecodeError: " in result.output
+    assert 'run, line 2: parse("{")' in result.output
+    assert "in `parse` (functions): return json.loads(text)" in result.output
+    assert_no_traceback(result.output)
+
+
+def test_expected_exception_can_still_be_asserted_on(tmp_path):
+    tests = "  - boom: assert isinstance(result.exception, RuntimeError)\n  - quit: assert result.exit_code == 3\n"
+
+    result = run_manifest_tests(tmp_path, tests)
+
+    assert result.exit_code == 0, result.output
+    assert "All tests passed" in result.output
+    assert "command `boom` raised RuntimeError" in result.output
+    # an exit code is not an exception of the command
+    assert "command `quit` raised" not in result.output
+    assert_no_traceback(result.output)
+
+
+def test_traceback_flag_shows_the_traceback_of_the_command(tmp_path):
+    result = run_manifest_tests(tmp_path, "  - boom: assert result.exit_code == 0\n", "--traceback")
+
+    assert result.exit_code == 1
+    assert "command `boom` raised RuntimeError: the user's own problem" in result.output
+    assert "Traceback (most recent call last)" in result.output
+    # with the lines of the generated code, although its file is gone
+    assert 'raise RuntimeError("the user\'s own problem")' in result.output.split("Traceback")[1]
+
+
+@pytest.mark.parametrize(
+    "assertion, problem",
+    [
+        ("assert undefined_name", "NameError: name 'undefined_name' is not defined (line 1) > assert undefined_name"),
+        ("assert result.output.nope()", "AttributeError: 'str' object has no attribute 'nope' (line 1) > assert"),
+        ("assert (", "the assertion is not valid Python, line 1, column 8: '(' was never closed"),
+    ],
+    ids=["name_error", "attribute_error", "syntax_error"],
+)
+def test_broken_assertion_is_reported_without_a_traceback(tmp_path, assertion, problem):
+    # these printed a traceback through cliffy/cli.py and cliffy/tester.py
+    tests = f"  - quit: {assertion}\n  - quit: assert result.exit_code == 3\n"
+
+    result = run_manifest_tests(tmp_path, tests)
+
+    assert result.exit_code == 1
+    assert problem in result.output
+    assert "2 of 2" in result.output
+    assert_no_traceback(result.output)
+
+
+def test_assertion_error_on_a_later_line_is_located(tmp_path):
+    tests = "  - quit: |\n      assert result.exit_code == 3\n      assert 'nothing' in result.output\n"
+
+    result = run_manifest_tests(tmp_path, tests)
+
+    assert result.exit_code == 1
+    assert "AssertionError: (line 2) > assert 'nothing' in result.output" in result.output
+    assert_no_traceback(result.output)
+
+
+def test_manifest_that_does_not_import_is_reported_against_the_manifest(tmp_path):
+    # `cli test` ended with a traceback through cliffy/helper.py that named a deleted temp file
+    manifest_path = tmp_path / "broken.yaml"
+    manifest_path.write_text(BROKEN_MANIFEST + "tests:\n  - a: assert result.exit_code == 0\n")
+
+    result = CliRunner().invoke(manifest_test_command, [str(manifest_path)])
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "module level code (`imports`, `vars`, `types` or `functions`)" in result.output
+    assert "ModuleNotFoundError: No module named 'no_such_module_for_cliffy'" in result.output
+    assert "import no_such_module_for_cliffy" in result.output
+    assert_no_traceback(result.output)
+
+
+def test_shell_step_that_cannot_start_ends_the_run_without_a_traceback(tmp_path):
+    tests = "  - $ no-such-program-for-cliffy --flag\n  - quit: assert result.exit_code == 3\n"
+
+    result = run_manifest_tests(tmp_path, tests)
+
+    assert result.exit_code == 1
+    assert isinstance(result.exception, SystemExit)
+    assert "test step `$ no-such-program-for-cliffy --flag` could not be run: FileNotFoundError" in result.output
+    assert_no_traceback(result.output)

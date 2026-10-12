@@ -23,6 +23,7 @@ from cliffy.helper import (
     CLI_NAME_PATTERN,
     ManifestOrCLI,
     age_datetime,
+    cli_name_problem,
     cliffy_version,
     exit_err,
     indent_block,
@@ -31,11 +32,11 @@ from cliffy.helper import (
     write_to_file,
 )
 from cliffy.homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
-from cliffy.loader import Loader
+from cliffy.loader import Loader, LoaderError
 from cliffy.manifest import CLIManifest
 from cliffy.reloader import Reloader
 from cliffy.rich import Console, click, print_rich_table  # type: ignore
-from cliffy.tester import ShellScript, Tester
+from cliffy.tester import ASSERTION_FILE, GeneratedImportError, ShellScript, Tester
 from cliffy.transformer import Transformer
 
 CONTEXT_SETTINGS = {"help_option_names": ["-h", "--help"]}
@@ -56,6 +57,23 @@ def show_aliases_callback(ctx: Any, param: Any, val: bool) -> None:
         for alias, command in ALIASES.items():
             out(f"  {alias.ljust(10)} Alias for {command}")
         ctx.exit()
+
+
+def stdout_is_terminal() -> bool:
+    return sys.stdout.isatty()
+
+
+def print_source(text: str) -> None:
+    """Print generated code or a manifest to stdout as it is: no line is broken and nothing is added.
+
+    Redirected or piped, the output is the text itself, character for character. On a terminal the
+    text is highlighted and long lines are left to the terminal to wrap.
+    """
+    if stdout_is_terminal():
+        Console().print(text, soft_wrap=True, emoji=False, markup=False, end="" if text.endswith("\n") else "\n")
+    else:
+        # color=True: nothing that looks like an escape sequence is removed from the text
+        click.echo(text, nl=not text.endswith("\n"), color=True)
 
 
 blueprint_option = click.option(
@@ -94,7 +112,10 @@ def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
     failed = False
     for cli_name in cli_names:
-        if cli_metadata := get_metadata(cli_name):
+        if problem := cli_name_problem(cli_name):
+            out_err(f"~ {problem}")
+            failed = True
+        elif cli_metadata := get_metadata(cli_name):
             with open(cli_metadata.runner_path, encoding="utf-8") as manifest:
                 T = Transformer(manifest, blueprint=cli_metadata.blueprint)
             Loader.load_from_cli(T.cli)
@@ -115,9 +136,9 @@ def update(cli_names: list[str]) -> None:
 def render(manifest: TextIO, blueprint: str | None = None) -> None:
     """Render the CLI manifest generation as code"""
     T = Transformer(manifest, blueprint=blueprint)
-    console = Console()
-    console.print(T.cli.code, overflow="fold", emoji=False, markup=False)
-    out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
+    print_source(T.cli.code)
+    # not on stdout: `cli render x.yaml > x.py` writes the module and nothing else
+    out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green", err=True)
 
 
 @click.argument("manifest", type=click.File("rb"))
@@ -162,8 +183,7 @@ def init(cli_name: str, render: bool, raw: bool, json_schema: bool) -> None:
         exit_err(f"~ {e}")
 
     if render:
-        console = Console()
-        console.print(template, overflow="fold", emoji=False, markup=False)
+        print_source(template)
     else:
         try:
             write_to_file(f"{cli_name}.yaml", text=template)
@@ -193,24 +213,40 @@ def remove(cli_names: list[str]) -> None:
     """Remove a loaded CLI by name"""
     failed = False
     for cli_name in cli_names:
-        if get_metadata_path(cli_name):
-            remove_metadata(cli_name)
-            Loader.unload_cli(cli_name)
-            out(f"~ {cli_name} removed 💥", fg="green")
-        else:
+        if problem := cli_name_problem(cli_name):
+            out_err(f"~ {problem}")
+            failed = True
+        elif not get_metadata_path(cli_name):
             out_err(f"~ {cli_name} not loaded")
+            failed = True
+        elif not remove_loaded_cli(cli_name):
             failed = True
 
     if failed:
         raise SystemExit(1)
 
 
+def remove_loaded_cli(cli_name: str) -> bool:
+    """Remove the launcher, the module and the metadata record of a CLI. All of it, or none of it.
+
+    The record goes last: as long as something of the CLI is left, it is listed and can be removed again.
+    """
+    try:
+        Loader.unload_cli(cli_name)
+    except (LoaderError, ValueError) as e:
+        out_err(f"~ {cli_name} not removed: {e}")
+        return False
+    remove_metadata(cli_name)
+    out(f"~ {cli_name} removed 💥", fg="green")
+    return True
+
+
 def remove_all() -> None:
     """Remove all loaded CLIs"""
-    for metadata in get_clis():
-        remove_metadata(metadata.cli_name)
-        Loader.unload_cli(metadata.cli_name)
-        out(f"~ {metadata.cli_name} removed 💥", fg="green")
+    # all of them are tried. The command fails when one could not be removed
+    removed = [remove_loaded_cli(metadata.cli_name) for metadata in list(get_clis())]
+    if not all(removed):
+        raise SystemExit(1)
 
 
 @click.argument("cli_or_manifests", type=ManifestOrCLI(), nargs=-1)
@@ -252,6 +288,10 @@ def build(
             cli_name = cli.name
         else:
             cli_name = cli_or_manifest
+            if problem := cli_name_problem(cli_name):
+                out_err(f"~ {problem}. A manifest is given as a path that ends in `yaml`")
+                failed = True
+                continue
             if not (metadata := get_metadata(cli_name)):
                 out_err(f"~ {cli_name} not loaded")
                 failed = True
@@ -288,6 +328,8 @@ def build(
 @click.argument("cli_name", type=str)
 def info(cli_name: str) -> None:
     """Display CLI info"""
+    if problem := cli_name_problem(cli_name):
+        exit_err(f"~ {problem}")
     metadata = get_metadata(cli_name) or exit_err(f"~ {cli_name} not loaded")
     out(f"{click.style('name:', fg='blue')} {metadata.cli_name}")
     out(f"{click.style('version:', fg='blue')} {metadata.version}")
@@ -334,10 +376,20 @@ def dev(manifest: str, run_cli: bool, run_cli_args: tuple[str], blueprint: str |
     default=False,
     help="exit instantly on first error or failed test.",
 )
+@click.option(
+    "--traceback",
+    "show_traceback",
+    is_flag=True,
+    default=False,
+    help="Also print the full Python traceback of a command that raises.",
+)
 @blueprint_option
-def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
+def test(manifest: str, exitfirst: bool, show_traceback: bool = False, blueprint: str | None = None) -> None:
     """Run tests defined in a manifest"""
-    tester = Tester(manifest, blueprint=blueprint)
+    try:
+        tester = Tester(manifest, blueprint=blueprint)
+    except GeneratedImportError as e:
+        exit_err(f"~ error in {manifest}: the generated code does not work\n  {e}")
     if not tester.test_pipeline:
         exit_err("Missing tests section in manifest")
     out("✨ Invoking tests ✨", nl=False)
@@ -351,36 +403,49 @@ def test(manifest: str, exitfirst: bool, blueprint: str | None = None) -> None:
                 tester.invoke_shell(case)
             except SyntaxError as e:
                 exit_err(f"~ error in {manifest}: test step `{case.command}`, column {e.offset}: {e.msg}")
+            except Exception as e:
+                # i.e. a program that does not exist
+                exit_err(f"~ error in {manifest}: test step `{case.command}` could not be run: {type(e).__name__}: {e}")
             continue
 
         case_number += 1
 
         out(f"\n\n🪄 > {tester.T.cli.name} {case.command}\n")
+        test = tester.invoke_test(case.command, case.assert_script)
+        result = next(test)
+        out("⚗️ > \n" + result.output)
+        if raised := tester.describe_exception(case.command, result):
+            # the exception of the command, without frames of cliffy or of the generated module
+            out(raised)
+            if show_traceback and result.exc_info:
+                out("".join(traceback.format_exception(*result.exc_info)))
+        elif isinstance(result.exception, SystemExit) and result.exit_code:
+            out(f"exit code {result.exit_code}")
+
         try:
-            test = tester.invoke_test(case.command, case.assert_script)
-            result = next(test)
-            out("⚗️ > \n" + result.output)
-            if result.exception:
-                out(str(result))
+            # the assertions of the test case
             next(test, "")
             out(f"\n✅ {case_number} of {total}")
             passed += 1
-        except AssertionError:
-            _, _, tb = sys.exc_info()
-            tb_info = traceback.extract_tb(tb)
-            _, line_no, _, _ = tb_info[-1]
-            expr = case.assert_script.split("\n")[line_no - 1]
-            out(f"💔 AssertionError: (line {line_no}) > {expr}")
+        except SyntaxError as e:
+            # the assertion itself is not Python
+            lines = case.assert_script.split("\n")
+            line = lines[min(max(e.lineno or 1, 1), len(lines)) - 1].strip()
+            out(f"💔 the assertion is not valid Python, line {e.lineno}, column {e.offset}: {e.msg}\n    {line}")
             if exitfirst:
                 raise SystemExit(1) from None
-        except SyntaxError:
-            out("💔 Syntax error")
-            traceback.print_exc()
-            if exitfirst:
-                raise SystemExit(1) from None
-        except Exception:
-            out("💔 Exception")
-            traceback.print_exc()
+        except Exception as e:
+            # a failed assertion, or an assertion that raises: reported with its line of the test case
+            frames = [frame for frame in traceback.extract_tb(e.__traceback__) if frame.filename == ASSERTION_FILE]
+            line_no = frames[0].lineno if frames else None
+            lines = case.assert_script.split("\n")
+            expr = lines[line_no - 1] if line_no and line_no <= len(lines) else case.assert_script.strip()
+            where = f"(line {line_no}) > {expr}"
+            out(
+                f"💔 AssertionError: {where}"
+                if isinstance(e, AssertionError)
+                else f"💔 {type(e).__name__}: {e} {where}"
+            )
             if exitfirst:
                 raise SystemExit(1) from None
 
@@ -422,6 +487,8 @@ def docs(cli_or_manifest: str, format: str, output_dir: str, blueprint: str | No
         doc_generator.generate(format, output_dir)
         out(f"+ {T.cli.name}.{format}")
     else:
+        if problem := cli_name_problem(cli_or_manifest):
+            exit_err(f"~ {problem}. A manifest is given as a path that ends in `yaml`")
         metadata = get_metadata(cli_or_manifest) or exit_err(f"~ {cli_or_manifest} not loaded")
         # metadata.manifest is the raw manifest text. It still has to be rendered and merged with its
         # includes, so it is transformed from its source like `cli update` does.
