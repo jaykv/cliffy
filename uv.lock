@@ -569,12 +569,12 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "click", specifier = ">=8.2.0" },
+    { name = "click", specifier = ">=8.2.1" },
     { name = "deepmerge", specifier = ">=2.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "packaging", specifier = ">=24.2" },
     { name = "pybash", specifier = ">=0.3.5" },
-    { name = "pydantic", specifier = ">=2.11.0" },
+    { name = "pydantic", specifier = ">=2.12.0" },
     { name = "pydantic-ai", marker = "extra == 'ai'", specifier = ">=2.0.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "rich-click", marker = "extra == 'rich'", specifier = ">=1.9.0" },
@@ -586,7 +586,7 @@ provides-extras = ["rich", "ai"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mypy", specifier = ">=1.18.0" },
+    { name = "mypy", specifier = ">=2.4.0" },
     { name = "pytest", specifier = ">=8.4.0" },
     { name = "pytest-cov", specifier = ">=6.2.0" },
     { name = "pytest-mock", specifier = ">=3.14.0" },

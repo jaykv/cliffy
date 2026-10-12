@@ -31,12 +31,12 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "click>=8.2.0",
+    "click>=8.2.1",
     "deepmerge>=2.0",
     "jinja2>=3.1.6",
     "packaging>=24.2",
     "pybash>=0.3.5",
-    "pydantic>=2.11.0",
+    "pydantic>=2.12.0",
     "pyyaml>=6.0.2",
     "shiv>=1.0.8",
     "typer>=0.24.0",
@@ -67,7 +67,7 @@ include = ["/cliffy", "/tests", "/examples", "/README.md", "/LICENSE"]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.18.0",
+    "mypy>=2.4.0",
     "pytest>=8.4.0",
     "pytest-cov>=6.2.0",
     "pytest-mock>=3.14.0",
@@ -122,6 +122,8 @@ filterwarnings = [
     "ignore:'count' is passed as positional argument:DeprecationWarning",
     # shiv 1.0.8 calls datetime.utcfromtimestamp() (deprecated since Python 3.12)
     "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning",
+    # pydantic-ai 2.x run_sync() calls asyncio.get_event_loop() without a running loop (warns on 3.12/3.13)
+    "ignore:There is no current event loop:DeprecationWarning",
 ]
 
 [tool.mypy]
