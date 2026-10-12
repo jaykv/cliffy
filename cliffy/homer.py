@@ -70,7 +70,8 @@ def get_metadata_bypath(path: Path) -> CLIMetadata:
             return CLIMetadata(**json.load(metadata_file))
     except Exception as e:
         return CLIMetadata(
-            cli_name=path.name,
+            # the file is <cli name>.json: reported under that name, so that it can be removed with `cli rm`
+            cli_name=path.stem,
             runner_path=str(path.absolute()),
             version="error",
             loaded=datetime.now(),

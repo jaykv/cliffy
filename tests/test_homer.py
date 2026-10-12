@@ -5,8 +5,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 from pytest_mock import MockerFixture
 
+from cliffy.cli import cli as cliffy_cli
 from cliffy.commander import CLI
 from cliffy.helper import CLIFFY_METADATA_DIR
 from cliffy.homer import (
@@ -142,7 +144,8 @@ def test_get_metadata_bypath_invalid_json(mocker: MockerFixture, tmp_path: Path)
     metadata = get_metadata_bypath(metadata_file)
 
     # Assert
-    assert metadata.cli_name == "metadata.json"
+    # the name of the CLI is the file name without `.json`: that is the name `cli rm` looks up
+    assert metadata.cli_name == "metadata"
     assert metadata.runner_path == str(metadata_file)
     assert metadata.version == "error"
     assert "could not load" in metadata.manifest
@@ -237,3 +240,21 @@ def test_get_metadata_bypath_closes_file(metadata_dir: Path):
         assert get_metadata_bypath(Path(metadata_path)).cli_name == "first"
 
     assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
+
+
+@pytest.mark.parametrize("command", ["rm", "rm-all"])
+def test_corrupt_metadata_can_be_removed(metadata_dir: Path, command: str):
+    # it was listed as `first.json`, a name that `cli rm` and `cli rm-all` could not find
+    save_cli(metadata_dir, "first")
+    metadata_path = get_metadata_path("first")
+    assert metadata_path
+    Path(metadata_path).write_text("{ not json")
+
+    listed = [cli.cli_name for cli in get_clis()]
+    assert listed == ["first"]
+
+    result = CliRunner().invoke(cliffy_cli, [command] if command == "rm-all" else [command, *listed])
+
+    assert result.exit_code == 0, result.output
+    assert not Path(metadata_path).exists()
+    assert list(get_clis()) == []
