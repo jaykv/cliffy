@@ -46,6 +46,8 @@ nav:
 
 theme:
   name: material
+  # Zensical's classic variant keeps the look of Material for MkDocs.
+  variant: classic
   icon:
     logo: fontawesome/solid/mountain
     repo: fontawesome/brands/github
@@ -80,11 +82,6 @@ theme:
 
 plugins:
   - search
-  # Looks up page contributors through the GitHub API, so it only runs in CI.
-  - git-committers:
-      repository: jaykv/cliffy
-      branch: main
-      enabled: !ENV [CI, false]
 
 markdown_extensions:
   - admonition

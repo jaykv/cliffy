@@ -78,10 +78,8 @@ dev = [
     "types-pyyaml>=6.0.12",
 ]
 docs = [
-    "mkdocs-git-committers-plugin-2>=2.5.0",
-    "mkdocs-literate-nav>=0.6.2",
-    "mkdocs-material>=9.6.0",
     "pymdown-extensions>=10.14",
+    "zensical>=0.0.70",
 ]
 
 [tool.ruff]
