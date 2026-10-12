@@ -503,3 +503,41 @@ def test_example_mcp_blueprint_rejects_bad_specs():
     required_flag = {**tool, "parameters": [{"name": "flag", "type": "boolean", "required": True}]}
     with pytest.raises(BlueprintError, match="a boolean parameter is a flag and cannot be required"):
         build_manifest(blueprint_cls, {"name": "x", "tools": {"ok": required_flag}})
+
+
+def test_example_mcp_server_keeps_serving_after_invalid_messages():
+    # valid JSON that is not an object raised AttributeError in the server, which then exited
+    lines = [
+        "[]",
+        '[{"jsonrpc": "2.0", "id": 1, "method": "ping"}]',
+        '"text"',
+        "42",
+        "null",
+        '{"id": 2}',
+        '{"jsonrpc": "2.0", "id": 3, "method": "tools/list", "params": [1]}',
+        '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "repeat", "arguments": "ab"}}',
+        "{not json",
+        # no reply: a notification, and a response to a request the server never made
+        '{"jsonrpc": "2.0", "method": "notifications/initialized"}',
+        '{"jsonrpc": "2.0", "id": 5, "result": {}}',
+        '{"jsonrpc": "2.0", "id": 6, "method": "ping"}',
+    ]
+
+    result = CliRunner().invoke(cli, ["run", str(EXAMPLES / "text-tools.yaml"), "--", "serve"], input="\n".join(lines))
+
+    assert result.exit_code == 0, result.output
+    replies = [json.loads(line) for line in result.stdout.splitlines()]
+    assert [(reply["id"], reply.get("error", {}).get("code")) for reply in replies] == [
+        (None, -32600),
+        (None, -32600),
+        (None, -32600),
+        (None, -32600),
+        (None, -32600),
+        (2, -32600),
+        (3, -32602),
+        (4, -32602),
+        (None, -32700),
+        (6, None),
+    ]
+    assert "batch" in replies[1]["error"]["message"]
+    assert replies[-1] == {"jsonrpc": "2.0", "id": 6, "result": {}}
