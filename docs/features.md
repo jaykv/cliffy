@@ -218,19 +218,39 @@ Install the [YAML embedded languages extension](https://marketplace.visualstudio
 Cliffy includes AI-powered commands to help you generate and understand CLI manifests. Access these features through the `cli ai` command group.
 
 !!! note
-    Requires `cliffy[ai]` dependency group to be installed. See [Installation](getting-started.md#installation)
+    Requires the `ai` extra: `pip install "cliffy[ai]"`. See [Installation](getting-started.md#installation).
+    Without it, `cli ai` commands exit with an install hint; the rest of cliffy is unaffected.
+
+### Choosing a model
+
+The AI commands are built on [Pydantic AI](https://pydantic.dev/docs/ai/models/overview/) and work with any model it supports. Models are named `provider:model`, and each provider reads its API key from its usual environment variable.
+
+The model is picked in this order:
+
+1. the `--model` / `-m` option
+2. the `CLIFFY_AI_MODEL` environment variable
+3. a default for the first provider that has an API key set:
+
+    | API key | Default model |
+    |---|---|
+    | `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) | `google:gemini-flash-latest` |
+    | `ANTHROPIC_API_KEY` | `anthropic:claude-sonnet-5-5` |
+    | `OPENAI_API_KEY` | `openai:gpt-5.4-mini` |
+
+```bash
+# use the default model of the provider whose key is set
+export ANTHROPIC_API_KEY='your-api-key'
+cli ai generate mycli "Create a todo app"
+
+# pick a model for one command
+cli ai generate mycli "Create a todo app" --model openai:gpt-5.5
+
+# or for the whole shell session
+export CLIFFY_AI_MODEL=google:gemini-2.5-pro
+```
 
 !!! tip
-    For a list of the models supported, see [https://ai.pydantic.dev/models/](https://ai.pydantic.dev/models/). You can specify the model to use for the AI commands with `--model` or `-m` option.
-
-    ```bash
-    # Example using a specific model
-    export OPENAI_API_KEY='your-api-key'
-    cli ai generate mycli "Create a todo app" --model gpt-4o
-    ```
-
-!!! tip
-    Use `--preview` to output the fully constructed prompt for debugging or review.
+    Use `--preview` to print the fully constructed prompt instead of sending it. This needs neither a model nor an API key.
 
 ### Manifest Generation
 
@@ -238,7 +258,15 @@ Generate complete CLI manifests from natural language descriptions:
 
 ```bash
 cli ai generate mycli "Create a CLI for managing docker containers with commands to list, start, stop and remove containers"
+cli load mycli.yaml
 ```
+
+The model's reply is validated before anything is written: it has to be valid YAML, match the manifest schema, and produce a CLI that is valid Python. A reply that fails is sent back to the model together with the reason, up to `--retries` times (default 2). If no valid manifest comes back, the command fails and writes nothing.
+
+`mycli.yaml` is written to the current directory, or to `--output-dir`. An existing file is only replaced with `--force`.
+
+!!! warning
+    Validation checks that the manifest loads, not that the commands do what you asked. Read the generated run blocks before running the CLI.
 
 ### Interactive Help
 
@@ -248,8 +276,12 @@ Get AI assistance for understanding and working with cliffy:
 cli ai ask "How do I create nested subcommands?"
 ```
 
-You can also get targeted help about specific CLIs by referencing them:
+The question is answered from a reference built from your installed cliffy version: its command list, the annotated `cli init` template and the manifest JSON schema.
+
+You can also get targeted help about specific CLIs by referencing a manifest or a loaded CLI:
 
 ```bash
 cli ai ask --cli mycli.yaml "How do I add input validation to the start command?"
 ```
+
+The answer is printed to stdout and token usage to stderr, so the answer can be redirected to a file.
