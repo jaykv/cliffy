@@ -36,7 +36,7 @@ lint:
 	uv run mypy tests
 
 docs-serve:
-	uv run --group docs mkdocs serve
+	uv run --group docs zensical serve
 
 # docs/reference/*.md are generated from the click commands, the manifest models and examples/.
 docs-generate:
@@ -47,7 +47,7 @@ docs-check:
 	uv run python scripts/docs.py check
 
 docs-build: docs-check
-	uv run --group docs mkdocs build --strict
+	uv run --group docs zensical build --clean --strict
 
 # examples/generated/*.py are what cliffy generates for the manifests in examples/. Nothing is installed or
 # loaded for this: the manifests are only rendered. tests/test_examples.py fails when a file is stale.

@@ -76,7 +76,7 @@ then run `make generate-schema` and `make docs-generate`.
 
 ## Working on the documentation
 
-The site is built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) from the
+The site is built with [Zensical](https://zensical.org/) from the
 `docs/` directory. The build is strict: a broken link or a missing file is an error.
 
 ### Generated pages
