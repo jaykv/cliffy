@@ -59,6 +59,23 @@ def show_aliases_callback(ctx: Any, param: Any, val: bool) -> None:
         ctx.exit()
 
 
+def stdout_is_terminal() -> bool:
+    return sys.stdout.isatty()
+
+
+def print_source(text: str) -> None:
+    """Print generated code or a manifest to stdout as it is: no line is broken and nothing is added.
+
+    Redirected or piped, the output is the text itself, character for character. On a terminal the
+    text is highlighted and long lines are left to the terminal to wrap.
+    """
+    if stdout_is_terminal():
+        Console().print(text, soft_wrap=True, emoji=False, markup=False, end="" if text.endswith("\n") else "\n")
+    else:
+        # color=True: nothing that looks like an escape sequence is removed from the text
+        click.echo(text, nl=not text.endswith("\n"), color=True)
+
+
 blueprint_option = click.option(
     "--blueprint",
     "-b",
@@ -119,9 +136,9 @@ def update(cli_names: list[str]) -> None:
 def render(manifest: TextIO, blueprint: str | None = None) -> None:
     """Render the CLI manifest generation as code"""
     T = Transformer(manifest, blueprint=blueprint)
-    console = Console()
-    console.print(T.cli.code, overflow="fold", emoji=False, markup=False)
-    out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green")
+    print_source(T.cli.code)
+    # not on stdout: `cli render x.yaml > x.py` writes the module and nothing else
+    out(f"# Rendered {T.cli.name} CLI v{T.cli.version} ~", fg="green", err=True)
 
 
 @click.argument("manifest", type=click.File("rb"))
@@ -166,8 +183,7 @@ def init(cli_name: str, render: bool, raw: bool, json_schema: bool) -> None:
         exit_err(f"~ {e}")
 
     if render:
-        console = Console()
-        console.print(template, overflow="fold", emoji=False, markup=False)
+        print_source(template)
     else:
         try:
             write_to_file(f"{cli_name}.yaml", text=template)
