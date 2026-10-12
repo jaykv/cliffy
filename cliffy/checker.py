@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 import traceback
 
+import typer
+
 from cliffy.commander import CLI
 
 GENERATED_FILE = "<generated CLI>"
@@ -44,7 +46,9 @@ def describe(cli: CLI, error: BaseException, line_number: int | None) -> str:
 
 
 def check_generated_code(cli: CLI) -> None:
-    """Compiles and imports the generated code. Importing defines the commands, it does not run them.
+    """Compiles and imports the generated code, and builds the command tree of a Typer CLI.
+
+    Importing defines the commands, it does not run them.
 
     Raises:
         GeneratedCodeError: the code is not valid Python, or fails while it is imported.
@@ -56,7 +60,13 @@ def check_generated_code(cli: CLI) -> None:
         raise GeneratedCodeError(describe(cli, e, e.lineno)) from e
 
     try:
-        exec(compiled, {"__name__": f"cliffy_check_{cli.name.replace('-', '_')}"})
+        namespace: dict[str, object] = {"__name__": f"cliffy_check_{cli.name.replace('-', '_')}"}
+        exec(compiled, namespace)
+        app = namespace.get("cli")
+        if isinstance(app, typer.Typer):
+            # Typer reads the signature of a command when the CLI starts. From Python 3.14 on annotations
+            # are evaluated lazily, so a param with an unknown type only fails here
+            typer.main.get_command(app)
     except (Exception, SystemExit) as e:
         generated_frames = [
             frame for frame in traceback.extract_tb(e.__traceback__) if frame.filename == GENERATED_FILE

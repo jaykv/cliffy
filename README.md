@@ -80,7 +80,7 @@ HELLO, ADA!
 | `cli test <manifest>` | Run the tests defined in the manifest |
 | `cli build <manifest>` | Build a single-file executable |
 | `cli render <manifest>` | Print the generated Python code |
-| `cli validate <manifest>` | Check a manifest against the schema |
+| `cli validate <manifest>` | Check a manifest and the code generated from it |
 | `cli docs <manifest>` | Generate documentation for the CLI |
 | `cli list`, `info`, `update`, `remove` | Manage loaded CLIs |
 | `cli ai generate`, `cli ai ask` | Draft manifests with an LLM (needs the `ai` extra) |
@@ -92,7 +92,7 @@ Every command and option is described in the
 
 ```console
 $ pip install cliffy               # core
-$ pip install "cliffy[rich]"       # rich-click help for the cli command, needed for the Click backend
+$ pip install "cliffy[rich]"       # rich-click help for the cli command and for Click-backend CLIs
 $ pip install "cliffy[ai]"         # AI commands, built on pydantic-ai
 $ uvx cliffy run hello.yaml greet Ada   # run without installing
 ```
