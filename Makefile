@@ -1,5 +1,4 @@
 SOURCE_FILES=cliffy tests
-GENERATE_DEPS=requests "six<1.0.0" keyring
 
 check: format lint test clean
 
@@ -50,24 +49,17 @@ docs-check:
 docs-build: docs-check
 	uv run --group docs mkdocs build --strict
 
-# The example manifests declare requirements that are not cliffy dependencies. They have to be
-# installed into the project environment (not a `uv run --with` overlay), because cliffy validates
-# `requires` against `pip freeze`. `uv sync` in generate-cleanup removes them again.
+# examples/generated/*.py are what cliffy generates for the manifests in examples/. Nothing is installed or
+# loaded for this: the manifests are only rendered. tests/test_examples.py fails when a file is stale.
 generate-clis:
-	uv pip install ${GENERATE_DEPS}
-	uv run --no-sync cli load examples/*.yaml
-	cp cliffy/clis/*.py examples/generated/
+	uv run python scripts/examples.py
 
-generate-all: generate-clis generate-schema generate-cleanup
+generate-all: generate-clis generate-schema
 	@echo "~ done"
-
-generate-cleanup:
-	uv run --no-sync cli rm-all
-	uv sync --all-extras --group docs
 
 generate-schema:
 	uv run python -m cliffy.manifest --json-schema > examples/cliffy_schema.json
 
 .PHONY: check install sync test test-cov clean package publish format lint \
 	docs-serve docs-generate docs-check docs-build \
-	generate-clis generate-all generate-cleanup generate-schema
+	generate-clis generate-all generate-schema

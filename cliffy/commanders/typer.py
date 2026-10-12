@@ -1,5 +1,3 @@
-import datetime
-
 from cliffy.commander import BaseGroup, Commander
 from cliffy.helper import clean_help, py_str
 from cliffy.manifest import Callback, CLIManifest, Command
@@ -15,7 +13,7 @@ class TyperCommander(Commander):
         self.base_imports.add("from typing import Optional, Any")
 
     def add_base_imports(self) -> None:
-        self.cli = f"""## Generated {self.manifest.name} on {datetime.datetime.now()}\n"""
+        self.cli = self.header()
         # sorted: a set has no stable order, which made the generated code differ from run to run
         for imp in sorted(self.base_imports):
             self.cli += imp + "\n"

@@ -1,16 +1,16 @@
-## Generated environ on 2025-01-24 13:22:43.893773
-import subprocess
+## Generated environ with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 import os
 
-default_env_var = 'hello'
+default_env_var = "hello"
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""Environment variable reader""")
-__version__ = '0.1.0'
-__cli_name__ = 'environ'
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="Environment variable reader")
+__version__ = "0.1.0"
+__cli_name__ = "environ"
 
 
 def version_callback(value: bool):

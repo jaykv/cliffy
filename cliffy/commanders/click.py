@@ -1,5 +1,4 @@
 import ast
-import datetime
 import re
 
 from cliffy.commander import BaseGroup, Commander
@@ -27,7 +26,7 @@ class ClickCommander(Commander):
         self.click_parser = ClickParser(manifest)
 
     def add_base_imports(self) -> None:
-        self.cli = f"""## Generated {self.manifest.name} on {datetime.datetime.now()}\n"""
+        self.cli = self.header()
         # sorted: a set has no stable order, which made the generated code differ from run to run
         for imp in sorted(self.base_imports):
             self.cli += imp + "\n"

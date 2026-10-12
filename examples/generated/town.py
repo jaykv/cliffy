@@ -1,6 +1,6 @@
-## Generated town on 2025-01-24 13:22:45.258673
-import subprocess
+## Generated town with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 import re
 import time
@@ -9,8 +9,8 @@ import time
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
-__version__ = '0.1.1'
-__cli_name__ = 'town'
+__version__ = "0.1.1"
+__cli_name__ = "town"
 
 
 def version_callback(value: bool):
@@ -20,11 +20,7 @@ def version_callback(value: bool):
 
 def aliases_callback(value: bool):
     if value:
-        print("""
-Command          Aliases
---------         --------
-home.build       bu
-""")
+        print("\nCommand          Aliases\n--------         --------\nhome.build       bu\n")
         raise typer.Exit()
 
 @cli.callback()

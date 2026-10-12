@@ -1,14 +1,14 @@
-## Generated template on 2025-01-24 13:22:44.339893
-import subprocess
+## Generated template with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
-GLOBAL_VAR = 'hello'
+GLOBAL_VAR = "hello"
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
-__version__ = '0.1.0'
-__cli_name__ = 'template'
+__version__ = "0.1.0"
+__cli_name__ = "template"
 
 
 def version_callback(value: bool):

@@ -1,6 +1,6 @@
-## Generated penv on 2025-01-24 13:22:43.905720
-import subprocess
+## Generated penv with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 import os
 from pathlib import Path
@@ -12,11 +12,9 @@ DEFAULT_VENV_STORE = f"{HOME_PATH}/venv-store/"
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""~ Virtualenv store ~
-Simplify virtualenvs
-""")
-__version__ = '0.1.0'
-__cli_name__ = 'penv'
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="~ Virtualenv store ~\nSimplify virtualenvs\n")
+__version__ = "0.1.0"
+__cli_name__ = "penv"
 
 
 def version_callback(value: bool):
@@ -50,7 +48,7 @@ def rm(name: str = typer.Argument(...)):
 
 cli.command("rm", help="Remove a venv",)(rm)
 
-def go(name: str = typer.Argument(...), interpreter : str = typer.Option("python", "--interpreter ", "-i")):
+def go(name: str = typer.Argument(...), interpreter: str = typer.Option("python", "--interpreter", "-i")):
     if venv_exists(name):
         print(f"~ sourcing {name}")
     else:

@@ -1,12 +1,12 @@
-## Generated nested-cli on 2025-01-24 13:22:43.899895
-import subprocess
+## Generated nested-cli with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""Demo nested command structure""")
-__version__ = '0.1.0'
-__cli_name__ = 'nested-cli'
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="Demo nested command structure")
+__version__ = "0.1.0"
+__cli_name__ = "nested-cli"
 
 
 def version_callback(value: bool):

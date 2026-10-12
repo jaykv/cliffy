@@ -1,14 +1,14 @@
-## Generated requires on 2025-01-24 13:22:44.115986
-import subprocess
+## Generated requires with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 import six
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
-__version__ = '0.1.0'
-__cli_name__ = 'requires'
+__version__ = "0.1.0"
+__cli_name__ = "requires"
 
 
 def version_callback(value: bool):

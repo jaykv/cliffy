@@ -1,6 +1,6 @@
-## Generated todo on 2025-01-24 13:22:45.220939
-import subprocess
+## Generated todo with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 import sqlite3
 from pathlib import Path
@@ -11,8 +11,8 @@ from rich import print
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 cli = typer.Typer(context_settings=CONTEXT_SETTINGS)
-__version__ = '1.0.0'
-__cli_name__ = 'todo'
+__version__ = "1.0.0"
+__cli_name__ = "todo"
 
 
 def version_callback(value: bool):
@@ -22,11 +22,7 @@ def version_callback(value: bool):
 
 def aliases_callback(value: bool):
     if value:
-        print("""
-Command    Aliases
---------   --------
-drop       rm
-""")
+        print("\nCommand    Aliases\n--------   --------\ndrop       rm\n")
         raise typer.Exit()
 
 @cli.callback()
@@ -37,7 +33,7 @@ def main(
     pass
 
 
-def create(name: str):
+def create(name: str = typer.Option(..., prompt=True, confirmation_prompt=True)):
     db_path = Path(f"{name}.db")
     conn = sqlite3.connect(db_path)
     conn.execute("CREATE TABLE tasks (id INTEGER PRIMARY KEY, task TEXT NOT NULL, done BOOLEAN NOT NULL)")

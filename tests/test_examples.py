@@ -1,3 +1,5 @@
+import glob
+import importlib.util
 import os
 import platform
 import shlex
@@ -151,3 +153,29 @@ def test_cli_tests_pass(cli_name):
     result = runner.invoke(manifest_test_command, [f"examples/{cli_name}.yaml"])
     assert "All tests passed" in result.output
     assert result.exit_code == 0
+
+
+def load_examples_script():
+    spec = importlib.util.spec_from_file_location("cliffy_examples_script", "scripts/examples.py")
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_generated_examples_match_their_manifests():
+    # examples/generated is what `cli render` prints for each manifest in examples/, nothing else
+    rendered = load_examples_script().render_examples()
+
+    assert sorted(rendered) == sorted(glob.glob("examples/generated/*.py")), "run `make generate-clis`"
+    for path, code in rendered.items():
+        with open(path, encoding="utf-8") as generated_file:
+            assert generated_file.read() == code, f"{path} is stale, run `make generate-clis`"
+
+
+def test_generated_examples_do_not_depend_on_the_environment(monkeypatch):
+    examples = load_examples_script()
+    monkeypatch.setenv("ENVIRON_LOAD_VAR", "set-by-the-test")
+
+    assert "set-by-the-test" not in examples.render_examples()["examples/generated/environ.py"]
+    assert os.environ["ENVIRON_LOAD_VAR"] == "set-by-the-test"

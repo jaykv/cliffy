@@ -3,7 +3,9 @@
 # the manifests are one-line strings on purpose: their quoting and escaping is what is being tested
 
 import os
+import re
 import textwrap
+from importlib import metadata
 
 import pytest
 from click.testing import CliRunner as ClickCliRunner
@@ -535,3 +537,15 @@ def test_py_str_round_trips(text):
 def test_to_identifier(name, expected_output):
     assert to_identifier(name) == expected_output
     assert to_identifier(name).isidentifier()
+
+
+@pytest.mark.parametrize("base", [BASE, CLICK], ids=["typer", "click"])
+def test_generated_code_is_reproducible(generate, base):
+    # the first line used to hold the time of generation, so no two renders were the same
+    manifest = base + "commands:\n  a: print(1)\n  g.b|c: print(2)\n"
+
+    first, second = generate(manifest).cli.code, generate(manifest).cli.code
+
+    assert first == second
+    assert first.splitlines()[0] == f"## Generated t with cliffy {metadata.version('cliffy')}"
+    assert not re.search(r"\d{4}-\d{2}-\d{2}", first)

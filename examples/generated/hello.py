@@ -1,12 +1,12 @@
-## Generated hello on 2025-01-24 13:22:43.897280
-import subprocess
+## Generated hello with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""Hello world!""")
-__version__ = '0.1.0'
-__cli_name__ = 'hello'
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="Hello world!")
+__version__ = "0.1.0"
+__cli_name__ = "hello"
 
 
 def version_callback(value: bool):

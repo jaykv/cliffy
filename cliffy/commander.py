@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from pybash.transformer import transform as transform_bash
 from pydantic import BaseModel
 
-from cliffy.helper import py_str, to_identifier
+from cliffy.helper import cliffy_version, py_str, to_identifier
 from cliffy.manifest import (
     Callback,
     CLIManifest,
@@ -284,6 +284,11 @@ class Commander(ABC):
         self.add_subcommands()
         self.add_greedy_commands()
         self.add_main_block()
+
+    def header(self) -> str:
+        """First line of the generated code. It holds nothing that changes between two runs, such as the time:
+        the same manifest gives the same code."""
+        return f"## Generated {self.manifest.name} with cliffy {cliffy_version()}\n"
 
     def add_root_commands(self) -> None:
         for root_command in self.root_group.commands:

@@ -1,19 +1,19 @@
-## Generated taskmaster on 2025-01-24 13:22:44.332035
-import subprocess
+## Generated taskmaster with cliffy 0.7.0
 from typing import Optional, Any
+import subprocess
 import typer
 import json
 from datetime import datetime
 from tabulate import tabulate
 
 
-data_file = 'tasks.json'
+data_file = "tasks.json"
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="""A task management CLI""")
-__version__ = '0.1.0'
-__cli_name__ = 'taskmaster'
+cli = typer.Typer(context_settings=CONTEXT_SETTINGS, help="A task management CLI")
+__version__ = "0.1.0"
+__cli_name__ = "taskmaster"
 
 
 def version_callback(value: bool):
