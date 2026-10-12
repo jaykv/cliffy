@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, RootModel, ValidationInfo, field_validator
 
-from .helper import wrap_as_comment
+from .helper import CLI_NAME_PATTERN, wrap_as_comment
 
 LATEST_SCHEMA_VERSION = "v3"
 
@@ -318,6 +318,16 @@ class CLIManifest(BaseModel):
     examples: list[str | Example] = Field(
         default=[], description="Example command usages to display in generated CLI docs."
     )
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def is_safe_name(cls, value: str) -> str:
+        """The name becomes a module name, a script file name and a metadata file name."""
+        if not CLI_NAME_PATTERN.fullmatch(value):
+            raise ValueError(
+                f"Invalid CLI name {value!r}. Use letters, digits, `_` and `-` only, starting with a letter or `_`."
+            )
+        return value
 
     @field_validator("manifestVersion", mode="after")
     @classmethod

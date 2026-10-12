@@ -78,6 +78,27 @@ def load(path, **kwargs) -> Transformer:
         return Transformer(f, validate_requires=False, **kwargs)
 
 
+@pytest.mark.parametrize("name", ["../../evil", "a/b", "my cli", "a.b", "-rf", "x\nimport os", "", "$(id)"], ids=repr)
+def test_cli_name_must_be_a_safe_file_name(tmp_path, capsys, name):
+    # the name is used in the path of the generated module, of the script in the interpreter's
+    # bin directory and of the metadata file, and in the import line of that script
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(yaml.dump({"name": name, "version": "1", "commands": {"a": "print(1)"}}))
+
+    with pytest.raises(SystemExit):
+        load(manifest_path)
+
+    assert "error validating" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("name", ["hello", "nested-cli", "my_cli", "_private", "cli2"])
+def test_cli_name_valid(tmp_path, name):
+    manifest_path = tmp_path / "manifest.yaml"
+    manifest_path.write_text(yaml.dump({"name": name, "version": "1", "commands": {"a": "print(1)"}}))
+
+    assert load(manifest_path).cli.name == name
+
+
 def write_requires_manifest(tmp_path, requires: list[str]):
     manifest_path = tmp_path / "manifest.yaml"
     manifest_path.write_text(
