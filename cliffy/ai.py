@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from importlib.resources import files
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any
 
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 
 MODEL_ENV_VAR = "CLIFFY_AI_MODEL"
 INSTALL_HINT = "pip install 'cliffy[ai]'"
+LLMS_TXT_FILE = "llms.txt"  # the documentation bundled in the package, see scripts/docs.py
 
 # Used when neither --model nor CLIFFY_AI_MODEL is given: the first provider with an API key in the
 # environment wins. Where a provider publishes a rolling alias it is preferred over a dated model id.
@@ -332,7 +334,9 @@ preview_option = click.option(
 )
 
 
-@click.group(help="AI-powered commands. Requires the `ai` extra: " + INSTALL_HINT)
+@click.group(
+    help="AI-powered commands. `generate` and `ask` require the `ai` extra: " + INSTALL_HINT,
+)
 def ai() -> None:
     pass
 
@@ -424,5 +428,12 @@ def ask(prompt: str, cli: IO[Any] | str | None, model: str | None, max_tokens: i
     report_usage(usage)
 
 
+@click.command(name="llms-txt", help="Print the bundled cliffy documentation as llms.txt. Needs no model.")
+def llms_txt() -> None:
+    # raw text on purpose: `out` would apply click styling to a file meant to be piped into other tools
+    click.echo(files("cliffy").joinpath(LLMS_TXT_FILE).read_text(encoding="utf-8"), nl=False)
+
+
 ai.command("generate", help="Generate a CLI manifest based on a description.")(generate)
 ai.command("ask", help="Ask a question about cliffy or a specific CLI manifest.")(ask)
+ai.add_command(llms_txt)

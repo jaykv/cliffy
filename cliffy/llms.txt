@@ -1,0 +1,4202 @@
+# cliffy
+
+> cliffy generates Python command-line tools from YAML manifests. A manifest lists commands, their params and the Python or shell code each one runs; `cli load` turns it into a CLI (Typer by default, Click with `use_click: true`) that can be tested, documented and built into a single file.
+
+This is the documentation of cliffy 0.7.1, one section per page. Each section starts with a `# <page title>` heading. Source and issues: https://github.com/jaykv/cliffy
+
+<!-- docs/index.md -->
+
+# cliffy
+
+
+**Describe a command-line tool in YAML. Get a real Python CLI.**
+
+cliffy reads a manifest that lists your commands, their parameters and the code each one runs, and
+generates a [Typer](https://typer.tiangolo.com/) application from it. Command bodies are plain Python,
+and any line that starts with `$` runs as a shell command, so a manifest can replace a folder of
+one-off scripts with a single CLI that has help text, typed arguments and subcommands.
+
+## A CLI in 60 seconds
+
+**1. Install cliffy** (Python 3.11 to 3.15):
+
+```console
+$ pip install cliffy
+```
+
+**2. Write a manifest** and save it as `hello.yaml`:
+
+```yaml title="hello.yaml"
+name: hello
+version: 0.1.0
+help: Hello world!
+
+commands:
+  shell: $ echo "hello from shell"
+  python: print("hello from python")
+  greet:
+    help: Greet someone by name
+    params:
+      - name: str!
+      - --shout|-s: bool = False
+    run: |
+      message = f"Hello, {name}!"
+      print(message.upper() if shout else message)
+
+tests:
+  - shell: assert result.exit_code == 0
+  - python: assert result.output == "hello from python\n"
+  - greet Ada: assert result.output == "Hello, Ada!\n"
+  - greet Ada --shout: assert "HELLO, ADA!" in result.output
+```
+
+**3. Load it.** cliffy generates the CLI and puts a `hello` command into your Python environment:
+
+```console
+$ cli load hello.yaml
+✨ Generated hello CLI v0.1.0 ✨
+$ hello -h
+```
+
+**4. Use it** like any other command:
+
+```console
+$ hello shell
+hello from shell
+$ hello greet Ada --shout
+HELLO, ADA!
+$ hello --help
+
+ Usage: hello [OPTIONS] COMMAND [ARGS]...
+
+ Hello world!
+
+╭─ Options ──────────────────────────────────────────────────────────────────╮
+│ --version                                                                  │
+│ --install-completion          Install completion for the current shell.    │
+│ --show-completion             Show completion for the current shell, to    │
+│                               copy it or customize the installation.       │
+│ --help                -h      Show this message and exit.                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ─────────────────────────────────────────────────────────────────╮
+│ shell                                                                      │
+│ python                                                                     │
+│ greet   Greet someone by name                                              │
+╰────────────────────────────────────────────────────────────────────────────╯
+```
+
+The `tests` section at the bottom of the manifest is optional. `cli test hello.yaml` runs it.
+
+## What you get
+
+- **Python and shell in one place.** Run scripts are Python; lines starting with `$` become
+  `subprocess` calls. See [Shell commands](guides/shell-commands.md).
+- **Typed parameters with a short syntax.** `name: str!` is a required argument and
+  `--count|-c: int = 1` is an option. See [Params and types](guides/params.md).
+- **Groups, aliases and templates.** `db.create` nests a command, `delete|rm` adds an alias and
+  command templates share params between commands. See
+  [Commands, groups and aliases](guides/commands.md).
+- **A fast edit loop.** `cli dev` reloads the CLI every time you save the manifest. See
+  [Hot-reload dev loop](guides/dev-loop.md).
+- **Tests next to the commands.** `cli test` runs the assertions you keep in the manifest. See
+  [Testing manifests](guides/testing.md).
+- **One file to ship.** `cli build` packs the CLI and its dependencies into a single executable
+  zipapp, a single Python script or a native executable. See
+  [Building executables](guides/building.md).
+
+## How it works
+
+```text
+manifest.yaml ──► validate ──► generate Python (Typer or Click) ──► load │ run │ build
+```
+
+1. cliffy renders the manifest with [Jinja2](https://jinja.palletsprojects.com/), parses the YAML and
+   validates it against the [manifest schema](reference/manifest.md).
+2. It generates one Python module. `cli render` prints that module, so nothing about the result is
+   hidden.
+3. `cli load` installs the module as a command, `cli run` executes it once and `cli build` packages it.
+
+## Where to go next
+
+| If you want to | Read |
+|---|---|
+| Install cliffy and its extras | [Installation](installation.md) |
+| Build a complete CLI step by step | [Quickstart](quickstart.md) |
+| Look up a manifest key | [Manifest reference](reference/manifest.md) |
+| Look up a `cli` command or flag | [CLI reference](reference/cli.md) |
+| Copy from working manifests | [Examples gallery](reference/examples.md) |
+| Upgrade from an older release | [Migration notes](project/migration.md) |
+
+## Similar tools
+
+- [Bashly](https://github.com/DannyBen/bashly) generates Bash CLIs from YAML.
+- [Fire](https://github.com/google/python-fire) generates CLIs from Python objects.
+
+<!-- docs/quickstart.md -->
+
+# Quickstart
+
+In this tutorial you build `notes`, a small CLI that stores notes in a JSON file. Along the way you
+use every core part of a manifest: commands, params, helper functions, groups, aliases, shell
+commands and tests. It takes about 15 minutes.
+
+You need cliffy installed in an active virtual environment. See [Installation](installation.md).
+
+The finished manifest is at the [end of this page](#the-finished-manifest).
+
+## 1. A manifest with one command
+
+Create a file called `notes.yaml`:
+
+```yaml title="notes.yaml"
+name: notes
+version: 0.1.0
+help: Keep short notes in a JSON file
+
+commands:
+  add:
+    help: Add a note
+    params:
+      - text: str!
+    run: |
+      print(f"Added {text}")
+
+tests:
+  - add "buy milk": assert result.output == "Added buy milk\n"
+```
+
+- `name` is what you will type to run the CLI. `version` is shown by `notes --version`.
+- Each key under `commands` is a command. `run` holds its Python code.
+- `text: str!` declares a parameter called `text` of type `str`. The `!` makes it required.
+  Parameters are ordinary variables inside `run`.
+- `tests` is optional. You will come back to it in [step 7](#7-test-it).
+
+Run the command without installing anything:
+
+```console
+$ cli run notes.yaml add "buy milk"
+Added buy milk
+```
+
+`cli run` generates the CLI, runs it once and throws it away. To see the Python it generated, use
+`cli render`:
+
+```console
+$ cli render notes.yaml
+```
+
+```python
+def add(text: str = typer.Argument(...)):
+    print(f"Added {text}")
+
+
+cli.command("add", help="Add a note",)(add)
+```
+
+Your `run` script became the body of a Typer command function.
+
+## 2. Store the notes
+
+The CLI needs to read and write a file. Add `imports`, `vars` and `functions` between `help` and
+`commands`:
+
+```yaml title="notes.yaml"
+imports: |
+  import json
+  import os
+  from collections import Counter
+  from pathlib import Path
+
+vars:
+  default_file: notes.json
+
+functions:
+  - |
+    def notes_path() -> Path:
+        return Path(os.environ.get("NOTES_FILE", "{{ default_file }}"))
+  - |
+    def load_notes() -> list[dict]:
+        path = notes_path()
+        return json.loads(path.read_text()) if path.exists() else []
+  - |
+    def save_notes(notes: list[dict]) -> None:
+        notes_path().write_text(json.dumps(notes, indent=2))
+```
+
+- `imports` is copied to the top of the generated module.
+- `functions` is a list of helper functions that every command can call.
+- `vars` defines manifest variables. `{{ default_file }}` is replaced with `notes.json` when the
+  manifest is loaded. More in [Vars and Jinja](guides/vars-and-jinja.md).
+
+## 3. Describe parameters once with types
+
+`text: str!` is short, but it has no help text. The `types` section lets you name a full
+[Typer parameter definition](https://typer.tiangolo.com/tutorial/arguments/) and reuse it. Add this
+after `functions`:
+
+```yaml title="notes.yaml"
+types:
+  Text: str = typer.Argument(..., help="Text of the note")
+  Tag: str = typer.Option("general", "--tag", "-t", help="Tag to file the note under")
+```
+
+Now replace the `add` command so that it uses those types and saves the note:
+
+```yaml title="notes.yaml"
+commands:
+  add:
+    help: Add a note
+    params:
+      - text: Text
+      - tag: Tag
+    run: |
+      notes = load_notes()
+      notes.append({"text": text, "tag": tag})
+      save_notes(notes)
+      print(f"Added note {len(notes)} [{tag}]")
+```
+
+Try it:
+
+```console
+$ cli run notes.yaml add "buy milk"
+Added note 1 [general]
+$ cli run notes.yaml -- add "book flights" --tag travel
+Added note 2 [travel]
+```
+
+!!! tip "The `--` separator"
+    When the arguments for your CLI include options such as `--tag`, put `--` after the manifest
+    path. Without it, `cli run` tries to interpret `--tag` as one of its own options.
+
+## 4. Add options and an alias
+
+Add a second command under `commands`:
+
+```yaml title="notes.yaml"
+  list|ls:
+    help: List notes, optionally filtered by tag
+    params:
+      - --tag|-t: str = ""
+    run: |
+      for number, note in enumerate(load_notes(), start=1):
+          if not tag or note["tag"] == tag:
+              print(f"{number}. [{note['tag']}] {note['text']}")
+```
+
+- The key `list|ls` creates the command `list` and the alias `ls`.
+- `--tag|-t: str = ""` is an option (the name starts with `--`) with the short form `-t` and an
+  empty string as its default.
+
+```console
+$ cli run notes.yaml list
+1. [general] buy milk
+2. [travel] book flights
+$ cli run notes.yaml -- ls -t travel
+2. [travel] book flights
+```
+
+## 5. Exit codes and groups
+
+Commands can stop with an error code by raising `typer.Exit`. Add `remove`:
+
+```yaml title="notes.yaml"
+  remove|rm:
+    help: Remove a note by its number
+    params:
+      - number: int!
+    run: |
+      notes = load_notes()
+      if not 1 <= number <= len(notes):
+          print(f"No note {number}")
+          raise typer.Exit(code=1)
+      notes.pop(number - 1)
+      save_notes(notes)
+      print(f"Removed note {number}")
+```
+
+A dot in a command key creates a group. These two commands are run as `notes tags list` and
+`notes tags rename`. The entry `tags`, which has `help` and no `run`, sets the help text of the group:
+
+```yaml title="notes.yaml"
+  tags:
+    help: Work with tags
+
+  tags.list:
+    help: Count notes per tag
+    run: |
+      for tag, count in sorted(Counter(note["tag"] for note in load_notes()).items()):
+          print(f"{tag} ({count})")
+
+  tags.rename:
+    help: Rename a tag on every note
+    params:
+      - old: str!
+      - new: str!
+    run: |
+      notes = load_notes()
+      for note in notes:
+          if note["tag"] == old:
+              note["tag"] = new
+      save_notes(notes)
+      print(f"Renamed {old} to {new}")
+```
+
+```console
+$ cli run notes.yaml tags list
+general (1)
+travel (1)
+$ cli run notes.yaml tags rename general home
+Renamed general to home
+$ cli run notes.yaml remove 7
+No note 7
+```
+
+## 6. Call a shell command
+
+A line that starts with `$` is run as a shell command. `f{...}` inserts the value of a Python
+expression into it:
+
+```yaml title="notes.yaml"
+  backup:
+    help: Copy the notes file next to itself
+    run: |
+      $ cp f{notes_path()} f{notes_path()}.bak
+      print(f"Backed up to {notes_path()}.bak")
+```
+
+```console
+$ cli run notes.yaml backup
+Backed up to notes.json.bak
+```
+
+More in [Shell commands](guides/shell-commands.md).
+
+## 7. Test it
+
+Replace the `tests` section at the end of the file:
+
+```yaml title="notes.yaml"
+tests:
+  - $ rm -f notes.json notes.json.bak
+  - add "buy milk" --tag home: assert result.output == "Added note 1 [home]\n"
+  - add "ship release": assert "Added note 2 [general]" in result.output
+  - list: |
+      assert "1. [home] buy milk" in result.output
+      assert "2. [general] ship release" in result.output
+  - ls -t home: assert result_text == "1. [home] buy milk"
+  - tags rename general work: assert result.exit_code == 0
+  - tags list: assert "work (1)" in result.output
+  - backup: assert "Backed up" in result.output
+  - remove 9: assert result.exit_code == 1
+  - rm 1: assert "Removed note 1" in result.output
+  - $ rm -f notes.json notes.json.bak
+```
+
+- An entry that starts with `$` is a shell step. Here it removes leftover files before and after
+  the run.
+- Every other entry maps a command line to Python assertions. `result` is the outcome of the
+  command, with `result.output` and `result.exit_code`. `result_text` is the output with
+  surrounding whitespace removed.
+
+```console
+$ cli test notes.yaml
+✨ Invoking tests ✨
+...
+💚 All tests passed!
+```
+
+More in [Testing manifests](guides/testing.md).
+
+## 8. Load it as a real command
+
+So far every call went through `cli run`. Load the manifest to get a `notes` command:
+
+```console
+$ cli load notes.yaml
+✨ Generated notes CLI v0.1.0 ✨
+$ notes -h
+$ notes add --help
+
+ Usage: notes add [OPTIONS] {text}
+
+ Add a note
+
+╭─ Arguments ────────────────────────────────────────────────────────────────╮
+│ *    text      <str>  Text of the note [required]                          │
+╰────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ──────────────────────────────────────────────────────────────────╮
+│ --tag   -t      <str>  Tag to file the note under [default: general]       │
+│ --help  -h             Show this message and exit.                         │
+╰────────────────────────────────────────────────────────────────────────────╯
+```
+
+`notes` stays available in this environment until you run `cli remove notes`. After you edit the
+manifest, run `cli update notes` to regenerate it, or let [`cli dev`](guides/dev-loop.md) do that
+on every save.
+
+## 9. Ship it as one file
+
+```console
+$ cli build notes.yaml -o dist
++ notes built 📦
+  dist/notes (single file, needs Python >=3.10, 1.8 MB)
+  run it with: ./dist/notes
+$ ./dist/notes --version
+notes, 0.1.0
+```
+
+`dist/notes` is a self-contained zipapp. It runs on any machine with a compatible Python 3 and does
+not need cliffy. With `--target script` you get a single Python script instead, and with
+`--target native` a compiled executable that does not even need Python. More in
+[Building executables](guides/building.md).
+
+## The finished manifest
+
+```yaml title="notes.yaml"
+name: notes
+version: 0.1.0
+help: Keep short notes in a JSON file
+
+imports: |
+  import json
+  import os
+  from collections import Counter
+  from pathlib import Path
+
+vars:
+  default_file: notes.json
+
+functions:
+  - |
+    def notes_path() -> Path:
+        return Path(os.environ.get("NOTES_FILE", "{{ default_file }}"))
+  - |
+    def load_notes() -> list[dict]:
+        path = notes_path()
+        return json.loads(path.read_text()) if path.exists() else []
+  - |
+    def save_notes(notes: list[dict]) -> None:
+        notes_path().write_text(json.dumps(notes, indent=2))
+
+types:
+  Text: str = typer.Argument(..., help="Text of the note")
+  Tag: str = typer.Option("general", "--tag", "-t", help="Tag to file the note under")
+
+commands:
+  add:
+    help: Add a note
+    params:
+      - text: Text
+      - tag: Tag
+    run: |
+      notes = load_notes()
+      notes.append({"text": text, "tag": tag})
+      save_notes(notes)
+      print(f"Added note {len(notes)} [{tag}]")
+
+  list|ls:
+    help: List notes, optionally filtered by tag
+    params:
+      - --tag|-t: str = ""
+    run: |
+      for number, note in enumerate(load_notes(), start=1):
+          if not tag or note["tag"] == tag:
+              print(f"{number}. [{note['tag']}] {note['text']}")
+
+  remove|rm:
+    help: Remove a note by its number
+    params:
+      - number: int!
+    run: |
+      notes = load_notes()
+      if not 1 <= number <= len(notes):
+          print(f"No note {number}")
+          raise typer.Exit(code=1)
+      notes.pop(number - 1)
+      save_notes(notes)
+      print(f"Removed note {number}")
+
+  tags:
+    help: Work with tags
+
+  tags.list:
+    help: Count notes per tag
+    run: |
+      for tag, count in sorted(Counter(note["tag"] for note in load_notes()).items()):
+          print(f"{tag} ({count})")
+
+  tags.rename:
+    help: Rename a tag on every note
+    params:
+      - old: str!
+      - new: str!
+    run: |
+      notes = load_notes()
+      for note in notes:
+          if note["tag"] == old:
+              note["tag"] = new
+      save_notes(notes)
+      print(f"Renamed {old} to {new}")
+
+  backup:
+    help: Copy the notes file next to itself
+    run: |
+      $ cp f{notes_path()} f{notes_path()}.bak
+      print(f"Backed up to {notes_path()}.bak")
+
+tests:
+  - $ rm -f notes.json notes.json.bak
+  - add "buy milk" --tag home: assert result.output == "Added note 1 [home]\n"
+  - add "ship release": assert "Added note 2 [general]" in result.output
+  - list: |
+      assert "1. [home] buy milk" in result.output
+      assert "2. [general] ship release" in result.output
+  - ls -t home: assert result_text == "1. [home] buy milk"
+  - tags rename general work: assert result.exit_code == 0
+  - tags list: assert "work (1)" in result.output
+  - backup: assert "Backed up" in result.output
+  - remove 9: assert result.exit_code == 1
+  - rm 1: assert "Removed note 1" in result.output
+  - $ rm -f notes.json notes.json.bak
+
+examples:
+  - command: notes add "buy milk" --tag home
+    description: Add a note tagged home.
+  - command: notes ls --tag home
+    description: Show only the notes tagged home.
+```
+
+The `examples` section at the end is shown at the end of `notes --help` and is used by
+[`cli docs`](guides/generating-docs.md).
+
+## Next steps
+
+- [Manifest basics](guides/manifest-basics.md) explains how a manifest is put together.
+- [Params and types](guides/params.md) covers every way to declare a parameter.
+- [Command templates and global params](guides/templates-and-global-params.md) shows how to share
+  params between commands.
+
+<!-- docs/guides/manifest-basics.md -->
+
+# Manifest basics
+
+A manifest is one YAML file that describes one CLI. This page explains its parts and how cliffy
+turns them into Python. For a hands-on introduction, start with the [Quickstart](../quickstart.md).
+
+## The smallest manifest
+
+Three keys are required: `name`, `version` and `commands`.
+
+```yaml title="hello.yaml"
+name: hello
+version: 0.1.0
+
+commands:
+  world: print("hello world")
+```
+
+```console
+$ cli run hello.yaml world
+hello world
+```
+
+## Top-level keys
+
+| Key | What it is for | Guide |
+|---|---|---|
+| `name` | The command people type. | |
+| `version` | Printed by `--version`. Must be a string, so write `"1.0"` with quotes. | |
+| `help` | Description shown at the top of `--help`. | |
+| `commands` | The commands and the code they run. | [Commands, groups and aliases](commands.md) |
+| `imports` | Python imports for the generated module. | [below](#imports-and-functions) |
+| `functions` | Helper functions shared by all commands. | [below](#imports-and-functions) |
+| `vars` | Variables you can reuse across the manifest. | [Vars and Jinja](vars-and-jinja.md) |
+| `types` | Named parameter definitions. | [Params and types](params.md) |
+| `global_params` | Params added to commands. | [Templates and global params](templates-and-global-params.md) |
+| `command_templates` | Reusable params, hooks and settings. | [Templates and global params](templates-and-global-params.md) |
+| `includes` | Other manifests to merge in. | [Includes and merging](includes.md) |
+| `requires` | Python packages the CLI depends on. | [below](#dependencies) |
+| `cli_options` | Options for the CLI application object. | [below](#cli-options) |
+| `use_click` | Generate Click code instead of Typer. | [Click and Typer backends](backends.md) |
+| `tests` | Commands to run and assertions to check. | [Testing manifests](testing.md) |
+| `examples` | Example command lines, shown in `--help` and in generated docs. | [Generating docs](generating-docs.md) |
+
+Keys that cliffy does not know are ignored. The [manifest reference](../reference/manifest.md) lists
+every key with its type and default.
+
+## How a manifest becomes Python
+
+cliffy writes a single Python module from the manifest, in this order:
+
+1. `import subprocess`, `import typer` and the lines from `imports`
+2. one variable per entry in `vars`
+3. the Typer application, with `--version` built in
+4. the `functions`
+5. one function per command, registered with Typer
+
+Each command's `run` script becomes the body of its function, and its params become the function's
+arguments. That is the whole model: anything you can write in a Python function, you can write in
+`run`.
+
+To read the generated module for any manifest:
+
+```console
+$ cli render hello.yaml
+```
+
+The output is the module itself, so `cli render hello.yaml > hello.py` writes a file you can run. The
+closing `# Rendered ...` line goes to the error stream and does not end up in that file.
+
+## Imports and functions
+
+```yaml
+imports: |
+  import json
+  from pathlib import Path
+
+functions:
+  - |
+    def load(path: str) -> dict:
+        return json.loads(Path(path).read_text())
+  - |
+    def branch() -> str:
+        out = $ git rev-parse --abbrev-ref HEAD
+        return out.decode().strip()
+```
+
+`imports` is a block of text or a list of lines. `functions` is a list with one function per item.
+`subprocess` and `typer` are always imported, so `typer.Exit`, `typer.confirm` and friends are
+available everywhere.
+
+Write `functions` as a list when a function contains [shell lines](shell-commands.md). A single
+block of text is also accepted, but `$` lines inside it are not translated.
+
+## Dependencies
+
+List the packages your code imports under `requires`, using the same specifiers as `pip`:
+
+```yaml
+requires:
+  - tabulate>=0.9.0
+  - rich
+```
+
+- `cli load`, `cli run`, `cli test` and `cli validate` stop with `missing requirement` when a listed
+  package is not installed in the environment cliffy runs in.
+- `cli build` downloads the listed packages and bundles them into the executable.
+
+## CLI options
+
+`cli_options` is passed to the Typer application as keyword arguments. Two common settings:
+
+```yaml
+cli_options:
+  add_completion: false   # hide --install-completion and --show-completion
+  no_args_is_help: true   # print help when the CLI is called without a command
+```
+
+## Check, run, load
+
+| Command | What it does |
+|---|---|
+| `cli validate hello.yaml` | Checks the YAML, the schema, the `requires` and that the generated code imports. |
+| `cli render hello.yaml` | Prints the generated Python. |
+| `cli run hello.yaml -- <args>` | Runs the CLI once without installing it. |
+| `cli test hello.yaml` | Runs the `tests` section. |
+| `cli load hello.yaml` | Installs the CLI as a command in the current environment. |
+
+All of them are described in the [CLI reference](../reference/cli.md).
+
+## YAML pitfalls
+
+Manifests mix YAML, Jinja and Python, and each has its own special characters.
+
+**A colon followed by a space ends a YAML key.** This one-line command breaks, because of `: ` inside
+the string:
+
+```yaml
+commands:
+  status: print("status: ok")      # YAML error
+```
+
+Use a block instead:
+
+```yaml
+commands:
+  status: |
+    print("status: ok")
+```
+
+**Quote values that YAML would not read as text.** `version: 1.0` is a number and is rejected;
+`version: "1.0"` works. The same applies to values in `vars`.
+
+**Quote a one-line command that starts with `>`.** YAML treats a leading `>` as its own syntax, so
+write `run: "> ls *.txt"`.
+
+**Double braces belong to Jinja.** `{{ name }}` is replaced when the manifest is loaded. To get
+literal double braces into your Python, see [Vars and Jinja](vars-and-jinja.md#literal-braces).
+
+## Editor support
+
+cliffy publishes a JSON schema for manifests, which gives you completion and validation while you
+type. See [Editor setup](editor-setup.md).
+
+<!-- docs/guides/params.md -->
+
+# Params and types
+
+Params are the arguments and options of a command. Inside `run` they are ordinary Python variables.
+A `params` list accepts three forms, and you can mix them in one command.
+
+| Form | Looks like | Use it when |
+|---|---|---|
+| [Shorthand](#shorthand) | `- name: str!` | You want the shortest syntax. |
+| [Explicit](#explicit) | `- name: image` and more keys | You want help text. |
+| [Generic](#generic) | `- 'path: str = typer.Argument(...)'` | You need the full Typer API for one param. |
+
+To reuse one definition across commands, give it a name under [`types`](#types).
+
+## Shorthand
+
+Each entry is `name: type`.
+
+```yaml
+  copy:
+    help: Shorthand params
+    params:
+      - source: str!              # required argument
+      - target: str = "out.txt"   # optional argument with a default
+      - label: str                # optional argument, None when omitted
+      - --count|-c: int = 1       # option with a short alias and a default
+      - --force|-f: bool = False  # boolean flag
+      - --owner: str!             # required option
+      - --dry-run: bool = False   # hyphens become underscores in Python
+    run: |
+      print(source, target, label, count, force, owner, dry_run)
+```
+
+| You write | You get |
+|---|---|
+| `source: str!` | A required positional argument. |
+| `target: str = "out.txt"` | An optional argument with a default. |
+| `label: str` | An optional argument that is `None` when omitted. |
+| `--count|-c: int = 1` | The option `--count` with the short form `-c`. |
+| `--force|-f: bool = False` | A flag. `force` is `True` when `--force` or `-f` is passed. |
+| `--owner: str!` | A required option. |
+| `--dry-run: bool = False` | An option whose variable is `dry_run`. |
+
+Rules:
+
+- A name that starts with `--` is an option. Anything else is a positional argument.
+- `!` after the type makes the param required.
+- The text after `=` is a Python expression, so string defaults need quotes: `str = "out.txt"`.
+- Hyphens in a name become underscores in the variable.
+- Positional arguments are read from the command line in the order you list them, so put required
+  ones first.
+
+```console
+$ cli run params.yaml -- copy a.txt --owner me
+a.txt out.txt None 1 False me False
+$ cli run params.yaml -- copy a.txt b.txt c -c 3 -f --owner me --dry-run
+a.txt b.txt c 3 True me True
+```
+
+!!! note "Boolean options without a short form"
+    `--dry-run: bool = False` is generated without explicit option names, so Typer also adds the
+    negative form `--no-dry-run`. Options declared with a short form, such as `--force|-f`, get
+    only the names you wrote.
+
+## Explicit
+
+Each entry is a mapping. This is the only form with a `help` key.
+
+```yaml
+  resize:
+    help: Explicit params
+    params:
+      - name: image
+        type: str
+        required: true
+        help: Image to resize
+      - name: --width
+        type: int
+        default: 800
+        short: -w
+        help: Target width in pixels
+      - name: --format
+        type: str
+        default: png
+        help: Output format
+    run: |
+      print(image, width, format)
+```
+
+| Key | Meaning |
+|---|---|
+| `name` | Param name. Start it with `--` to make an option; without it the param is a positional argument. |
+| `type` | A Python type such as `str`, `int`, `float`, `bool`, or a name from `types`. |
+| `default` | Default value. String defaults are quoted for you when `type` is `str`. |
+| `help` | Text shown in `--help`. |
+| `short` | Short option name including the dash, such as `-w`. Options only. |
+| `required` | `true` to make the param required. |
+
+```console
+$ cli run params.yaml -- resize cat.jpg -w 100 --format gif
+cat.jpg 100 gif
+```
+
+## Types
+
+`types` gives a name to a type or to a complete Typer parameter definition. Use the name wherever a
+type is expected, in shorthand or explicit params.
+
+```yaml
+types:
+  Level: int = typer.Option(1, "--level", "-l", min=1, max=5, help="Compression level")
+  Source: str = typer.Argument(..., help="File to read")
+```
+
+```yaml
+  pack:
+    help: Params that reuse the types section
+    params:
+      - source: Source
+      - level: Level
+    run: |
+      print(source, level)
+```
+
+A complete definition is everything that follows the param name in a Python signature: the type, then
+`typer.Argument(...)` or `typer.Option(...)`. This gives you help text, validation (`min`, `max`),
+prompts (`prompt=True`), environment variables (`envvar="NAME"`) and the rest of the
+[Typer parameter API](https://typer.tiangolo.com/tutorial/options/). It replaces everything the param
+entry says except its name, so a default or `help` written next to it is not used.
+
+A plain type is an alias:
+
+```yaml
+types:
+  Count: int = 1
+
+commands:
+  repeat:
+    params:
+      - --times: Count       # the option --times, an int, default 1
+      - --retries: Count = 3 # a default on the param wins
+    run: print(times, retries)
+```
+
+The param keeps what its own entry says: `--times` is an option because of its name, and an explicit
+param keeps its `help`. Plain types work with both backends.
+
+```console
+$ cli run params.yaml -- pack data.csv
+data.csv 1
+$ cli run params.yaml -- pack data.csv -l 9
+╭─ Error ────────────────────────────────────────────────────────────────────╮
+│ Invalid value for '--level' / '-l': 9 is not in the range 1<=x<=5.         │
+╰────────────────────────────────────────────────────────────────────────────╯
+```
+
+## Generic
+
+A plain string is copied into the function signature exactly as written. Quote the whole entry so
+that YAML reads it as a string.
+
+```yaml
+  tail:
+    help: Raw Typer signatures
+    params:
+      - 'path: str = typer.Argument(..., help="File to follow")'
+      - 'lines: int = typer.Option(10, "--lines", "-n", min=1, help="Lines to show")'
+    run: |
+      print(path, lines)
+```
+
+!!! tip "A Typer definition also works in a shorthand entry"
+    `- name: str = typer.Option("World", "--name")` is passed through as written. Use `types` when
+    several commands share the definition.
+
+## Where else params appear
+
+- `global_params` and `command_templates.<name>.params` accept the same three forms. See
+  [Command templates and global params](templates-and-global-params.md).
+- With `use_click: true`, params are translated to Click decorators. Shorthand and explicit params
+  mean the same; generic params and full definitions in `types` are written as Click decorators. See
+  [Click and Typer backends](backends.md).
+
+## The complete example
+
+```yaml title="params.yaml"
+name: params
+version: 0.1.0
+help: One command per way of declaring parameters
+
+types:
+  Level: int = typer.Option(1, "--level", "-l", min=1, max=5, help="Compression level")
+  Source: str = typer.Argument(..., help="File to read")
+
+commands:
+  copy:
+    help: Shorthand params
+    params:
+      - source: str!              # required argument
+      - target: str = "out.txt"   # optional argument with a default
+      - label: str                # optional argument, None when omitted
+      - --count|-c: int = 1       # option with a short alias and a default
+      - --force|-f: bool = False  # boolean flag
+      - --owner: str!             # required option
+      - --dry-run: bool = False   # hyphens become underscores in Python
+    run: |
+      print(source, target, label, count, force, owner, dry_run)
+
+  resize:
+    help: Explicit params
+    params:
+      - name: image
+        type: str
+        required: true
+        help: Image to resize
+      - name: --width
+        type: int
+        default: 800
+        short: -w
+        help: Target width in pixels
+      - name: --format
+        type: str
+        default: png
+        help: Output format
+    run: |
+      print(image, width, format)
+
+  pack:
+    help: Params that reuse the types section
+    params:
+      - source: Source
+      - level: Level
+    run: |
+      print(source, level)
+
+  tail:
+    help: Raw Typer signatures
+    params:
+      - 'path: str = typer.Argument(..., help="File to follow")'
+      - 'lines: int = typer.Option(10, "--lines", "-n", min=1, help="Lines to show")'
+    run: |
+      print(path, lines)
+
+tests:
+  - copy a.txt --owner me: assert result.output == "a.txt out.txt None 1 False me False\n"
+  - copy a.txt b.txt c -c 3 -f --owner me --dry-run: assert result.output == "a.txt b.txt c 3 True me True\n"
+  - copy a.txt: assert result.exit_code == 2
+  - resize cat.jpg: assert result.output == "cat.jpg 800 png\n"
+  - resize cat.jpg -w 100 --format gif: assert result.output == "cat.jpg 100 gif\n"
+  - pack data.csv: assert result.output == "data.csv 1\n"
+  - pack data.csv -l 9: assert result.exit_code == 2
+  - tail app.log: assert result.output == "app.log 10\n"
+  - tail app.log -n 2: assert result.output == "app.log 2\n"
+```
+
+<!-- docs/guides/commands.md -->
+
+# Commands, groups and aliases
+
+Everything under `commands` becomes a command of your CLI. The key decides where the command lives
+and what it is called; the value decides what it does.
+
+The snippets on this page come from one manifest, shown in full [at the end](#the-complete-example).
+
+## Three ways to write a command
+
+```yaml
+  # 1. A string: the whole value is the run script
+  ping: print("pong")
+
+  # 2. A list: each item is a line of the run script
+  status:
+    - print("checking...")
+    - $ echo "all good"
+
+  # 3. A mapping: the full form
+  greet:
+    help: Greet a customer
+    params:
+      - name: str = "friend"
+    run: |
+      print(f"Welcome, {name}!")
+```
+
+Use the short forms for one-liners and the mapping when you need `help`, `params` or anything else.
+The keys of the mapping are listed in the [manifest reference](../reference/manifest.md#command).
+
+```console
+$ cli run commands.yaml ping
+pong
+$ cli run commands.yaml greet
+Welcome, friend!
+```
+
+Command names may contain letters, digits, `-` and `_`.
+
+## Groups
+
+A dot in the key puts the command in a group. Groups are created as needed and can be nested.
+
+```yaml
+  # A dot nests a command inside a group: `shop orders list`
+  orders.create:
+    help: Create an order
+    params:
+      - item: str!
+    run: print(f"created order for {item}")
+
+  orders.ship:
+    help: Ship an order
+    params:
+      - number: int!
+    run: print(f"shipped order {number}")
+
+  # Groups nest as deep as you like: `shop stock warehouse count`
+  stock.warehouse.count: print("42 items")
+
+  # A command with help and no run script sets the help text of the group
+  orders:
+    help: Manage customer orders
+```
+
+```console
+$ cli run commands.yaml orders create book
+created order for book
+$ cli run commands.yaml stock warehouse count
+42 items
+$ cli run commands.yaml -- orders --help
+...
+╭─ Commands ─────────────────────────────────────────────────────────────────╮
+│ create  Create an order                                                    │
+│ ship    Ship an order                                                      │
+│ list    List all orders                                                    │
+╰────────────────────────────────────────────────────────────────────────────╯
+```
+
+To describe a group, add an entry with the group's name that has `help` and no `run`, like `orders`
+above. A name is either a group or a command: if `orders` had a `run` script while `orders.create`
+exists, the group would take the name and the script could not be reached.
+
+## Aliases
+
+```yaml
+  # `shop customers add` and `shop customers new` run the same code
+  customers.add|new:
+    help: Add a customer
+    params:
+      - name: str!
+    run: print(f"added {name}")
+
+  # The aliases field does the same without touching the key
+  version-info:
+    help: Show build details
+    aliases: [vi]
+    run: print("build 7")
+```
+
+- `|` in the key adds aliases to the last part of the name: `customers.add|new` gives
+  `customers add` and `customers new`.
+- The `aliases` list does the same from inside the command.
+
+Aliases are hidden from `--help`. When a manifest defines aliases in its keys, the CLI gets an
+`--aliases` option that lists them:
+
+```console
+$ cli run commands.yaml -- --aliases
+
+Command             Aliases
+--------            --------
+customers.add       new
+```
+
+## One command for every group
+
+A key that starts with `(*)` is added to every group. Inside that command, `{(*)}` is replaced with
+the group's name, in `help`, `run`, `pre_run`, `post_run` and params.
+
+```yaml
+  # (*) adds this command to every group; {(*)} is replaced by the group name
+  (*).list:
+    help: List all {(*)}
+    params:
+      - --limit|-l: int = 10
+    run: print(f"listing {limit} {(*)}")
+```
+
+```console
+$ cli run commands.yaml orders list
+listing 10 orders
+$ cli run commands.yaml -- customers list -l 3
+listing 3 customers
+```
+
+## Run scripts
+
+`run` is Python. Write it as a block (`run: |`) or as a list of lines. Lines that start with `$` are
+shell commands, described in [Shell commands](shell-commands.md).
+
+Two hooks wrap the script. `pre_run` runs before `run` and `post_run` after it, in the same function,
+so all three share variables.
+
+```yaml
+  deploy:
+    help: Deploy the shop
+    pre_run: print("1. pre_run")
+    run: print("2. run")
+    post_run: print("3. post_run")
+```
+
+```console
+$ cli run commands.yaml deploy
+1. pre_run
+2. run
+3. post_run
+```
+
+Hooks are most useful together with [command templates](templates-and-global-params.md), which let
+several commands share them.
+
+To stop a command with an exit code, raise `typer.Exit`:
+
+```yaml
+run: |
+  if not ready:
+      print("not ready")
+      raise typer.Exit(code=1)
+```
+
+## Help text
+
+`help` on a command is shown in the command list and at the top of the command's own `--help`.
+Because `run` is the body of a Python function, a docstring on its first line works as well:
+
+```yaml
+  about:
+    run: |
+      """Show what this CLI is for"""
+      print("A demo shop")
+```
+
+## Command settings
+
+`config` passes extra settings to Typer for one command.
+
+```yaml
+  migrate:
+    help: Run the old migration tool
+    run: print("migrating")
+    config:
+      deprecated: true
+      hidden: true
+      epilog: Use `shop deploy` instead.
+```
+
+| Key | Effect |
+|---|---|
+| `hidden` | Leave the command out of `--help`. |
+| `deprecated` | Mark the command as deprecated and print a warning when it runs. |
+| `epilog` | Text shown at the end of the command's help. |
+| `short_help` | Text for the command list, when it should differ from `help`. |
+| `no_args_is_help` | Show help when the command is called without arguments. |
+| `context_settings` | Click context settings, for example `help_option_names`. |
+
+All keys are in the [manifest reference](../reference/manifest.md#commandconfig).
+
+## The complete example
+
+```yaml title="commands.yaml"
+name: shop
+version: 0.1.0
+help: Groups, aliases and command options
+
+cli_options:
+  add_completion: false
+  no_args_is_help: true
+
+commands:
+  # 1. A string: the whole value is the run script
+  ping: print("pong")
+
+  # 2. A list: each item is a line of the run script
+  status:
+    - print("checking...")
+    - $ echo "all good"
+
+  # 3. A mapping: the full form
+  greet:
+    help: Greet a customer
+    params:
+      - name: str = "friend"
+    run: |
+      print(f"Welcome, {name}!")
+
+  # A dot nests a command inside a group: `shop orders list`
+  orders.create:
+    help: Create an order
+    params:
+      - item: str!
+    run: print(f"created order for {item}")
+
+  orders.ship:
+    help: Ship an order
+    params:
+      - number: int!
+    run: print(f"shipped order {number}")
+
+  # Groups nest as deep as you like: `shop stock warehouse count`
+  stock.warehouse.count: print("42 items")
+
+  # A command with help and no run script sets the help text of the group
+  orders:
+    help: Manage customer orders
+
+  # `shop customers add` and `shop customers new` run the same code
+  customers.add|new:
+    help: Add a customer
+    params:
+      - name: str!
+    run: print(f"added {name}")
+
+  # The aliases field does the same without touching the key
+  version-info:
+    help: Show build details
+    aliases: [vi]
+    run: print("build 7")
+
+  # (*) adds this command to every group; {(*)} is replaced by the group name
+  (*).list:
+    help: List all {(*)}
+    params:
+      - --limit|-l: int = 10
+    run: print(f"listing {limit} {(*)}")
+
+  deploy:
+    help: Deploy the shop
+    pre_run: print("1. pre_run")
+    run: print("2. run")
+    post_run: print("3. post_run")
+
+  migrate:
+    help: Run the old migration tool
+    run: print("migrating")
+    config:
+      deprecated: true
+      hidden: true
+      epilog: Use `shop deploy` instead.
+
+  about:
+    run: |
+      """Show what this CLI is for"""
+      print("A demo shop")
+
+tests:
+  - ping: assert result.output == "pong\n"
+  - greet: assert result.output == "Welcome, friend!\n"
+  - orders create book: assert result.output == "created order for book\n"
+  - orders ship 7: assert result.output == "shipped order 7\n"
+  - stock warehouse count: assert result.output == "42 items\n"
+  - orders --help: assert "Manage customer orders" in result.output
+  - customers new Ada: assert result.output == "added Ada\n"
+  - vi: assert result.output == "build 7\n"
+  - orders list: assert result.output == "listing 10 orders\n"
+  - customers list -l 3: assert result.output == "listing 3 customers\n"
+  - orders list --help: assert "List all orders" in result.output
+  - deploy: assert result.output == "1. pre_run\n2. run\n3. post_run\n"
+  - migrate: assert "migrating" in result.output
+  - --help: assert "migrate" not in result.output
+  - about --help: assert "Show what this CLI is for" in result.output
+  - --aliases: assert "customers.add" in result.output
+```
+
+<!-- docs/guides/templates-and-global-params.md -->
+
+# Command templates and global params
+
+Two features keep a manifest free of repetition. **Global params** add the same params to your
+commands. **Command templates** bundle params, hooks and settings under a name that commands opt
+into.
+
+## Global params
+
+`global_params` is a list of [params](params.md), in any of the three forms.
+
+```yaml
+types:
+  Verbose: bool = typer.Option(False, "--verbose", "-v", help="Print extra detail")
+
+global_params:
+  - verbose: Verbose
+```
+
+The param is passed to the command itself, so it goes after the command name
+(`files delete notes.txt --verbose`) and is available in `run` as a normal variable.
+
+Global params are added to every command, whether or not it has params of its own.
+
+## Command templates
+
+A template can hold `params`, `pre_run`, `post_run` and `config`.
+
+```yaml
+command_templates:
+  destructive:
+    params:
+      - --yes|-y: bool = False
+    pre_run: |
+      if not yes:
+          typer.confirm("Are you sure?", abort=True)
+    post_run: print("done")
+    config:
+      epilog: This command changes files on disk.
+```
+
+A command uses it with `template: <name>`:
+
+```yaml
+commands:
+  delete|rm:
+    help: Delete a file
+    template: destructive
+    params:
+      - path: str!
+    pre_run: |
+      if verbose:
+          print(f"about to delete {path}")
+    run: print(f"deleted {path}")
+    post_run: print("cleaning up")
+
+  wipe:
+    help: Delete everything
+    template: destructive
+    run: print("wiped")
+    config:
+      epilog: There is no undo.
+```
+
+```console
+$ cli run templates.yaml -- delete notes.txt --yes --verbose
+about to delete notes.txt
+deleted notes.txt
+cleaning up
+done
+$ cli run templates.yaml delete notes.txt
+Are you sure? [y/N]: n
+Aborted.
+```
+
+### How a template is merged into a command
+
+| Part | Result |
+|---|---|
+| `params` | Template params first, then the command's own. |
+| `pre_run` | Template `pre_run`, then the command's. |
+| `post_run` | The command's `post_run`, then the template's. |
+| `config` | Combined. A key set on the command overrides the same key from the template. |
+
+Together with global params, a command's arguments are ordered: global params, template params,
+command params.
+
+The scripts therefore always run in this order:
+
+1. template `pre_run`
+2. command `pre_run`
+3. command `run`
+4. command `post_run`
+5. template `post_run`
+
+All five are placed in one function, so a variable set in `pre_run` can be used in `run`.
+
+In the example, `wipe` sets its own `epilog`, which replaces the one from the template, while
+`delete` keeps the template's:
+
+```console
+$ cli run templates.yaml -- delete --help
+...
+╭─ Options ──────────────────────────────────────────────────────────────────╮
+│ --verbose  -v        Print extra detail                                    │
+│ --yes      -y                                                              │
+│ --help     -h        Show this message and exit.                           │
+╰────────────────────────────────────────────────────────────────────────────╯
+
+ This command changes files on disk.
+```
+
+A command can use one template. Naming a template that does not exist is an error when the manifest
+is loaded.
+
+## The complete example
+
+```yaml title="templates.yaml"
+name: files
+version: 0.1.0
+help: Command templates and global params
+
+types:
+  Verbose: bool = typer.Option(False, "--verbose", "-v", help="Print extra detail")
+
+global_params:
+  - verbose: Verbose
+
+command_templates:
+  destructive:
+    params:
+      - --yes|-y: bool = False
+    pre_run: |
+      if not yes:
+          typer.confirm("Are you sure?", abort=True)
+    post_run: print("done")
+    config:
+      epilog: This command changes files on disk.
+
+commands:
+  delete|rm:
+    help: Delete a file
+    template: destructive
+    params:
+      - path: str!
+    pre_run: |
+      if verbose:
+          print(f"about to delete {path}")
+    run: print(f"deleted {path}")
+    post_run: print("cleaning up")
+
+  wipe:
+    help: Delete everything
+    template: destructive
+    run: print("wiped")
+    config:
+      epilog: There is no undo.
+
+tests:
+  - delete notes.txt --yes: assert result.output == "deleted notes.txt\ncleaning up\ndone\n"
+  - rm notes.txt -y -v: assert result.output == "about to delete notes.txt\ndeleted notes.txt\ncleaning up\ndone\n"
+  - wipe -y: assert result.output == "wiped\ndone\n"
+  - wipe: assert result.exit_code == 1
+  - delete --help: assert "This command changes files on disk." in result.output
+  - wipe --help: assert "There is no undo." in result.output
+  - wipe --help: assert "--verbose" in result.output
+```
+
+<!-- docs/guides/includes.md -->
+
+# Includes and merging
+
+`includes` merges other YAML files into a manifest. Use it to share functions, types and commands
+between several CLIs.
+
+## An include file
+
+An include file looks like a manifest without `name` and `version`:
+
+```yaml title="shared/common.yaml"
+imports:
+  - import json
+
+vars:
+  team: platform
+
+functions:
+  - |
+    def as_json(data: dict) -> str:
+        return json.dumps(data, sort_keys=True)
+
+types:
+  Service: str = typer.Argument(..., help="Name of the service")
+
+commands:
+  health:
+    help: Report service health
+    params:
+      - service: Service
+    run: |
+      print(as_json({"service": service, "status": "ok"}))
+
+  whoami:
+    help: Show the owning team
+    run: print(team)
+
+tests:
+  - health api: assert '"ok"' in result.output
+```
+
+It may contain `commands`, `functions`, `imports`, `types`, `vars`, `requires`, `cli_options` and
+`tests`. In an include file, `functions` must be a list.
+
+## Using it
+
+```yaml title="ops.yaml"
+name: ops
+version: 0.1.0
+help: Commands shared between CLIs through includes
+
+includes:
+  - shared/common.yaml
+
+commands:
+  restart:
+    help: Restart a service
+    params:
+      - service: Service
+    run: |
+      print(as_json({"service": service, "action": "restart"}))
+
+  # Same key as in the include: the keys set here win, the rest is inherited
+  whoami:
+    help: Show who owns this CLI
+
+tests:
+  - restart api: assert '"restart"' in result.output
+  - whoami: assert result.output == "platform\n"
+  - whoami --help: assert "Show who owns this CLI" in result.output
+```
+
+```console
+$ cli run ops.yaml health api
+{"service": "api", "status": "ok"}
+$ cli run ops.yaml restart api
+{"action": "restart", "service": "api"}
+$ cli run ops.yaml whoami
+platform
+```
+
+`restart` is defined in `ops.yaml` and uses the `Service` type and the `as_json` function from the
+include. `health` comes entirely from the include.
+
+!!! note "Paths are relative to the manifest"
+    `shared/common.yaml` is looked up next to the manifest that includes it first, and in the current
+    working directory after that. A manifest that includes itself, directly or through another file,
+    is reported as a circular include. `cli dev` watches included files too.
+
+## How files are merged
+
+All included files are merged together first. The result is then merged into your manifest.
+
+| Kind of value | Rule | Example |
+|---|---|---|
+| Mapping | Merged key by key, at every level. | `commands`, `types`, `vars`, and the keys of a single command |
+| List | Items from the include are added, without duplicates. | `requires`, `tests`, `functions` and `imports` when both are lists |
+| Anything else | The value in your manifest wins. | a command's `help` or `run` |
+
+In the example, both files define `whoami`. The command keeps its `run` script from the include and
+takes `help` from `ops.yaml`.
+
+Two details to keep in mind:
+
+- When the same key holds a list in one file and a block of text in the other, your manifest's value
+  is kept and the include's is dropped. Write `imports` as a list in both files if both need imports.
+- Include files are merged in the order they are listed. When two of them set the same key to
+  different values, the one listed first wins.
+
+## Variables in include files
+
+Each file is rendered on its own. `{{ team }}` works inside `shared/common.yaml`, where `team` is
+defined, but not inside `ops.yaml`. The Python variable `team` is available to every command in the
+merged CLI, which is why `whoami` can print it. See [Vars and Jinja](vars-and-jinja.md).
+
+<!-- docs/guides/vars-and-jinja.md -->
+
+# Vars and Jinja
+
+A manifest is rendered as a [Jinja2](https://jinja.palletsprojects.com/) template before it is read
+as YAML. `vars` supplies the values. Use them for anything you would otherwise repeat: file names,
+URLs, defaults.
+
+## Defining vars
+
+```yaml
+vars:
+  app: shop
+  # Jinja expression, evaluated when the manifest is loaded
+  region: "{{ env['DEPLOY_REGION'] or 'eu-west-1' }}"
+  # A var can build on other vars
+  image: "registry.example.com/{{ app }}:{{ region }}"
+  # Numbers and booleans keep their type
+  retries: 3
+  # A value in braces is a Python expression instead of a string
+  workdir: {os.getcwd()}
+```
+
+There are three kinds of value:
+
+| You write | The var is |
+|---|---|
+| `app: shop` | The string `shop`. |
+| `region: "{{ env['DEPLOY_REGION'] or 'eu-west-1' }}"` | A string computed by a Jinja expression. |
+| `image: "registry.example.com/{{ app }}:{{ region }}"` | A string built from other vars. |
+| `retries: 3` | The integer `3`. Numbers and booleans keep their type. |
+| `workdir: {os.getcwd()}` | The Python expression `os.getcwd()`, evaluated each time the CLI starts. |
+
+Quote a string value that starts with `{{`, and quote a number that should stay text
+(`zip_code: "02134"`). Braces around a value turn it into a Python expression.
+
+A var name becomes a Python variable, so it has to be a valid identifier: `data_file`, not
+`data-file`. Names the generated code uses itself, such as `cli` and `typer`, are rejected too.
+
+Vars can use each other in any order. cliffy resolves them before the rest of the file, and reports
+vars that refer to each other in a circle:
+
+```text
+~ error loading manifest: vars.yaml: vars reference each other in a circle: a -> b -> a. A var cannot be built from itself.
+```
+
+## Using vars
+
+Every var is available in two ways.
+
+```yaml
+  show:
+    help: Print the resolved variables
+    run: |
+      print("app={{ app }} region={{ region }} image={{ image }}")
+      print(f"app={app} retries={retries + 1} cwd={workdir == os.getcwd()}")
+```
+
+```console
+$ cli run vars.yaml show
+app=shop region=eu-west-1 image=registry.example.com/shop:eu-west-1
+app=shop retries=4 cwd=True
+```
+
+1. **As a placeholder.** `{{ app }}` is replaced with the value when the manifest is loaded. This
+   works anywhere in the file: in scripts, help text, params, even in command names.
+2. **As a Python variable.** The generated module defines `app = 'shop'`, so `run` scripts and
+   functions can use `app` directly, and `retries = 3` as a number. A var written with braces, like
+   `workdir`, is only useful this way.
+
+A placeholder for a name that is not defined is replaced with nothing, without an error. If output
+is unexpectedly empty, check the spelling with `cli render`.
+
+## Environment variables
+
+`env` holds the environment of the process that loads the manifest.
+
+```yaml
+vars:
+  region: "{{ env['DEPLOY_REGION'] or 'eu-west-1' }}"
+```
+
+```console
+$ DEPLOY_REGION=us-east-2 cli run vars.yaml show
+app=shop region=us-east-2 image=registry.example.com/shop:us-east-2
+app=shop retries=4 cwd=True
+```
+
+`env` can be used in `vars` and anywhere else in the file.
+
+The value is read **when the manifest is loaded or built** and then fixed in the generated code. A
+CLI installed with `cli load` keeps the value it saw at load time. To read the environment each
+time a command runs, use Python instead:
+
+```yaml
+imports:
+  - import os
+
+commands:
+  region: print(os.environ.get("DEPLOY_REGION", "eu-west-1"))
+```
+
+## Loops and conditions
+
+Jinja statements such as `{% for %}` and `{% if %}` work as long as the file is still valid YAML
+before rendering. Put them in YAML comments:
+
+```yaml
+  # {% for stage in ['staging', 'production'] %}
+  deploy.{{ stage }}:
+    help: Deploy {{ app }} to {{ stage }}
+    run: print("deploying {{ app }} to {{ stage }} in {{ region }}")
+  # {% endfor %}
+```
+
+```console
+$ cli run vars.yaml deploy staging
+deploying shop to staging in eu-west-1
+$ cli run vars.yaml deploy production
+deploying shop to production in eu-west-1
+```
+
+The loop produces one `deploy.<stage>` command per item.
+
+## Literal braces
+
+To keep double braces in your Python code, wrap them in `{% raw %}`:
+
+```yaml
+  braces:
+    help: Print literal double braces
+    run: print({% raw %}"{{ not a variable }}"{% endraw %})
+```
+
+Single braces, as used in f-strings (`f"{name}"`), need no escaping.
+
+## Comments are part of the template
+
+The whole file is rendered, YAML comments included. That is what makes the loop above possible, and
+it means that double braces in a comment are read as a placeholder too. A comment such as
+`# use {{ }} for placeholders` is a Jinja syntax error, which is reported with its line:
+
+```text
+~ error loading manifest: vars.yaml, line 12: Jinja syntax error: Expected an expression, got 'end of print statement'
+    # use {{ }} for placeholders
+  The whole file is a Jinja template, comments included. To keep braces as text, wrap them in {% raw %} and {% endraw %}.
+```
+
+Write the comment without double braces, or wrap them in `{% raw %}`.
+
+## Limits
+
+- Vars defined in an [include file](includes.md) can be used as placeholders only inside that file.
+
+## The complete example
+
+```yaml title="vars.yaml"
+name: deployer
+version: 0.1.0
+help: Variables and Jinja templating
+
+imports:
+  - import os
+
+vars:
+  app: shop
+  # Jinja expression, evaluated when the manifest is loaded
+  region: "{{ env['DEPLOY_REGION'] or 'eu-west-1' }}"
+  # A var can build on other vars
+  image: "registry.example.com/{{ app }}:{{ region }}"
+  # Numbers and booleans keep their type
+  retries: 3
+  # A value in braces is a Python expression instead of a string
+  workdir: {os.getcwd()}
+
+commands:
+  show:
+    help: Print the resolved variables
+    run: |
+      print("app={{ app }} region={{ region }} image={{ image }}")
+      print(f"app={app} retries={retries + 1} cwd={workdir == os.getcwd()}")
+
+  # {% for stage in ['staging', 'production'] %}
+  deploy.{{ stage }}:
+    help: Deploy {{ app }} to {{ stage }}
+    run: print("deploying {{ app }} to {{ stage }} in {{ region }}")
+  # {% endfor %}
+
+  braces:
+    help: Print literal double braces
+    run: print({% raw %}"{{ not a variable }}"{% endraw %})
+
+tests:
+  - show: |
+      assert result.output.splitlines() == [
+          "app=shop region=eu-west-1 image=registry.example.com/shop:eu-west-1",
+          "app=shop retries=4 cwd=True",
+      ]
+  - deploy staging: assert result.output == "deploying shop to staging in eu-west-1\n"
+  - deploy production --help: assert "Deploy shop to production" in result.output
+  - braces: assert "not a variable" in result.output
+```
+
+<!-- docs/guides/shell-commands.md -->
+
+# Shell commands
+
+In any script, a line that starts with `$` is run as an external command. cliffy uses
+[pybash](https://github.com/jaykv/pybash) to translate these lines into `subprocess` calls, so you
+can move between Python and shell freely.
+
+## The basics
+
+```yaml
+  hello: $ echo "hello from the shell"
+
+  mixed:
+    help: Mix Python and shell lines
+    params:
+      - name: str!
+    run: |
+      print("python first")
+      $ echo "then shell"
+      if name == "ada":
+          $ echo "shell lines can be indented"
+```
+
+`$ echo "then shell"` becomes `subprocess.run(["echo", "then shell"])`. The command is split into
+arguments the way a shell would split it, and is then started directly, without a shell in between.
+Shell lines follow Python indentation, so they can sit inside `if` blocks and loops.
+
+`$` lines work in `run`, `pre_run`, `post_run`, in callbacks, in `functions` written as a list, and
+as steps in [`tests`](testing.md#shell-steps). Run `cli render` to see the translation.
+
+## Using Python values
+
+`f{expression}` inserts the value of a Python expression into the command. The value is passed as a
+single argument, whatever it contains: spaces, quotes and `;` are just text.
+
+```yaml
+  say:
+    help: Pass a Python value to a shell command
+    params:
+      - message: str!
+    run: $ echo f{message} f{len(message)}
+```
+
+```console
+$ cli run shell.yaml say "two words"
+two words 9
+```
+
+Everything an f-string accepts after the expression works too, and `f{ }` can be used inside
+quotes:
+
+```yaml
+  price:
+    help: f{ } takes f-string format specs, also inside quotes
+    params:
+      - amount: float!
+    run: |
+      out = $ echo "total: f{amount:,.2f}"
+      print(out.decode().strip())
+```
+
+### Double braces are Jinja's
+
+pybash also has a `{{ expression }}` form, which inserts `str(expression)`. In a manifest, cliffy
+renders [Jinja](vars-and-jinja.md) first, so `{{ name }}` is replaced with a *var* when the manifest
+is loaded and never reaches pybash. That is what you want for vars:
+
+```yaml
+vars:
+  data_file: tasks.json
+commands:
+  backup: $ cp {{ data_file }} {{ data_file }}.backup
+```
+
+For a value that only exists when the command runs, such as a param, use `f{ }`. If you prefer the
+double-brace form, put the lines in a Jinja `raw` block so they are left alone:
+
+```yaml
+  whoami:
+    help: Double braces belong to Jinja unless they are inside a raw block
+    params:
+      - user: str!
+    run: |
+      {% raw %}
+      out = $ echo {{ user.title() }}
+      {% endraw %}
+      print(out.decode().strip())
+```
+
+To write the markers themselves as text, escape them: `\f{` and, inside a `raw` block, `\{{`.
+
+## Capturing output
+
+Assign a shell line to a variable, or wrap it in parentheses, to get its output as `bytes`.
+`$(command)` does the same in the middle of an expression:
+
+```yaml
+  upper:
+    help: Capture shell output in Python
+    run: |
+      out = $ echo captured
+      print(out.decode().strip().upper())
+
+  inline:
+    help: Capture inline with parentheses
+    run: print(($ echo inline).decode().strip())
+
+  words:
+    help: Capture in the middle of an expression with $( )
+    run: print(len($(echo one two three).split()), "words")
+```
+
+```console
+$ cli run shell.yaml upper
+CAPTURED
+$ cli run shell.yaml words
+3 words
+```
+
+A capture that is not wrapped in brackets runs to the end of the line.
+
+## Pipes and redirection
+
+Pipes and redirects are carried out by the generated CLI itself, without a shell:
+
+```yaml
+  sorted:
+    help: Pipes work without a shell
+    run: $ printf 'b\na\n' | sort
+
+  save:
+    help: So does redirection
+    run: |
+      $ echo "saved" > shell-demo.txt
+      $ cat shell-demo.txt
+
+  errors-to-file:
+    help: Redirect stderr on its own, together with stdout, or into a pipe
+    run: |
+      $ ls no-such-file 2> shell-demo.txt
+      $ ls . no-such-file &> shell-demo.txt
+      $ ls . no-such-file > shell-demo.txt 2>&1
+      lines = $ ls no-such-file |& wc -l
+      print(int(lines), "line of errors")
+```
+
+| Operator | Meaning |
+|---|---|
+| `a | b` | Pipe the output of `a` into `b` |
+| `a |& b` | Pipe output and errors |
+| `< file` | Read input from a file |
+| `> file`, `>> file` | Write or append output |
+| `2> file`, `2>> file` | Write or append errors |
+| `&> file`, `&>> file` | Write or append both |
+| `2>&1`, `>&2` | Send errors to the output, or the output to the errors |
+
+## Chaining commands
+
+`&&` runs the next command when the previous one succeeded, `||` when it failed, and `;` in either
+case:
+
+```yaml
+  chain:
+    help: "&&, || and ; decide what runs next, like in a shell"
+    run: |
+      out = $ true && echo "first worked" || echo "first failed"
+      print(out.decode().strip())
+      out = $ false || echo "fallback" ; echo "always"
+      print(out.decode().split())
+```
+
+Capturing a chain captures the output of every command that ran.
+
+## Long commands and comments
+
+A `$` or `>` line that ends with a backslash continues on the next line. An unquoted `#` starts a
+comment that runs to the end of the line:
+
+```yaml
+  longest:
+    help: "A trailing backslash continues a command, a # starts a comment"
+    run: |
+      $ printf '%s\n' pear fig banana \
+          | sort \
+          | tail -n 1 > shell-demo.txt  # the last one in alphabetical order
+      $ echo "a # inside quotes is text" >> shell-demo.txt
+      print(open("shell-demo.txt").read())
+```
+
+A captured command (`out = $ ...`) has to fit on one line.
+
+## When you need a real shell
+
+`$` lines never expand glob patterns (`*.txt`), `~` or environment variables (`$HOME`), and they do
+not support background jobs (`&`) or here-documents (`<<`). For those, start the line with `>`
+instead of `$`. The line is handed to the shell as written:
+
+```yaml
+  texts:
+    help: Glob patterns need a real shell
+    run: "> ls *.txt"
+```
+
+This becomes `subprocess.run("ls *.txt", shell=True)`. A one-line command that starts with `>` must
+be quoted, because `>` also has a meaning in YAML.
+
+Values inserted with `f{ }` are quoted for the place they appear in, so a value is always one word
+of data and never shell syntax. Here `name` can be `; rm -rf ~` and nothing is removed:
+
+```yaml
+  find:
+    help: A value in a > line is quoted for the shell
+    params:
+      - name: str!
+    run: |
+      > ls | grep -c f{name} || echo "nothing is called" f{name}
+
+  glob:
+    help: Splice a value in as shell syntax, here a glob pattern
+    params:
+      - pattern: str!
+    run: |
+      {% raw %}
+      > ls {{! pattern }}
+      {% endraw %}
+```
+
+`{{! expression }}` is the exception: it splices the value in unquoted, so that it can be a glob
+pattern or several arguments. Like every double-brace form it has to sit in a `raw` block.
+
+!!! danger "Never pass user input to `{{! }}`"
+    A spliced value is interpreted by the shell. A parameter value such as `; rm -rf ~` would be
+    executed. Use `f{ }` for anything that comes from a user, and prefer `$` lines, which have no
+    shell to inject into. See the Python documentation on
+    [subprocess security](https://docs.python.org/3/library/subprocess.html#security-considerations).
+
+## Errors
+
+A shell line that fails does not stop the script. Check the result yourself when it matters:
+
+```yaml
+  careless:
+    help: A failing command does not stop the script
+    run: |
+      $ false
+      print("still running")
+
+  careful:
+    help: Check the exit status yourself
+    run: |
+      result = subprocess.run(["false"])
+      if result.returncode != 0:
+          print("command failed")
+          raise typer.Exit(code=result.returncode)
+```
+
+Two exceptions:
+
+- A command that does not exist raises `FileNotFoundError`.
+- A captured command (`out = $ ...`) raises `subprocess.CalledProcessError` when it exits with a
+  non-zero status.
+
+A shell line that cannot be translated is reported when the manifest is loaded, with the command it
+is in, the line and the column:
+
+```console
+$ cli load deploy.yaml
+~ error in deploy.yaml: command `ship`, run, line 2, column 11: running in the background with & is not supported in a $ command; use a > shell command
+    $ sleep 5 &
+              ^ 💔
+```
+
+## Things to know
+
+- Output of `$` lines goes straight to the terminal. It is not part of `result.output` in
+  [manifest tests](testing.md); capture it and `print` it if you want to assert on it.
+- A CLI that only uses plain commands imports nothing but `subprocess`. Pipes, redirects, chains and
+  values in `>` lines go through a small helper, `pybash.runtime`, which the generated code imports
+  as `_pybash`. `cli build` copies that helper into the file it builds, so a built CLI does not need
+  pybash.
+- Quoting follows POSIX shell rules: single quotes are literal, double quotes allow `\"` and `\\`,
+  and a backslash escapes the next character. Quote or escape an operator to pass it as text:
+  `$ echo 'a && b' \| c`.
+
+## The complete example
+
+```yaml title="shell.yaml"
+name: sh
+version: 0.1.0
+help: Shell commands in run scripts
+
+functions:
+  - |
+    def current_branch() -> str:
+        out = $ git rev-parse --abbrev-ref HEAD
+        return out.decode().strip()
+
+commands:
+  hello: $ echo "hello from the shell"
+
+  mixed:
+    help: Mix Python and shell lines
+    params:
+      - name: str!
+    run: |
+      print("python first")
+      $ echo "then shell"
+      if name == "ada":
+          $ echo "shell lines can be indented"
+
+  say:
+    help: Pass a Python value to a shell command
+    params:
+      - message: str!
+    run: $ echo f{message} f{len(message)}
+
+  price:
+    help: f{ } takes f-string format specs, also inside quotes
+    params:
+      - amount: float!
+    run: |
+      out = $ echo "total: f{amount:,.2f}"
+      print(out.decode().strip())
+
+  whoami:
+    help: Double braces belong to Jinja unless they are inside a raw block
+    params:
+      - user: str!
+    run: |
+      {% raw %}
+      out = $ echo {{ user.title() }}
+      {% endraw %}
+      print(out.decode().strip())
+
+  upper:
+    help: Capture shell output in Python
+    run: |
+      out = $ echo captured
+      print(out.decode().strip().upper())
+
+  inline:
+    help: Capture inline with parentheses
+    run: print(($ echo inline).decode().strip())
+
+  words:
+    help: Capture in the middle of an expression with $( )
+    run: print(len($(echo one two three).split()), "words")
+
+  sorted:
+    help: Pipes work without a shell
+    run: $ printf 'b\na\n' | sort
+
+  save:
+    help: So does redirection
+    run: |
+      $ echo "saved" > shell-demo.txt
+      $ cat shell-demo.txt
+
+  errors-to-file:
+    help: Redirect stderr on its own, together with stdout, or into a pipe
+    run: |
+      $ ls no-such-file 2> shell-demo.txt
+      $ ls . no-such-file &> shell-demo.txt
+      $ ls . no-such-file > shell-demo.txt 2>&1
+      lines = $ ls no-such-file |& wc -l
+      print(int(lines), "line of errors")
+
+  chain:
+    help: "&&, || and ; decide what runs next, like in a shell"
+    run: |
+      out = $ true && echo "first worked" || echo "first failed"
+      print(out.decode().strip())
+      out = $ false || echo "fallback" ; echo "always"
+      print(out.decode().split())
+
+  longest:
+    help: "A trailing backslash continues a command, a # starts a comment"
+    run: |
+      $ printf '%s\n' pear fig banana \
+          | sort \
+          | tail -n 1 > shell-demo.txt  # the last one in alphabetical order
+      $ echo "a # inside quotes is text" >> shell-demo.txt
+      print(open("shell-demo.txt").read())
+
+  texts:
+    help: Glob patterns need a real shell
+    run: "> ls *.txt"
+
+  find:
+    help: A value in a > line is quoted for the shell
+    params:
+      - name: str!
+    run: |
+      > ls | grep -c f{name} || echo "nothing is called" f{name}
+
+  glob:
+    help: Splice a value in as shell syntax, here a glob pattern
+    params:
+      - pattern: str!
+    run: |
+      {% raw %}
+      > ls {{! pattern }}
+      {% endraw %}
+
+  careless:
+    help: A failing command does not stop the script
+    run: |
+      $ false
+      print("still running")
+
+  careful:
+    help: Check the exit status yourself
+    run: |
+      result = subprocess.run(["false"])
+      if result.returncode != 0:
+          print("command failed")
+          raise typer.Exit(code=result.returncode)
+
+tests:
+  - hello: assert result.exit_code == 0
+  - mixed ada: assert "python first" in result.output
+  - say hi: assert result.exit_code == 0
+  - upper: assert result.output == "CAPTURED\n"
+  - inline: assert result.output == "inline\n"
+  - words: assert result.output == "3 words\n"
+  - price 1234.5: 'assert result.output == "total: 1,234.50\n"'
+  - whoami ada: assert result.output == "Ada\n"
+  - sorted: assert result.exit_code == 0
+  - save: assert result.exit_code == 0
+  - errors-to-file: assert result.output == "1 line of errors\n"
+  - chain: assert result.output == "first worked\n['fallback', 'always']\n"
+  - longest: assert result.output.splitlines()[0] == "pear" and "inside quotes" in result.output
+  - find "; echo injected": assert result.exit_code == 0
+  - glob "*.yaml": assert result.exit_code == 0
+  - texts: assert result.exit_code == 0
+  - careless: assert result.output == "still running\n"
+  - careful: assert result.exit_code == 1
+  - $ rm -f shell-demo.txt
+```
+
+<!-- docs/guides/backends.md -->
+
+# Click and Typer backends
+
+cliffy can generate two kinds of code from the same manifest.
+
+| | Typer (default) | Click |
+|---|---|---|
+| Enable with | nothing | `use_click: true` |
+| Generated code uses | `typer` | `rich_click`, or plain `click` when rich-click is not installed |
+| Extra install | none | none. `pip install "cliffy[rich]"` adds rich-formatted help |
+| Supported manifest features | all | all, with the differences listed below |
+
+**Use Typer unless you have a specific reason to generate Click code.** Typer is the backend the rest
+of this documentation describes.
+
+## The Click backend
+
+```yaml title="click.yaml"
+name: clicky
+version: 0.1.0
+help: The same manifest format, rendered with Click
+use_click: true
+
+commands:
+  hello|hi:
+    help: Say hello
+    params:
+      - name: str!
+      - --times: int = 1
+    run: |
+      for _ in range(times):
+          print(f"hello {name}")
+
+  resize:
+    help: Explicit params work like in Typer
+    params:
+      - name: image
+        type: str
+        required: true
+        help: File to resize
+      - name: --width
+        type: int
+        short: -w
+        default: 800
+        help: Target width
+    run: print(image, width)
+
+  tag:
+    help: Raw Click decorators
+    params:
+      - "@click.option('--loud', is_flag=True, help='Shout the tags')"
+      - "@click.argument('tags', nargs=-1)"
+    run: |
+      for tag in tags:
+          print(tag.upper() if loud else tag)
+
+  db.migrate:
+    help: Groups work the same way
+    run: $ echo "migrating"
+
+tests:
+  - hello Ada --times 2: assert result.output == "hello Ada\nhello Ada\n"
+  - hi Ada: assert result.output == "hello Ada\n"
+  - resize cat.jpg -w 100: assert result.output == "cat.jpg 100\n"
+  - resize: assert result.exit_code == 2
+  - tag --loud a b: assert result.output == "A\nB\n"
+  - db migrate: assert result.exit_code == 0
+```
+
+```console
+$ cli run click.yaml -- hello Ada --times 2
+hello Ada
+hello Ada
+$ cli run click.yaml -- resize cat.jpg -w 100
+cat.jpg 100
+$ cli run click.yaml -- tag --loud a b
+A
+B
+$ cli run click.yaml db migrate
+migrating
+```
+
+### What works
+
+- Commands, groups (`db.migrate`) and aliases (`hello|hi`)
+- Shorthand and explicit params with the same meaning as for Typer: a name with `--` is an option,
+  anything else is a positional argument, `!` or `required: true` makes it required, and `short`,
+  `default` and `help` are passed on
+- `types`, command `config`, `global_params`, `callbacks`, `pre_run`, `post_run` and command templates
+- Generic params, written as Click decorators
+- `vars`, `imports`, `functions`, `includes`, shell lines and `cli test`
+
+### What differs from Typer
+
+| Feature | With `use_click: true` |
+|---|---|
+| Generic params | A string param is a Click decorator such as `"@click.option('--loud', is_flag=True)"`. A Typer signature entry is rejected. |
+| `types` | A plain type (`Count: int`, `Count: int = 1`) works with both backends. A full definition is a Click decorator, `Loud: "@click.option('--loud', is_flag=True)"`; a `typer.Option(...)` definition is rejected with an error that names the command. |
+| Inline `typer.Option(...)` in a shorthand param | Rejected. Use a Click decorator. |
+| List types | `--tag: list[str]` can be given several times and arrives as a tuple, not a list. |
+| Boolean options | `--loud: bool = False` is a `--loud/--no-loud` switch, also when it has a short form. |
+| `config.rich_help_panel` | Passed to rich-click as `panel`. The generated code then requires rich-click. |
+| `--version` output | `<program>, version <version>` instead of `<name>, <version>`. |
+
+A manifest that uses something the Click backend cannot express stops with an error such as:
+
+```text
+~ error in tools.yaml: command `pack`: param `level` uses types.Level, which is a Typer definition (...)
+```
+
+### rich-click is optional
+
+The generated module starts with:
+
+```python
+try:
+    import rich_click as click
+except ImportError:  # plain help output when rich-click is not installed
+    import click
+```
+
+With rich-click installed the help is formatted with Rich. Without it the same CLI runs on plain
+Click, which cliffy always installs. `cli build` reads this import and ships rich-click with the
+built CLI.
+
+### Building
+
+`cli build` reads the import of `rich_click` from the generated code and bundles rich-click instead of
+Typer, so the manifest does not have to list it under `requires`.
+
+## Typer notes
+
+- Typer depends on Rich, so generated CLIs print styled help and tracebacks without extra setup.
+- Typer adds `--install-completion` and `--show-completion` to every CLI. Turn them off with:
+
+    ```yaml
+    cli_options:
+      add_completion: false
+    ```
+
+- Anything from the [Typer documentation](https://typer.tiangolo.com/) that fits in a function
+  signature or body can be used in `types`, generic params and `run` scripts.
+
+<!-- docs/guides/testing.md -->
+
+# Testing manifests
+
+A manifest can carry its own tests. Each test runs a command of your CLI and checks the result with
+Python assertions. `cli test` runs them without loading or building anything.
+
+## Writing tests
+
+```yaml
+tests:
+  # A string starting with $ or > is a shell step, handy for setup and cleanup
+  - $ rm -f counter.txt
+
+  # A mapping is a test case: the command line, then the assertion to run
+  - show: assert result.output == "0\n"
+  - bump: assert result.exit_code == 0
+
+  # Use a block when you need several statements
+  - bump --by 2: |
+      assert result.exit_code == 0
+      assert result_text == "3"
+
+  # Usage errors exit with code 2
+  - bump --by nope: assert result.exit_code == 2
+
+  # An uncaught exception is stored on the result
+  - crash: |
+      assert result.exit_code == 1
+      assert isinstance(result.exception, ValueError)
+
+  - "> rm -f counter.*"
+```
+
+```console
+$ cli test testing.yaml
+✨ Invoking tests ✨
+
+🪄 > counter show
+
+⚗️ >
+0
+
+
+✅ 1 of 5
+
+...
+
+💚 All tests passed!
+```
+
+### Test cases
+
+A test case is a one-key mapping:
+
+```yaml
+- <command line>: <assertion code>
+```
+
+The command line is everything you would type after the CLI's name. It is split like a shell would
+split it, so quotes work: `add "buy milk" --tag home`.
+
+The assertion code is Python. Two variables are available:
+
+| Variable | What it is |
+|---|---|
+| `result` | The outcome of the command. Use `result.output` (everything the command printed), `result.exit_code` and `result.exception`. |
+| `result_text` | `result.output` with leading and trailing whitespace removed. |
+
+Use `assert` statements. A test passes when the code runs without raising.
+
+### Shell steps
+
+An entry that is a plain string is a setup or cleanup step, not a test case. It must start with `$`
+or `>` and follows the rules of [shell commands](shell-commands.md): `$` runs the command directly,
+`>` runs it through a shell (needed for glob patterns such as `counter.*`). Quote an entry that
+starts with `>`.
+
+Entries run from top to bottom, so order the steps and cases accordingly.
+
+## Running tests
+
+```console
+$ cli test testing.yaml
+$ cli test testing.yaml --exitfirst
+```
+
+`--exitfirst` (or `-x`) stops at the first failing test.
+
+A failing assertion is reported with its line:
+
+```text
+💔 AssertionError: (line 1) > assert result.output == "1\n"
+```
+
+So is an assertion that raises something else, or that is not valid Python:
+
+```text
+💔 NameError: name 'reslt' is not defined (line 1) > assert reslt.exit_code == 0
+```
+
+When the command itself raises, the exception is reported against the manifest: the command, the
+exception, and the line of the `run`, `pre_run` or `post_run` block it was raised on.
+
+```text
+💥 command `add` raised KeyError: 'notes'
+    run, line 2: data["notes"].append(text)
+```
+
+No Python traceback is printed. The assertions still run, so a test can expect the exception with
+`assert isinstance(result.exception, KeyError)`. To see the full traceback of the command as well:
+
+```console
+$ cli test testing.yaml --traceback
+```
+
+The run ends with one of three messages:
+
+| Last line | Meaning | Exit code |
+|---|---|---|
+| `💚 All tests passed!` | Every test case passed. | 0 |
+| `💛 Some tests failed :(` | At least one passed and at least one failed. | 1 |
+| `All tests failed 💔` | No test case passed. | 1 |
+
+The exit code is 0 only when every test case passed, so a CI job can run `cli test mycli.yaml` as a
+step of its own.
+
+## Things to know
+
+- **Colors and styles are removed from the output** before your assertions run, so a test gives the
+  same result in a terminal and on a CI system.
+- **Tests run in the current directory** and are not isolated from each other. A command that
+  writes a file really writes it. Clean up with shell steps, as the example does.
+- **Output of `$` lines is not captured.** It goes to the terminal and is not in `result.output`.
+  Assert on the exit code, or capture the output in Python and `print` it. See
+  [Shell commands](shell-commands.md#capturing-output).
+- **Keep `: ` out of one-line assertions.** YAML reads a colon followed by a space as the end of a
+  key, so `- show: assert result.output == "count: 0\n"` is a YAML error. Use a block:
+
+    ```yaml
+    - show: |
+        assert result.output == "count: 0\n"
+    ```
+
+- **The counter counts test cases.** `✅ 2 of 5` is the second test case of five. Shell steps are run
+  but not counted, and a failed case keeps its number.
+- **Shell steps are not checked.** A step that exits with an error does not fail the run. Assert on
+  the state it should have produced in the next test case. A step whose program cannot be started at
+  all (it does not exist) ends the run with an error.
+
+## The complete example
+
+```yaml title="testing.yaml"
+name: counter
+version: 0.1.0
+help: A counter stored in a file, with tests
+
+imports: |
+  from pathlib import Path
+
+functions:
+  - |
+    def read_count() -> int:
+        path = Path("counter.txt")
+        return int(path.read_text()) if path.exists() else 0
+
+commands:
+  show:
+    help: Print the counter
+    run: print(read_count())
+
+  bump:
+    help: Increase the counter
+    params:
+      - --by: int = 1
+    run: |
+      total = read_count() + by
+      Path("counter.txt").write_text(str(total))
+      print(total)
+
+  crash:
+    help: Always fails
+    run: raise ValueError("boom")
+
+tests:
+  # A string starting with $ or > is a shell step, handy for setup and cleanup
+  - $ rm -f counter.txt
+
+  # A mapping is a test case: the command line, then the assertion to run
+  - show: assert result.output == "0\n"
+  - bump: assert result.exit_code == 0
+
+  # Use a block when you need several statements
+  - bump --by 2: |
+      assert result.exit_code == 0
+      assert result_text == "3"
+
+  # Usage errors exit with code 2
+  - bump --by nope: assert result.exit_code == 2
+
+  # An uncaught exception is stored on the result
+  - crash: |
+      assert result.exit_code == 1
+      assert isinstance(result.exception, ValueError)
+
+  - "> rm -f counter.*"
+```
+
+<!-- docs/guides/dev-loop.md -->
+
+# Hot-reload dev loop
+
+While you are writing a manifest, there are three ways to try your changes. They differ in how much
+they install.
+
+| Command | Installs the CLI | Use it for |
+|---|---|---|
+| `cli run notes.yaml -- <args>` | no | A quick one-off call. |
+| `cli load notes.yaml`, then `cli update notes` | yes | Using the CLI by name; reload by hand. |
+| `cli dev notes.yaml` | yes | Reloading automatically on every save. |
+
+## `cli dev`
+
+```console
+$ cli dev notes.yaml
+🔄 Watching notes.yaml for changes...
+```
+
+Leave this running and edit the manifest. Each time you save, cliffy regenerates and reloads the
+CLI:
+
+```console
+✨ Reloaded notes CLI v0.1.0 ✨
+```
+
+In a second terminal, with the same environment active, the `notes` command always reflects the
+last save. Stop the watcher with Ctrl+C.
+
+The watcher follows every file the CLI is generated from: the manifest, the manifests it lists under
+[`includes`](includes.md) and, for a file written in a [blueprint](../blueprints.md)'s spec, the
+blueprint's Python file. Saving any of them reloads the CLI.
+
+!!! note
+    Nothing is loaded until the first change. Save the file once, or run `cli load notes.yaml`
+    before starting, to get the command right away.
+
+### Run a command on every reload
+
+`--run-cli` runs your CLI after each reload with the arguments that follow. It is a quick way to
+re-check one command while you work on it:
+
+```console
+$ cli dev notes.yaml --run-cli tags list
+🔄 Watching notes.yaml for changes...
+
+✨ Reloaded notes CLI v0.1.0 ✨
+general (1)
+travel (1)
+```
+
+Put `--` before the arguments when they include options:
+
+```console
+$ cli dev notes.yaml --run-cli -- list --tag home
+$ cli dev notes.yaml --run-cli -- --help
+```
+
+A mistake in the manifest prints an error in the watcher's terminal. Fix the file and save again;
+the watcher keeps running.
+
+## Managing loaded CLIs
+
+```console
+$ cli list            # what is loaded, from which manifest, and how long ago
+$ cli info notes      # version, requirements and the stored manifest
+$ cli update notes    # regenerate from the manifest path recorded at load time
+$ cli remove notes    # uninstall
+$ cli remove-all      # uninstall everything cliffy loaded
+```
+
+`cli ls`, `cli reload`, `cli rm` and `cli rm-all` are aliases for these. Details are in the
+[CLI reference](../reference/cli.md).
+
+Loading writes a small launcher script named after the CLI into the `bin` directory of the
+environment. cliffy only replaces or deletes that file while it is exactly the launcher it wrote. If
+a file with the name of your CLI is already there (`pip`, say), `cli load` stops and asks you to
+rename the CLI. If you edited the launcher, `cli remove` removes nothing, tells you which file is in
+the way and leaves the CLI loaded and working; move or delete that file and remove the CLI again.
+
+While `cli dev` runs, reloads happen one at a time and each one reads the manifest when it starts,
+so after a burst of saves the loaded CLI is the one of the last save.
+
+Loaded CLIs belong to the Python environment cliffy is installed in. They are available whenever
+that environment is active and disappear with it.
+
+<!-- docs/guides/building.md -->
+
+# Building executables
+
+`cli build` turns a manifest into one file that you can hand to someone else. The manifest stays the
+same; `--target` chooses what kind of file you get.
+
+| | `zipapp` (default) | `script` | `native` |
+|---|---|---|---|
+| What you get | `notes`, a Python [zipapp](https://docs.python.org/3/library/zipapp.html) with the dependencies inside | `notes.py`, readable Python with the dependencies declared at the top | `notes`, a compiled executable with its own Python inside |
+| The other machine needs | A compatible Python | [uv](https://docs.astral.sh/uv/), or Python with the dependencies installed | Nothing. Same operating system and CPU as the build machine |
+| Network on the other machine | No | The first run, to download the dependencies | No |
+| The build machine needs | Network or a pip cache for the dependencies | Nothing | [Rust](https://rustup.rs) (`cargo`), uv and network |
+| Build time | 2 s | Under 1 s | 1 min |
+| File size | 1.8 MB | 1 to 12 kB | 30 MB |
+| First start | 0.2 s | 0.2 s with the dependencies in uv's cache | 1.5 s |
+| Later starts | 0.05 s | 0.05 s | 0.05 s |
+| Written to disk on the other machine | 8 MB in `~/.shiv` | uv's cache | 110 MB in the user's data and cache directories |
+
+The numbers were measured on an Apple Silicon Mac with Python 3.11 for a CLI whose only dependency is
+Typer. They show the proportions; yours will differ.
+
+Whatever the target, the file holds the generated CLI and does not need cliffy. `$` lines with pipes,
+redirects or `&&` use a small helper from pybash; `cli build` copies it into the file, so pybash is
+not needed either.
+
+## Build
+
+```console
+$ cli build notes.yaml -o dist
++ notes built 📦
+  dist/notes (single file, needs Python >=3.10, 1.8 MB)
+  run it with: ./dist/notes
+$ ./dist/notes --version
+notes, 0.1.0
+```
+
+Without `-o`, the file is written to the current directory. Several manifests can be built in one
+call, and a CLI that is already loaded can be built by name:
+
+```console
+$ cli build notes.yaml hello.yaml -o dist
+$ cli build notes -o dist --target script
+```
+
+When a build fails, the reason is printed and `cli build` exits with 1.
+
+A file written in a [blueprint](../blueprints.md#building-a-single-file-executable)'s spec is built
+the same way for every target; the blueprint is applied at build time and is not shipped.
+
+## Dependencies
+
+Every target ships the packages under `requires`:
+
+```yaml
+requires:
+  - tabulate>=0.9.0
+```
+
+Unlike `cli load`, building from a manifest does not need those packages to be installed in your
+environment.
+
+The framework the generated code imports (Typer, or rich-click with `use_click`) is added for you,
+pinned to the version installed next to cliffy unless `requires` names it.
+
+## zipapp
+
+The default. A zipapp built with [shiv](https://shiv.readthedocs.io/) contains the CLI and its
+dependencies, downloaded with pip at build time. The other machine needs Python and nothing else.
+
+- The line printed after a build says which Python the file needs. The file checks this when it
+  starts and stops with a readable message on an unsupported interpreter.
+- The file starts with a `#!` line that selects the Python to run it, `/usr/bin/env python3` by
+  default. Change it with `--python`:
+
+    ```console
+    $ cli build notes.yaml -o dist --python "/usr/bin/env python3.12"
+    ```
+
+- Packages with compiled code are bundled for the platform and Python version you build on. Build
+  on the same kind of system you will run on, or stick to pure-Python dependencies.
+- Building the same manifest twice in the same environment gives an identical file.
+- On first run, shiv unpacks the bundled packages to `~/.shiv`. Set the `SHIV_ROOT` environment
+  variable to use another directory.
+
+## script
+
+```console
+$ cli build notes.yaml -o dist --target script
++ notes built 📦
+  dist/notes.py (single file, needs uv, or Python >=3.11 with typer==0.27.3 installed, 3.6 kB)
+  run it with: ./dist/notes.py (or: uv run dist/notes.py)
+  uv downloads the dependencies the first time the script runs
+```
+
+The result is the Python that `cli render` shows, with three things in front of it: a `#!` line, the
+dependencies as [inline script metadata](https://packaging.python.org/en/latest/specifications/inline-script-metadata/)
+and a check of the Python version.
+
+```python
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "typer==0.27.3",
+# ]
+# ///
+```
+
+- With uv installed, `./dist/notes.py` and `uv run dist/notes.py` both work. uv creates an environment
+  with exactly the listed dependencies, downloads them on the first run and reuses them afterwards.
+- Without uv, install the dependencies yourself and run `python dist/notes.py`.
+- Nothing is downloaded at build time, so the build works offline and gives the same file every time.
+- The file is plain text: it can be read, reviewed in a diff and edited. This is the target to pick
+  when the reader should see what they run.
+- `--python` replaces the `#!` line, for example `--python "/usr/bin/env python3"` for machines
+  without uv.
+
+## native
+
+```console
+$ cli build notes.yaml -o dist --target native
++ notes built 📦
+  dist/notes (single file, needs nothing installed, runs on macOS arm64, 30.1 MB)
+  run it with: ./dist/notes
+  the first run unpacks its Python 3.11 (75.0 MB) into the user's data directory, without network access; later runs start right away
+```
+
+The result is one compiled executable. It contains a complete Python with the CLI and its
+dependencies already installed, so the other machine needs neither Python nor network access.
+
+### What the build machine needs
+
+- **Rust.** `cargo` compiles the launcher. Install it from [rustup.rs](https://rustup.rs).
+- **uv.** It downloads the standalone Python and installs the CLI into it. See
+  [Installing uv](https://docs.astral.sh/uv/getting-started/installation/).
+- **Network access**, for that Python, the dependencies and the source of the launcher.
+- About a minute, and 700 MB of temporary disk space that is freed when the build ends.
+
+When `cargo` or `uv` is missing, `cli build` says so and how to install it before it starts.
+
+### How it is built
+
+1. uv downloads a [standalone Python](https://github.com/astral-sh/python-build-standalone) of the
+   version cliffy runs on.
+2. The generated CLI is packaged as a wheel and installed into that Python together with its
+   dependencies.
+3. The result is embedded in [PyApp](https://ofek.dev/pyapp/), a launcher written in Rust, which is
+   compiled into the executable.
+
+### What happens on the other machine
+
+- The executable runs on the operating system and CPU architecture it was built on. Build on each
+  platform you want to support. The target is available on macOS and Linux.
+- The first run unpacks the embedded Python, which takes a second or two, and then starts the CLI.
+  Nothing is downloaded and nothing is installed with pip. Later runs only check that the directory
+  exists.
+- The Python is unpacked to `pyapp/<name>` in the user's data directory
+  (`~/Library/Application Support` on macOS, `~/.local/share` on Linux), and a copy of the archive is
+  kept in the cache directory (`~/Library/Caches/pyapp`, `~/.cache/pyapp`). Together that is about
+  110 MB for a small CLI. Set `PYAPP_INSTALL_DIR_<NAME>`, with the name of the CLI in upper case, to
+  unpack somewhere else. Delete the directory to reclaim the space; the next run unpacks it again.
+- Every argument goes to your CLI. PyApp's own `self` commands are turned off.
+
+`--python` does not apply to this target.
+
+## Things that hold for every target
+
+- Values taken from `env` in `vars` are fixed at build time. See
+  [Vars and Jinja](vars-and-jinja.md#environment-variables).
+- External commands that the CLI runs with `$` lines are not bundled. They have to exist on the
+  other machine.
+
+## Check before you ship
+
+```console
+$ cli test notes.yaml
+$ cli build notes.yaml -o dist
+$ ./dist/notes --help
+```
+
+<!-- docs/guides/generating-docs.md -->
+
+# Generating docs
+
+`cli docs` writes a reference page for your CLI from its manifest: the description, every command
+with its params and aliases, and the examples you provide.
+
+## Add examples
+
+`examples` is a list of command lines with a description each. They are part of the documentation
+`cli docs` writes, and the generated CLI shows them at the end of its own `--help`:
+
+```text
+ Examples:
+
+ $ notes add "buy milk" --tag home  # Add a note tagged home.
+
+ $ notes ls --tag home  # Show only the notes tagged home.
+```
+
+Write an example as you would type it, starting with the name of the CLI. It is shown as written:
+quotes, brackets and backslashes are not interpreted. The help of a single command does not repeat
+the examples.
+
+```yaml
+examples:
+  - command: notes add "buy milk" --tag home
+    description: Add a note tagged home.
+  - command: notes ls --tag home
+    description: Show only the notes tagged home.
+```
+
+Give every example a `description`. A plain string is accepted too, but is rendered with `None` in
+place of the description.
+
+## Generate
+
+```console
+$ cli docs notes.yaml
++ notes.md
+```
+
+| Option | Values | Default |
+|---|---|---|
+| `--format`, `-f` | `md`, `rst`, `html` | `md` |
+| `--output-dir`, `-o` | an existing directory | the current directory |
+
+```console
+$ mkdir -p site
+$ cli docs notes.yaml --format html --output-dir site
++ notes.html
+```
+
+## What the page contains
+
+For the `notes` manifest from the [Quickstart](../quickstart.md), the Markdown output starts like
+this:
+
+````markdown
+# notes v0.1.0
+
+Keep short notes in a JSON file
+
+## Commands
+
+### add
+Add a note
+
+Parameters:
+- text: Text
+- tag: Tag
+
+### list|ls
+List notes, optionally filtered by tag
+
+Parameters:
+- --tag: str (default: "")
+
+Aliases: ls
+````
+
+and ends with the examples:
+
+````markdown
+## Examples
+
+```bash
+notes add "buy milk" --tag home
+```
+Add a note tagged home.
+````
+
+- Commands are listed in manifest order, under the key they have in the manifest.
+- Shorthand and explicit params are listed with their type; explicit params also show their help
+  text. Generic params (plain strings) are left out.
+- Pass a manifest path or the name of a loaded CLI. A loaded CLI is documented from the manifest path
+  recorded by `cli load`.
+
+<!-- docs/blueprints.md -->
+
+# Blueprints
+
+A cliffy manifest describes a CLI in cliffy's own vocabulary: `commands`, `params`, `run`. A **blueprint** lets you
+bring your own vocabulary instead. You define the YAML schema that fits your domain and tell cliffy how it maps
+onto a CLI. Files written in that schema then work with `cli load`, `cli run`, `cli render`, `cli test`, `cli dev`,
+`cli docs` and `cli build`, which turns them into a single-file executable.
+
+```
+your YAML spec ──▶ Blueprint (validate, to_manifest) ──▶ cliffy manifest ──▶ Typer or Click code ──▶ one executable file
+```
+
+## Writing a blueprint
+
+A blueprint is a [pydantic](https://docs.pydantic.dev) model with one required method. The fields are your schema,
+and `to_manifest` returns the cliffy manifest for a validated file.
+
+```python title="tasks.py"
+from pydantic import BaseModel, Field
+
+from cliffy.blueprint import Blueprint
+from cliffy.manifest import CLIManifest, Command, RunBlock
+
+
+class Task(BaseModel):
+    run: str | list[str] = Field(description="Shell line(s) to run, in order.")
+    help: str = Field(default="", description="What the task does, shown in --help.")
+
+
+class Tasks(Blueprint):
+    """Task runner: every entry under `tasks` becomes a command that runs shell lines"""
+
+    name: str = Field(description="Name of the CLI.")
+    version: str = Field(default="0.1.0", description="Version of the CLI.")
+    help: str = Field(default="", description="Description of the CLI.")
+    tasks: dict[str, str | list[str] | Task] = Field(min_length=1, description="Tasks by name.")
+
+    def to_manifest(self) -> CLIManifest:
+        commands = {}
+        for name, entry in self.tasks.items():
+            task = entry if isinstance(entry, Task) else Task(run=entry)
+            lines = [task.run] if isinstance(task.run, str) else task.run
+            script = "\n".join(f"subprocess.run({line!r}, shell=True, check=True)" for line in lines)
+            commands[name] = Command(help=task.help, run=RunBlock(script))
+
+        return CLIManifest(name=self.name, version=self.version, help=self.help, commands=commands)
+```
+
+A file written in that spec names its blueprint with a top-level `blueprint:` key:
+
+```yaml title="tasks.yaml"
+blueprint: tasks.py
+
+name: tasks
+help: Project tasks
+
+tasks:
+  greet: echo "hello from tasks"
+  check:
+    - echo "linting"
+    - echo "testing"
+  release:
+    help: Check, then tag the release
+    run:
+      - echo "linting"
+      - echo "tagging"
+```
+
+```
+$ cli run tasks.yaml -- greet
+hello from tasks
+
+$ cli load tasks.yaml
+$ tasks check
+linting
+testing
+```
+
+`to_manifest` may return a `CLIManifest` or a plain mapping that validates as one. Because the result is an
+ordinary manifest, everything cliffy does with manifests applies: both the Typer and the Click generator
+(`use_click`), `requires`, `tests`, command aliases, callbacks and so on.
+
+The whole file is rendered with Jinja2 before the blueprint sees it, exactly like a manifest.
+
+## Selecting a blueprint
+
+Either in the file, or on the command line. The command line wins.
+
+```yaml
+blueprint: tasks.py
+```
+
+```
+cli run jobs.yaml --blueprint tasks.py -- greet
+```
+
+`--blueprint` / `-b` is available on `load`, `run`, `render`, `build`, `dev`, `test`, `validate` and `docs`.
+`cli update` reuses the blueprint a CLI was loaded with, and `cli info` shows it.
+
+A blueprint reference is one of:
+
+| Reference | Meaning |
+|---|---|
+| `tasks.py`, `./bp/tasks.py:Tasks` | A Python file. In a YAML file the path is relative to that file; on the command line it is relative to the working directory. Add `:ClassName` when the file defines several blueprints. |
+| `mypackage.blueprints:Tasks` | An importable class. `mypackage.blueprints` alone works when the module defines exactly one blueprint. |
+| `tasks` | A blueprint provided by an installed package (see [Sharing blueprints](#sharing-blueprints)). |
+
+Cliffy reports a reference it cannot use and says why: the file or module does not exist, the name is provided by
+more than one package, the module defines no blueprint or more than one, or the target is not a blueprint.
+
+## Validation errors
+
+Unknown keys are rejected by default, so typos are caught. Errors are reported against your spec, with the path
+to the offending key:
+
+```
+$ cli validate server.yaml
+~ server.yaml is not a valid MCPTools spec
+  tools[0].name: Value error, `serve` is a reserved name (got 'serve')
+  tools[1].parameters[0].type: Input should be 'string', 'integer', 'number', 'boolean' or 'array' (got 'strng')
+  tols: Extra inputs are not permitted 💔
+```
+
+Use pydantic validators for rules that go beyond types. To accept unknown keys, set
+`model_config = ConfigDict(extra="ignore")` on your blueprint.
+
+## Hooks
+
+Three optional hooks run around `to_manifest`:
+
+```
+pre_validate(raw) ──▶ validation ──▶ to_manifest() ──▶ post_manifest(manifest) ──▶ code generation ──▶ post_codegen(code)
+```
+
+| Hook | Receives | Use it to |
+|---|---|---|
+| `pre_validate(cls, raw)` (classmethod) | The YAML mapping, without the `blueprint` key | Accept shorthand forms, set defaults, rename legacy keys |
+| `post_manifest(self, manifest)` | The `CLIManifest` | Adjust the manifest, i.e. add commands every CLI of this kind gets |
+| `post_codegen(self, code)` | The generated Python source | Adjust the generated code, i.e. prepend a license header |
+
+```python
+class Tasks(Blueprint):
+    ...
+
+    @classmethod
+    def pre_validate(cls, raw):
+        # allow `jobs:` as an older name for `tasks:`
+        if "jobs" in raw:
+            raw = {**raw, "tasks": raw.pop("jobs")}
+        return raw
+
+    def post_codegen(self, code):
+        return "# generated from a Tasks spec, do not edit\n" + code
+```
+
+## Editor completion
+
+`cli blueprint schema` prints the JSON schema of a blueprint's spec.
+
+```
+cli blueprint schema tasks.py -o tasks.schema.json
+```
+
+Reference it from your YAML files to get validation and completion from the YAML language server:
+
+```yaml
+# yaml-language-server: $schema=tasks.schema.json
+blueprint: tasks.py
+```
+
+Field descriptions (`Field(description=...)`) show up as hover documentation.
+
+## Building a single-file executable
+
+`cli build` applies the blueprint at build time and bundles the generated CLI with its dependencies into one
+executable [zipapp](https://docs.python.org/3/library/zipapp.html). With `--target script` or `--target native`
+the same file becomes a single Python script or a compiled executable instead; see
+[Building executables](guides/building.md).
+
+```
+$ cli build tasks.yaml -o dist
++ tasks built 📦
+  dist/tasks (single file, needs Python >=3.10, 1.8 MB)
+  run it with: ./dist/tasks
+
+$ ./dist/tasks greet
+hello from tasks
+```
+
+The file runs on any machine with a matching Python. It does not need cliffy, the blueprint, pydantic or the YAML
+file.
+
+* **Dependencies.** Whatever the manifest lists under `requires` is bundled. Let your blueprint set `requires`
+  for the packages its generated code imports. The CLI framework (typer, or rich-click with `use_click`) is added
+  automatically, pinned to the version installed next to cliffy unless `requires` names it.
+* **Interpreter.** `--python` / `-p` sets the shebang, by default `/usr/bin/env python3`. The build reports which
+  Python versions the bundle supports. A bundle of pure-Python packages runs on every version its packages accept.
+  A bundle with compiled extensions only runs on the Python minor version it was built with, so build with the
+  version you deploy to. Started with an unsupported Python, the executable exits with a message that says so.
+* **Reproducible.** Building the same input twice with the same package versions gives a byte-identical file.
+* **Errors.** When a dependency cannot be installed, the build prints pip's reason and writes no file.
+
+On first run the executable unpacks its packages into `~/.shiv` (set `SHIV_ROOT` to change the location).
+
+## Sharing blueprints
+
+A package can register blueprints under the `cliffy.blueprints` entry-point group:
+
+```toml title="pyproject.toml"
+[project.entry-points."cliffy.blueprints"]
+tasks = "mypackage.blueprints:Tasks"
+```
+
+Once the package is installed, the blueprint is available by name:
+
+```yaml
+blueprint: tasks
+```
+
+```
+$ cli blueprints
+┏━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Name  ┃ Blueprint                  ┃ Package   ┃ Description                       ┃
+┡━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ tasks │ mypackage.blueprints:Tasks │ mypackage │ Task runner: every entry under... │
+└───────┴────────────────────────────┴───────────┴───────────────────────────────────┘
+```
+
+`cli blueprints` is short for `cli blueprint list`. The description is the first line of the class docstring.
+
+## Examples
+
+Two worked examples live in [`examples/blueprints`](https://github.com/jaykv/cliffy/tree/main/examples/blueprints):
+
+* `tasks.py` with `tasks.yaml`: the task runner from this page.
+* `mcp_tools.py` with `text-tools.yaml`: an [MCP](https://modelcontextprotocol.io) tool server. The spec lists
+  tools with typed parameters and a Python body. The generated CLI has one command per tool, a `tools` command
+  that prints the tool definitions, and a `serve` command that speaks MCP over stdio without extra dependencies.
+  `cli build examples/blueprints/text-tools.yaml` gives a single file you can register as an MCP server.
+
+## Callbacks
+
+Callbacks are a manifest feature that blueprints often need: code that runs before every command of the CLI, or
+of one command group. They work with both Typer and Click, and the built-in `--version` and `--aliases` options
+stay in place.
+
+```yaml
+callbacks:
+  # no `group`: runs before every command, its params become options of the CLI itself
+  - params:
+      - name: --verbose
+        type: bool
+        default: false
+        short: -v
+        help: Print what is about to run
+    invoke_without_command: true
+    run: |
+      ctx.obj = {"verbose": verbose}
+      if ctx.invoked_subcommand is None:
+          print("no command given, try --help")
+      elif verbose:
+          print(f"running {ctx.invoked_subcommand}")
+
+  # runs before every command of the `db` group
+  - group: db
+    run: print("connecting to db")
+
+commands:
+  hello: print("hello")
+  db.migrate: print("migrating")
+```
+
+```
+$ mycli --verbose db migrate
+running db
+connecting to db
+migrating
+```
+
+| Key | Meaning |
+|---|---|
+| `run` | Code to run. The Typer or Click context is available as `ctx`. |
+| `group` | Command group the callback belongs to, i.e. `db` or `db.tables`. Leave it out for the CLI itself. |
+| `params` | Options given before the command name, in the same syntax as command params. |
+| `invoke_without_command` | Also run when no command is given, instead of showing the help. |
+
+Several callbacks for the same target run in the order given. A manifest with only callbacks and no `commands`
+is valid, which makes a single-purpose CLI.
+
+<!-- docs/ai.md -->
+
+# AI commands
+
+Cliffy includes AI-powered commands that generate manifests and answer questions about cliffy. They live in the `cli ai` command group; every option is listed in the [CLI reference](reference/cli.md#cli-ai).
+
+The AI commands are a convenience. Nothing else in cliffy needs a model: a manifest written by hand, or by an agent from the [manifest schema](reference/manifest.md), works the same way.
+
+!!! note
+    Requires the `ai` extra: `pip install "cliffy[ai]"`. See [Installation](installation.md#extras).
+    Without it, `cli ai` commands exit with an install hint; the rest of cliffy is unaffected.
+
+## Choosing a model
+
+The AI commands are built on [Pydantic AI](https://pydantic.dev/docs/ai/models/overview/) and work with any model it supports. Models are named `provider:model`, and each provider reads its API key from its usual environment variable.
+
+The model is picked in this order:
+
+1. the `--model` / `-m` option
+2. the `CLIFFY_AI_MODEL` environment variable
+3. a default for the first provider that has an API key set:
+
+    | API key | Default model |
+    |---|---|
+    | `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) | `google:gemini-flash-latest` |
+    | `ANTHROPIC_API_KEY` | `anthropic:claude-sonnet-5-5` |
+    | `OPENAI_API_KEY` | `openai:gpt-5.4-mini` |
+
+```bash
+# use the default model of the provider whose key is set
+export ANTHROPIC_API_KEY='your-api-key'
+cli ai generate mycli "Create a todo app"
+
+# pick a model for one command
+cli ai generate mycli "Create a todo app" --model openai:gpt-5.5
+
+# or for the whole shell session
+export CLIFFY_AI_MODEL=google:gemini-2.5-pro
+```
+
+!!! tip
+    Use `--preview` to print the fully constructed prompt instead of sending it. This needs neither a model nor an API key.
+
+## Generating a manifest
+
+Generate complete CLI manifests from natural language descriptions:
+
+```bash
+cli ai generate mycli "Create a CLI for managing docker containers with commands to list, start, stop and remove containers"
+cli load mycli.yaml
+```
+
+The model's reply is validated before anything is written: it has to be valid YAML, match the manifest schema, and produce a CLI that is valid Python. A reply that fails is sent back to the model together with the reason, up to `--retries` times (default 2). If no valid manifest comes back, the command fails and writes nothing.
+
+`mycli.yaml` is written to the current directory, or to `--output-dir`. An existing file is only replaced with `--force`.
+
+!!! warning
+    Validation checks that the manifest loads, not that the commands do what you asked. Read the generated run blocks before running the CLI.
+
+## Asking questions
+
+Get AI assistance for understanding and working with cliffy:
+
+```bash
+cli ai ask "How do I create nested subcommands?"
+```
+
+The question is answered from a reference built from your installed cliffy version: its command list, the annotated `cli init` template and the manifest JSON schema.
+
+You can also get targeted help about specific CLIs by referencing a manifest or a loaded CLI:
+
+```bash
+cli ai ask --cli mycli.yaml "How do I add input validation to the start command?"
+```
+
+The answer is printed to stdout and token usage to stderr, so the answer can be redirected to a file.
+
+## Giving cliffy's documentation to an agent
+
+`cli ai llms-txt` prints cliffy's documentation as a single text file in the [llms.txt](https://llmstxt.org/) layout: the quickstart, the guides and the CLI and manifest references.
+
+```bash
+cli ai llms-txt > cliffy-llms.txt
+```
+
+The file is bundled with the installed package, so it needs no network access, no model and no `ai` extra, and it always describes the version you have installed. Put it in the context of a coding agent and it can write and fix manifests without looking anything up.
+
+The same file is published with the documentation at [`/llms.txt`](llms.txt).
+
+<!-- docs/reference/cli.md -->
+
+<!--
+  GENERATED FILE - do not edit by hand.
+  Source: scripts/docs.py. Regenerate with `make docs-generate`.
+-->
+
+# CLI reference
+
+Installing cliffy adds two identical entry points, `cli` and `cliffy`. This page uses `cli`.
+It is generated from the command definitions in `cliffy/cli.py` and `cliffy/ai.py`, so the
+arguments, options and defaults below are the ones the installed version accepts.
+
+```text
+cli [OPTIONS] COMMAND [ARGS]...
+```
+
+## Commands at a glance
+
+| Command | Description |
+|---|---|
+| [`cli ai`](#cli-ai) | AI-powered commands. `generate` and `ask` require the `ai` extra: pip install 'cliffy[ai]' |
+| [`cli blueprint`](#cli-blueprint) | Work with blueprints: custom YAML specs that map onto a CLI |
+| [`cli build`](#cli-build) | Build a CLI manifest or a loaded CLI into a single file to hand to someone else |
+| [`cli dev`](#cli-dev) | Start hot-reloader for a manifest for active development. |
+| [`cli docs`](#cli-docs) | Generate documentation for a CLI |
+| [`cli info`](#cli-info) | Display CLI info |
+| [`cli init`](#cli-init) | Generate a CLI manifest template |
+| [`cli list`](#cli-list) | List all CLIs loaded |
+| [`cli load`](#cli-load) | Load CLI for given manifest(s) |
+| [`cli remove`](#cli-remove) | Remove a loaded CLI by name |
+| [`cli remove-all`](#cli-remove-all) | Remove all loaded CLIs |
+| [`cli render`](#cli-render) | Render the CLI manifest generation as code |
+| [`cli run`](#cli-run) | Run CLI for a manifest |
+| [`cli test`](#cli-test) | Run tests defined in a manifest |
+| [`cli update`](#cli-update) | Reloads CLI by name |
+| [`cli validate`](#cli-validate) | Validate a CLI manifest: its structure, its requirements and the code generated from it |
+
+## Global options
+
+| Option | Description |
+|---|---|
+| `--version` | Print the version and exit. |
+| `--aliases` | List the command aliases and exit. |
+| `-h`, `--help` | Show help. Every command accepts this option. |
+
+## Aliases
+
+Aliases are hidden from `cli --help`. `cli --aliases` prints this list.
+
+| Alias | Command |
+|---|---|
+| `cli ls` | [`cli list`](#cli-list) |
+| `cli add` | [`cli load`](#cli-load) |
+| `cli reload` | [`cli update`](#cli-update) |
+| `cli rm` | [`cli remove`](#cli-remove) |
+| `cli rm-all` | [`cli remove-all`](#cli-remove-all) |
+| `cli rmall` | [`cli remove-all`](#cli-remove-all) |
+| `cli blueprints` | [`cli blueprint list`](#cli-blueprint-list) |
+
+## `cli ai`
+
+AI-powered commands. `generate` and `ask` require the `ai` extra: pip install 'cliffy[ai]'
+
+```text
+cli ai [OPTIONS] COMMAND [ARGS]...
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--help` | flag | no |  | Show this message and exit. |
+
+`generate` and `ask` need the `ai` extra (`pip install "cliffy[ai]"`). Both send the manifest JSON
+schema to the model as part of the prompt and print token usage when they finish. `llms-txt` needs no
+extra and calls no model.
+
+Model names use the pydantic-ai `provider:model` form, and the API key of that provider must be set in
+the environment. Without `--model`, the `CLIFFY_AI_MODEL` environment variable is used, then a default
+for the first provider that has an API key set. See [AI commands](../ai.md).
+
+### `cli ai ask`
+
+Ask a question about cliffy or a specific CLI manifest.
+
+```text
+cli ai ask [OPTIONS] PROMPT
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `PROMPT` | text | yes |  | Your question. |
+| `--preview` | flag | no |  | Print the prompt instead of sending it. Needs no model. |
+| `--max-tokens` | integer range | no |  | Maximum number of tokens in a model response. |
+| `-m`, `--model` | text | no |  | Model to use, as `provider:model`. See https://pydantic.dev/docs/ai/models/overview/. Defaults to a model of the first provider with an API key set, else google:gemini-flash-latest. |
+| `--cli` | file | no |  | Loaded CLI or manifest to include in the prompt as reference. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+`--preview` prints the prompt and exits without calling a model.
+
+### `cli ai generate`
+
+Generate a CLI manifest based on a description.
+
+```text
+cli ai generate [OPTIONS] CLI_NAME DESCRIPTION
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `CLI_NAME` | text | yes |  | Name of the CLI. The manifest is written to `<cli_name>.yaml`. |
+| `DESCRIPTION` | text | yes |  | Plain-language description of the CLI you want. |
+| `--preview` | flag | no |  | Print the prompt instead of sending it. Needs no model. |
+| `--max-tokens` | integer range | no |  | Maximum number of tokens in a model response. |
+| `-m`, `--model` | text | no |  | Model to use, as `provider:model`. See https://pydantic.dev/docs/ai/models/overview/. Defaults to a model of the first provider with an API key set, else google:gemini-flash-latest. |
+| `--retries` | integer range | no | `2` | How often to send an invalid manifest back to the model to be fixed. |
+| `-f`, `--force` | flag | no |  | Overwrite the manifest file if it exists. |
+| `-o`, `--output-dir` | directory | no | `.` | Output directory |
+| `--help` | flag | no |  | Show this message and exit. |
+
+The reply of the model is validated before the manifest is written, and sent back with the reason when
+it is not a manifest cliffy can load. `--preview` prints the prompt and exits without calling a model.
+
+### `cli ai llms-txt`
+
+Print the bundled cliffy documentation as llms.txt. Needs no model.
+
+```text
+cli ai llms-txt [OPTIONS]
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--help` | flag | no |  | Show this message and exit. |
+
+Prints the documentation that is bundled with the installed cliffy as one text file, in the
+[llms.txt](https://llmstxt.org/) layout. It needs no model, no API key and no `ai` extra, so it works
+offline and always matches the installed version.
+
+```console
+$ cli ai llms-txt > cliffy-llms.txt
+$ cli ai llms-txt | pbcopy
+```
+
+Give the output to a coding agent, or add it to a project's context, so that it can write manifests
+without looking anything up.
+
+## `cli blueprint`
+
+Work with blueprints: custom YAML specs that map onto a CLI
+
+```text
+cli blueprint [OPTIONS] COMMAND [ARGS]...
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--help` | flag | no |  | Show this message and exit. |
+
+A blueprint lets a YAML file use its own keys instead of `commands` and `params`, and maps them onto a
+CLI. See [Blueprints](../blueprints.md).
+
+### `cli blueprint list`
+
+List the blueprints provided by installed packages
+
+```text
+cli blueprint list [OPTIONS]
+```
+
+Alias: `cli blueprints`
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--help` | flag | no |  | Show this message and exit. |
+
+Lists the blueprints that installed packages register under the `cliffy.blueprints` entry point group.
+A blueprint in a `.py` file or referenced as `module:Class` works without being listed.
+
+```console
+$ cli blueprint list
+No blueprints installed. Use a .py file or module:Class reference, or install a blueprint package.
+```
+
+### `cli blueprint schema`
+
+Print the JSON schema of a blueprint's spec, for validation and editor completion
+
+```text
+cli blueprint schema [OPTIONS] BLUEPRINT
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `BLUEPRINT` | text | yes |  | Blueprint reference: a `.py` file, `module:Class` or the name of an installed blueprint. |
+| `-o`, `--output` | file | no |  | Write the schema to a file |
+| `--help` | flag | no |  | Show this message and exit. |
+
+```console
+$ cli blueprint schema examples/blueprints/tasks.py -o tasks.schema.json
++ tasks.schema.json
+```
+
+Point a `# yaml-language-server: $schema=` comment at the file to get completion and validation for
+files written in the blueprint's spec.
+
+## `cli build`
+
+Build a CLI manifest or a loaded CLI into a single file to hand to someone else
+
+```text
+cli build [OPTIONS] [CLI_OR_MANIFESTS]...
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `[CLI_OR_MANIFESTS]...` | file | no |  | Manifest files (paths ending in `yaml`) or names of loaded CLIs. |
+| `-t`, `--target` | `zipapp` \| `script` \| `native` | no | `zipapp` | What to build: `zipapp` is a zipapp with its dependencies bundled, which needs a compatible Python; `script` is a .py script that declares its dependencies inline, which needs uv or an environment with them; `native` is a compiled executable that brings its own Python and needs nothing installed (built with cargo and uv). |
+| `-o`, `--output-dir` | directory | no |  | Output dir |
+| `-p`, `--python` | text | no |  | Interpreter for the #! line of a zipapp or a script, added after the #!. [default: /usr/bin/env python3 for a zipapp, /usr/bin/env -S uv run --script for a script] |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Builds one file to hand to someone else. `--target` chooses what kind:
+
+| Target | What you get | Needs on the other machine |
+|---|---|---|
+| `zipapp` | `hello`, a [zipapp](https://docs.python.org/3/library/zipapp.html) built with [shiv](https://shiv.readthedocs.io/) that contains the dependencies | A compatible Python |
+| `script` | `hello.py`, a script with its dependencies declared inline | [uv](https://docs.astral.sh/uv/), or Python with the dependencies installed |
+| `native` | `hello`, a compiled executable with its own Python | Nothing |
+
+Every target ships the generated CLI, the framework it imports (Typer, or rich-click with
+`use_click`) and every package listed under `requires`. Without `--output-dir` the file is written
+to the current directory.
+
+```console
+$ cli build hello.yaml -o dist
++ hello built 📦
+  dist/hello (single file, needs Python >=3.10, 1.8 MB)
+  run it with: ./dist/hello
+$ ./dist/hello greet Ada
+Hello, Ada!
+$ cli build hello.yaml -o dist --target script
++ hello built 📦
+  dist/hello.py (single file, needs uv, or Python >=3.11 with typer==0.27.3 installed, 1.3 kB)
+  run it with: ./dist/hello.py (or: uv run dist/hello.py)
+  uv downloads the dependencies the first time the script runs
+```
+
+The `native` target needs `cargo` and `uv` on the machine that builds. When a build fails, the
+reason is printed and the exit code is `1`. With `--blueprint`, or a `blueprint:` key in the file,
+the blueprint is applied at build time and is not needed to run the result.
+
+See [Building executables](../guides/building.md).
+
+## `cli dev`
+
+Start hot-reloader for a manifest for active development.
+
+Examples:
+
+- cli dev examples/hello.yaml
+
+- cli dev examples/hello.yaml --run-cli  -- -h
+
+- cli dev examples/hello.yaml --run-cli python
+
+```text
+cli dev [OPTIONS] MANIFEST [RUN_CLI_ARGS]...
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `MANIFEST` | file | yes |  | Manifest file to watch. |
+| `[RUN_CLI_ARGS]...` | text | no |  | Arguments for the generated CLI when `--run-cli` is set. |
+| `--run-cli` | flag | no |  | If passed, runs CLI on each reload. Useful for syntax checks or testing command execution on each reload |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Nothing is loaded when the command starts. The CLI is loaded the first time the file changes and
+again on every later change. The manifests it includes and the Python file of its blueprint are
+watched too. Stop with Ctrl+C.
+
+With `--run-cli`, the remaining arguments are passed to the freshly generated CLI after each reload.
+Put `--` before them when they include options.
+
+See [Hot-reload dev loop](../guides/dev-loop.md).
+
+## `cli docs`
+
+Generate documentation for a CLI
+
+```text
+cli docs [OPTIONS] CLI_OR_MANIFEST
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `CLI_OR_MANIFEST` | file | yes |  | Manifest file (a path ending in `yaml`) or the name of a loaded CLI. |
+| `-f`, `--format` | `md` \| `rst` \| `html` | no | `md` | Output format. |
+| `-o`, `--output-dir` | directory | no |  | Output directory |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Writes `<name>.md`, `<name>.rst` or `<name>.html` to the output directory, or to the current directory
+when `--output-dir` is not given. The output directory must exist.
+
+A loaded CLI is documented from the manifest path recorded by `cli load`.
+
+See [Generating docs](../guides/generating-docs.md).
+
+## `cli info`
+
+Display CLI info
+
+```text
+cli info [OPTIONS] CLI_NAME
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `CLI_NAME` | text | yes |  | Name of a loaded CLI. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Prints the name, version, requirements, blueprint (when one was used), age and stored manifest of a
+loaded CLI.
+
+## `cli init`
+
+Generate a CLI manifest template
+
+```text
+cli init [OPTIONS] [CLI_NAME]
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `[CLI_NAME]` | text | no | `mycli` | Name of the CLI. The manifest is written to `<cli_name>.yaml`. |
+| `--render` | flag | no |  | Print template to terminal directly |
+| `--raw` | flag | no |  | Raw template without boilerplate helpers and examples. |
+| `--json-schema` | flag | no |  | Write JSON schema (cliffy_schema.json) file to the current directory. Useful for development. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+```console
+$ cli init mycli --raw
++ mycli.yaml
+```
+
+`--raw` writes a skeleton with every top-level key, one `hello` command and one test. Without `--raw`
+the manifest is a commented tour of the format with example commands. Both run and pass `cli test` as
+written.
+
+`--json-schema` also writes `cliffy_schema.json` and adds a `# yaml-language-server` comment that points
+at it. See [Editor setup](../guides/editor-setup.md).
+
+## `cli list`
+
+List all CLIs loaded
+
+```text
+cli list [OPTIONS]
+```
+
+Alias: `cli ls`
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--help` | flag | no |  | Show this message and exit. |
+
+```console
+$ cli list
+┏━━━━━━━┳━━━━━━━━━┳━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Name  ┃ Version ┃ Age ┃ Manifest                ┃
+┡━━━━━━━╇━━━━━━━━━╇━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ hello │ 0.1.0   │ 5s  │ /home/ada/hello.yaml    │
+└───────┴─────────┴─────┴─────────────────────────┘
+```
+
+## `cli load`
+
+Load CLI for given manifest(s)
+
+```text
+cli load [OPTIONS] [MANIFESTS]...
+```
+
+Alias: `cli add`
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `[MANIFESTS]...` | file | no |  | One or more manifest files to load. |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Loading does three things:
+
+1. generates the CLI code and writes it to `cliffy/clis/<name>.py` inside the installed cliffy package,
+2. writes a launcher script called `<name>` into the `bin` directory of the Python environment cliffy
+   is installed in,
+3. records the manifest path and contents so that `cli list`, `cli info` and `cli update` can find it.
+
+The CLI is therefore available wherever that environment is active. Packages listed under `requires`
+must already be installed, otherwise loading stops with `missing requirement`.
+
+A file written in a [blueprint](../blueprints.md)'s spec is loaded the same way. The blueprint comes from
+`--blueprint` or from the file's `blueprint:` key and is remembered, so `cli update` applies it again.
+
+```console
+$ cli load hello.yaml
+✨ Generated hello CLI v0.1.0 ✨
+$ hello -h
+```
+
+See [Hot-reload dev loop](../guides/dev-loop.md).
+
+## `cli remove`
+
+Remove a loaded CLI by name
+
+```text
+cli remove [OPTIONS] [CLI_NAMES]...
+```
+
+Alias: `cli rm`
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `[CLI_NAMES]...` | text | no |  | Names of loaded CLIs to remove. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Deletes the launcher script, the generated module and the stored metadata.
+
+```console
+$ cli remove hello
+~ hello removed 💥
+```
+
+## `cli remove-all`
+
+Remove all loaded CLIs
+
+```text
+cli remove-all [OPTIONS]
+```
+
+Aliases: `cli rm-all`, `cli rmall`
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `--help` | flag | no |  | Show this message and exit. |
+
+## `cli render`
+
+Render the CLI manifest generation as code
+
+```text
+cli render [OPTIONS] MANIFEST
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `MANIFEST` | file | yes |  | Manifest file to render. |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Prints the Python module cliffy generates, without loading or running it. Use it to see exactly how
+params, shell lines and templates are translated.
+
+```console
+$ cli render hello.yaml
+```
+
+## `cli run`
+
+Run CLI for a manifest
+
+```text
+cli run [OPTIONS] MANIFEST [CLI_ARGS]...
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `MANIFEST` | file | yes |  | Manifest file to run. |
+| `[CLI_ARGS]...` | text | no |  | Arguments passed to the generated CLI. Put `--` first when they include options. |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Generates the CLI in a temporary file and runs it once, without loading it. Options meant for your
+CLI must come after `--`, otherwise `cli run` tries to parse them itself:
+
+```console
+$ cli run hello.yaml greet Ada
+Hello, Ada!
+$ cli run hello.yaml -- greet Ada --shout
+HELLO, ADA!
+$ cli run hello.yaml -- --help
+```
+
+Help output shows the temporary file name instead of the CLI name.
+
+## `cli test`
+
+Run tests defined in a manifest
+
+```text
+cli test [OPTIONS] MANIFEST
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `MANIFEST` | file | yes |  | Manifest file whose `tests` section should run. |
+| `-x`, `--exitfirst` | flag | no |  | exit instantly on first error or failed test. |
+| `--traceback` | flag | no |  | Also print the full Python traceback of a command that raises. |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Runs the `tests` section of a manifest and prints each command, its output and the result. The exit
+code is `0` only when every test passes. It is `1` when a test fails or when the manifest has no tests.
+
+See [Testing manifests](../guides/testing.md).
+
+## `cli update`
+
+Reloads CLI by name
+
+```text
+cli update [OPTIONS] [CLI_NAMES]...
+```
+
+Alias: `cli reload`
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `[CLI_NAMES]...` | text | no |  | Names of loaded CLIs to regenerate from their manifests. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+`update` re-reads the manifest from the path recorded by `cli load`, so it only works while the manifest
+is still at that location.
+
+```console
+$ cli update hello
+✨ Reloaded hello CLI v0.1.0 ✨
+$ hello -h
+```
+
+## `cli validate`
+
+Validate a CLI manifest: its structure, its requirements and the code generated from it
+
+```text
+cli validate [OPTIONS] MANIFEST
+```
+
+| Argument or option | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `MANIFEST` | file | yes |  | Manifest file to validate. |
+| `-b`, `--blueprint` | text | no |  | Blueprint that maps a custom YAML spec onto a CLI: a .py file, module:Class or an installed blueprint name. Overrides the `blueprint:` key of the file. |
+| `--help` | flag | no |  | Show this message and exit. |
+
+Checks that the file is valid YAML, matches the manifest schema, that its `requires` are installed and
+that the generated code works. Scripts are checked while the code is generated, as they are by every
+other command. `validate` then compiles and imports the generated code, which defines the commands
+without running any of them. The code in `imports` and `functions` and the expressions in `vars` do run.
+
+```console
+$ cli validate hello.yaml
+Manifest hello.yaml is valid
+```
+
+An error in a script is reported with its command, line and column. A problem that only shows when
+the code is imported, such as a type that does not exist, is reported against the command it comes
+from:
+
+```console
+$ cli validate broken.yaml
+~ error in broken.yaml: command `db.create`, run, line 2, column 7: not valid Python: '(' was never closed
+    print((
+          ^ 💔
+$ cli validate other.yaml
+Manifest other.yaml is invalid: the generated code does not work
+  command `db.create`: NameError: name 'Table' is not defined
+    def db_create(table: Table = typer.Argument(...)): 💔
+```
+
+<!-- docs/reference/manifest.md -->
+
+<!--
+  GENERATED FILE - do not edit by hand.
+  Source: scripts/docs.py. Regenerate with `make docs-generate`.
+-->
+
+# Manifest reference
+
+Every key a manifest accepts. The tables are generated from the pydantic models in
+`cliffy/manifest.py`, the same models that produce the
+[JSON schema](https://github.com/jaykv/cliffy/blob/main/examples/cliffy_schema.json) used for
+[editor completion](../guides/editor-setup.md). The notes under each table are written by hand.
+
+## Top-level keys
+
+The top level of a manifest file.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `manifestVersion` | string | `"v3"` | Manifest schema version. `v3` is the only version that is read; any other value is an error. |
+| `name` | string | **required** | The name of the CLI, used when invoking from command line. |
+| `version` | string | **required** | CLI version |
+| `help` | string | `""` | Brief description of the CLI |
+| `use_click` | boolean | `false` | Generate CLI to Click instead of Typer |
+| `requires` | list of strings | `[]` | Python packages the CLI needs, as requirement specifiers such as `rich` or `tabulate>=0.9.0`. Checked when the manifest is loaded and bundled by `cli build`. |
+| `includes` | list of strings | `[]` | Paths of other manifest files to merge into this one, relative to this file. Keys set in this manifest win over included ones and lists are combined. When two included files set the same key, the first one listed wins. |
+| `vars` | mapping of name to (string or `{expression}`) | `{}` | Variables for the manifest. Each one can be used anywhere in the file as `{{ name }}` and is also defined as a module-level Python variable in the generated CLI. A value is a string, a number, a boolean, or a Python expression written as `{expression}`. String values are Jinja2 templates: they can use other vars, and `env` gives access to environment variables. |
+| `imports` | string or list of strings | `[]` | String block or list of strings containing any module imports. These can be used to import any python modules that the CLI depends on. |
+| `functions` | string or list of strings | `[]` | String block or list of helper function definitions. These functions should be defined as strings that can be executed by the Python interpreter. |
+| `types` | mapping of name to string | `{}` | A mapping containing any shared type definitions. These types can be referenced by name in the params section to provide type annotations for args and options defined in the params section. A value is a plain type such as `int`, optionally with a default (`int = 5`), or a complete definition: `str = typer.Option(...)` for Typer, a decorator such as `@click.option(...)` for Click. |
+| `global_params` | list of [params](#params) | `[]` | Parameters applied to all commands |
+| `command_templates` | mapping of name to [CommandTemplate](#commandtemplate) | `{}` | Reusable command templates |
+| `commands` | mapping of name to ([Command](#command), string or list of strings) or list of [Command](#command) | `{}` | The commands of the CLI, keyed by name. In a key, `.` separates groups, `\|` separates aliases and a leading `(*)` adds the command to every group. |
+| `callbacks` | list of [Callback](#callback) | `[]` | Code that runs before any command of the CLI, or of one command group. Callbacks for the same target run in the order given and their params are combined. The built-in --version and --aliases options are kept. |
+| `cli_options` | mapping | `{}` | Additional CLI configuration options |
+| `tests` | list of (string or mapping of name to string) | `[]` | Test cases for commands |
+| `examples` | list of (string or [Example](#example)) | `[]` | Example command lines of the CLI, with an optional description each. Shown at the end of the `--help` of the generated CLI and in the pages written by `cli docs`. |
+
+- `name` and `version` are the only required keys. `version` must be a string, so quote values such as
+  `"1.0"`. `commands` can be left out for a CLI that only has `callbacks`.
+- Unknown top-level keys are ignored.
+- `manifestVersion` can be left out. A value other than `v3` stops the load with an error that says
+  what to change. This also applies to include files and to files written in a blueprint's spec.
+- `vars` keys must be valid Python identifiers. A value is a string, a number, a boolean, or a one-key
+  mapping such as `{os.getcwd()}`, which is emitted as a Python expression. See
+  [Vars and Jinja](../guides/vars-and-jinja.md).
+- `cli_options` is passed as keyword arguments to `typer.Typer(...)`, or to `click.group(...)` when
+  `use_click` is set. Useful Typer values are `add_completion: false` and `no_args_is_help: true`.
+- `commands` is usually a mapping. A list of [Command](#command) mappings that each set `name` is also
+  accepted.
+- Each `tests` entry is either a string starting with `$` or `>` (a shell step) or a one-key mapping of
+  command line to assertion code. See [Testing manifests](../guides/testing.md).
+
+## Command
+
+Defines a single command within the CLI. It specifies the command's execution logic, parameters, and configuration.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `run` | string or list of strings | `""` | The script to run. A string, or a list of strings that are joined with newlines. Lines starting with `$` or `>` are shell commands. |
+| `help` | string | `""` | A description of the command, displayed in the help output. |
+| `params` | list of [params](#params) | `[]` | The parameters of the command. Each entry takes one of three forms: a shorthand mapping of the param name to its type, such as `name: str!` or `--count: int = 1`; an explicit mapping with the keys `name` and `type` and optionally `default`, `help`, `short` and `required`; or a string that is copied into the generated code as written (a signature entry for Typer, a decorator for Click). |
+| `template` | string | `""` | A reference to a command template defined in the `command_templates` section of the manifest. This allows for reusable command definitions. |
+| `pre_run` | string | `""` | Script to run before the command's run block. This can be used for setup tasks or preconditions. |
+| `post_run` | string | `""` | Script to run after the command's run block. This can be used for cleanup tasks or post-processing. |
+| `aliases` | list of strings | `[]` | A list of aliases for the command. These aliases can be used to invoke the command with a different name. |
+| `name` | string | `""` | The name of the command. This is generally derived from the key in the `commands` section of the manifest, but can be explicitly set here. |
+| `config` | [CommandConfig](#commandconfig) or null | `null` | An optional `CommandConfig` object that provides additional configuration options for the command, such as context settings, help text customization, and visibility. |
+
+A command value can also be just a string or a list of strings, which is shorthand for a mapping with
+only `run`.
+
+The key of the command carries meaning: `.` separates groups (`db.create`), `|` separates aliases
+(`delete|rm`) and a leading `(*)` adds the command to every group. See
+[Commands, groups and aliases](../guides/commands.md).
+
+A command that has `help` and no `run`, and whose key is the name of a group, sets the help text of
+that group.
+
+## Params
+
+Every entry of a `params` list (on a command, a template or `global_params`) takes one of three forms.
+
+### Shorthand
+
+A one-key mapping: the key is the name, the value is the type.
+
+| Part | Meaning | Example |
+|---|---|---|
+| `name` | Positional argument | `source: str` |
+| `--name` | Option | `--count: int` |
+| `--name|-n` | Option with a short alias | `--count|-c: int` |
+| `type!` | Required | `source: str!` |
+| `type = value` | Default value, written as a Python expression | `target: str = "out.txt"` |
+| a name from `types` | Reuse a type or a full definition | `level: Level` |
+
+Hyphens in a name become underscores in the Python variable (`--dry-run` is `dry_run`).
+
+### Explicit
+
+A mapping with the keys of [CommandParam](#commandparam), which adds `help` text.
+
+### Generic
+
+A plain string that is copied into the generated function signature as written, for example
+`'lines: int = typer.Option(10, "--lines", "-n", min=1)'`. With the Click backend the string is a
+decorator such as `"@click.option('--loud', is_flag=True)"`.
+
+See [Params and types](../guides/params.md) for worked examples of all three.
+
+## CommandParam
+
+Defines the structure of a command parameter. It is used within the `params` field of a `Command` object. By default, parameters are treated as positional arguments. To specify an option, prefix the name with `--` to indicate flag.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | **required** | Parameter name. Prefix with `--` to indicate an option. |
+| `type` | string | **required** | Parameter type (e.g., 'str', 'int', 'bool', or a custom type defined in the manifest's 'types' section). |
+| `default` | any | `null` | Default parameter value. |
+| `help` | string | `""` | Parameter description. |
+| `short` | string | `""` | Short option alias. i.e. '-v' for verbose. |
+| `required` | boolean | `false` | Whether the parameter is required. |
+
+This is the explicit form. A `name` without `--` is a positional argument, with both backends. `short`
+is written with its dash (`-w`). A `str` default is quoted for you; other defaults are emitted as
+written.
+
+## CommandTemplate
+
+Defines a reusable template for command definitions. Templates allow you to define common parameters, pre-run/post-run scripts, and configuration options that can be applied to multiple commands.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `params` | list of [params](#params) | `[]` | A list of parameters for the command template. These parameters will be applied to any command that uses this template. |
+| `pre_run` | string | `""` | Script to run before the command's run and pre-run block. This script will be applied to any command that uses this template. |
+| `post_run` | string | `""` | Script to run after the command's run and post-run block. This script will be applied to any command that uses this template. |
+| `config` | [CommandConfig](#commandconfig) or null | `null` | Additional configuration options for commands using this template. This allows customization of help text, context settings, and other Typer command parameters. |
+
+Template `params` are placed before the command's own params. Scripts run in this order: template
+`pre_run`, command `pre_run`, command `run`, command `post_run`, template `post_run`. `config` values
+from the command override the template's. See
+[Command templates and global params](../guides/templates-and-global-params.md).
+
+## CommandConfig
+
+Configuration options for a Cliffy command.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `context_settings` | mapping | `{}` | Settings passed to the Click context of the command, for example `help_option_names` or `max_content_width`. |
+| `epilog` | string | `""` | Text displayed after the help message. |
+| `short_help` | string | `""` | Short one-line help message displayed in help overviews. |
+| `options_metavar` | string | `"[OPTIONS]"` | Placeholder text displayed for options in help messages. |
+| `add_help_option` | boolean | `true` | Whether to add the `--help` option automatically. |
+| `no_args_is_help` | boolean | `false` | If True, invoking the command without any arguments displays the help message. |
+| `hidden` | boolean | `false` | If True, the command is hidden from help messages and command lists. |
+| `deprecated` | boolean | `false` | If True, the command is marked as deprecated in help messages. |
+| `rich_help_panel` | string | `""` | Name of the panel this command is listed under in rich help output. |
+
+Only the keys you set are passed on, as keyword arguments of the `command()` decorator of Typer or
+Click. With the Click backend `rich_help_panel` needs rich-click.
+
+## Callback
+
+Code that runs before the commands of the CLI, or of one command group. A callback can declare its own params, which become options of the CLI (or group) itself, i.e. `mycli --verbose command`. The Typer/Click context is available in the run block as `ctx`.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `run` | string | **required** | Code to run before the invoked command. `ctx` holds the context. |
+| `group` | string | `""` | Command group the callback belongs to, i.e. `db` or `db.tables`. Leave empty for the CLI itself. |
+| `params` | list of [params](#params) | `[]` | Params of the CLI (or group) itself, given before the command name. Same syntax as command params. |
+| `invoke_without_command` | boolean | `false` | Also run the callback when the CLI (or group) is invoked without a command, instead of showing the help. |
+
+Callbacks for the same target run in the order given. Their params are options of the CLI or group
+itself, so they go before the command name: `mycli --verbose db migrate`. A `group` must be the name of
+an existing command group. See [Callbacks](../blueprints.md#callbacks).
+
+## Example
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `command` | string | **required** | The command line to show. |
+| `description` | string or null | `null` | A sentence describing what the command does. |
+
+`examples` entries are shown at the end of the `--help` of the generated CLI, as
+`$ <command>  # <description>`, and in the pages written by [`cli docs`](../guides/generating-docs.md).
+An entry can also be a plain string, which is shown without a description.
+
+## Include files
+
+Special model specifically to define the allowed named objects that can be merged with other manifests.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `requires` | list of strings | `[]` | Merged into the `requires` of the including manifest. |
+| `commands` | mapping of name to ([Command](#command), string or list of strings) | `{}` | Merged into the `commands` of the including manifest. |
+| `vars` | mapping of name to (string or `{expression}`) | `{}` | Merged into `vars`. Available as Python variables, not as `{{ }}` placeholders. |
+| `imports` | string or list of strings | `[]` | Merged into `imports`. |
+| `functions` | list of strings | `[]` | Merged into `functions`. Must be a list here. |
+| `types` | mapping of name to string | `{}` | Merged into `types`. |
+| `cli_options` | mapping of name to string | `{}` | Merged into `cli_options`. |
+| `tests` | list of (string or mapping of name to string) | `[]` | Appended to `tests`. |
+
+Files listed under `includes` are validated against this smaller model. A relative path is looked up
+next to the including manifest first, then in the directory you run `cli` from. See
+[Includes and merging](../guides/includes.md).
+
+<!-- docs/project/known-issues.md -->
+
+# Known issues
+
+Behavior in cliffy 0.7.1 that differs from what you might expect, with the way around each. Every
+item was reproduced against this release. The guides already recommend the forms that work; this
+page explains why.
+
+## Commands
+
+### Some problems are only found by `cli validate` and `cli test`
+
+Every command checks the scripts of a manifest and reports a syntax error with its command, line and
+column. A problem that only shows when the generated code is imported is not found by `cli load`,
+`cli render` or `cli build`: a type name that does not exist, or params that do not fit together in
+one signature. The CLI is then loaded or built and fails when it is started.
+
+**Do this instead:** run `cli validate` first. It imports the generated code and reports such a
+problem against the command it comes from.
+
+### `cli test` does not check shell steps
+
+A `$` or `>` step that exits with an error does not fail the run. A step whose program does not
+exist ends the run with an error message. See [Testing manifests](../guides/testing.md#things-to-know).
+
+### Examples are shown for the CLI, not per command
+
+`examples` belongs to the manifest. The generated CLI shows all of them at the end of its own
+`--help`; the help of a single command has no examples section, because a command has no `examples`
+key. With the Typer backend an example that contains an emoji code such as `:rocket:` is shown as
+the emoji, like the rest of the help text.
+
+### `cli remove` refuses when the launcher was changed
+
+The launcher of a loaded CLI is only deleted while it is exactly the file cliffy wrote. After an
+edit, or when another program replaced it, `cli remove` and `cli remove-all` remove nothing for that
+CLI and exit with 1.
+
+**Do this instead:** move or delete the file named in the message, then run `cli remove` again.
+
+### A file can still appear between cliffy's check and its write
+
+cliffy checks a launcher right before it replaces or deletes it, never follows a symbolic link and
+creates a new launcher only when nothing has the name. Replacing or deleting an existing launcher
+is a check followed by a rename or an unlink: a file that another process puts at exactly that path
+in between is replaced or removed. This needs write access to the environment's `bin` directory at
+that moment.
+
+## Manifests
+
+### Includes fall back to the working directory
+
+An include path is looked up next to the including manifest first. When it is not found there, it is
+looked up in the directory `cli` is run from, so the same manifest can pick up a different file
+depending on where you are.
+
+**Do this instead:** keep include files next to (or below) the manifest that lists them.
+
+### A full Typer definition in `types` replaces the param's own settings
+
+A `types` entry with `typer.Option(...)` or `typer.Argument(...)` is the complete definition. A
+default, `help` or `short` written on a param that uses it is ignored, and `cli validate` warns
+about it. Plain types such as `Count: int` do not have this effect. See [Params and types](../guides/params.md#types).
+
+## Click backend
+
+`use_click: true` supports every manifest feature. Generic params and full definitions in `types`
+are written as Click decorators instead of Typer expressions. The details are in
+[Click and Typer backends](../guides/backends.md#what-differs-from-typer).

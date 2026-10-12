@@ -72,3 +72,15 @@ cli ai ask --cli mycli.yaml "How do I add input validation to the start command?
 ```
 
 The answer is printed to stdout and token usage to stderr, so the answer can be redirected to a file.
+
+## Giving cliffy's documentation to an agent
+
+`cli ai llms-txt` prints cliffy's documentation as a single text file in the [llms.txt](https://llmstxt.org/) layout: the quickstart, the guides and the CLI and manifest references.
+
+```bash
+cli ai llms-txt > cliffy-llms.txt
+```
+
+The file is bundled with the installed package, so it needs no network access, no model and no `ai` extra, and it always describes the version you have installed. Put it in the context of a coding agent and it can write and fix manifests without looking anything up.
+
+The same file is published with the documentation at [`/llms.txt`](llms.txt).

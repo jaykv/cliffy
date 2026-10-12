@@ -37,3 +37,13 @@ def test_ai_commands_explain_how_to_install_the_extra(monkeypatch, isolated_fs, 
     assert "cliffy[ai]" in result.output
     assert isinstance(result.exception, SystemExit)
     assert not (isolated_fs / "greeter.yaml").exists()
+
+
+def test_llms_txt_is_printed_without_the_extra(monkeypatch):
+    # the bundled documentation needs no model, so it must work in an install without the `ai` extra
+    monkeypatch.setitem(sys.modules, "pydantic_ai", None)
+    result = CliRunner().invoke(ai, ["llms-txt"])
+    assert result.exit_code == 0, result.output
+    assert result.output.startswith("# cliffy\n")
+    assert "use_click" in result.output
+    assert "--8<--" not in result.output  # snippet includes are resolved
