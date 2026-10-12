@@ -62,6 +62,9 @@ Changelog = "https://github.com/jaykv/cliffy/releases"
 cli = "cliffy.run:run"
 cliffy = "cliffy.run:run"
 
+[tool.hatch.build.targets.sdist]
+include = ["/cliffy", "/tests", "/examples", "/README.md", "/LICENSE"]
+
 [dependency-groups]
 dev = [
     "mypy>=1.18.0",

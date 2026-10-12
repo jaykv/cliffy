@@ -2,6 +2,7 @@
 
 [![GitHub Workflow Status (with branch)](https://img.shields.io/github/actions/workflow/status/jaykv/cliffy/python-app.yaml?branch=main)](https://github.com/jaykv/cliffy/actions)
 [![PyPI](https://img.shields.io/pypi/v/cliffy)](https://pypi.org/project/cliffy/)
+[![Python versions](https://img.shields.io/pypi/pyversions/cliffy)](https://pypi.org/project/cliffy/)
 ![GitHub](https://img.shields.io/github/license/jaykv/cliffy)
 [![codecov](https://codecov.io/github/jaykv/cliffy/graph/badge.svg?token=84SM8XD5IW)](https://codecov.io/github/jaykv/cliffy)
 [![cliffy docs](https://img.shields.io/badge/📝%20docs-8A2BE2)](https://jaykv.github.io/cliffy)
