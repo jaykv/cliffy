@@ -5,6 +5,7 @@ import keyword
 import os
 import platform
 import re
+import secrets
 import sys
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError, distributions, version
@@ -65,6 +66,27 @@ class ManifestOrCLI(File):
         return value
 
 
+def cli_name_problem(name: object) -> str | None:
+    """Why `name` cannot be the name of a CLI, or None when it can.
+
+    A name becomes a file name in three directories (launcher, module, metadata record). Whatever a
+    command is given as the name of a loaded CLI goes through this first, so that `..` or a path
+    separator cannot make it point at a file outside of them.
+    """
+    if isinstance(name, str) and CLI_NAME_PATTERN.fullmatch(name):
+        return None
+    return (
+        f"{name!r} is not a valid CLI name: a name has letters, digits, `_` and `-` only "
+        "and starts with a letter or `_`"
+    )
+
+
+def validate_cli_name(name: str) -> str:
+    if problem := cli_name_problem(name):
+        raise ValueError(problem)
+    return name
+
+
 def write_to_file(path: str, text: str, executable: bool = False) -> None:
     output_file = Path(path)
     output_file.parent.mkdir(exist_ok=True, parents=True)
@@ -73,6 +95,47 @@ def write_to_file(path: str, text: str, executable: bool = False) -> None:
 
     if executable:
         make_executable(path)
+
+
+def write_atomically(path: str, text: str, executable: bool = False, replace: bool = True) -> None:
+    """Write a file so that `path` is never seen half-written and a symbolic link at `path` is never followed.
+
+    The text goes to a new file in the same directory, which is then moved onto `path`: whatever is
+    at `path`, a link included, is replaced as a directory entry, not written through.
+
+    Args:
+        replace: With False the file is only created. FileExistsError is raised when something is at
+            `path` already, also when it appeared a moment ago, and that file is left alone.
+    """
+    directory = os.path.dirname(path) or "."
+    os.makedirs(directory, exist_ok=True)
+    temp_path = os.path.join(directory, f".{os.path.basename(path)}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+    no_follow = getattr(os, "O_NOFOLLOW", 0)
+    # the mode is reduced by the umask, like that of any new file
+    mode = 0o777 if executable else 0o666
+
+    def create(target: str) -> None:
+        descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | no_follow, mode)
+        # generated code and manifests are always UTF-8, whatever the locale encoding is
+        with os.fdopen(descriptor, "w", encoding="utf-8") as file:
+            file.write(text)
+
+    try:
+        create(temp_path)
+        if replace:
+            os.replace(temp_path, path)
+            return
+        try:
+            # a hard link is only made when nothing has the name
+            os.link(temp_path, path)
+        except FileExistsError:
+            raise
+        except (OSError, NotImplementedError):
+            # a file system without hard links: created exclusively instead
+            create(path)
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(temp_path)
 
 
 def import_module_from_path(filepath: str) -> ModuleType:

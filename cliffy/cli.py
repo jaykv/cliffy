@@ -23,6 +23,7 @@ from cliffy.helper import (
     CLI_NAME_PATTERN,
     ManifestOrCLI,
     age_datetime,
+    cli_name_problem,
     cliffy_version,
     exit_err,
     indent_block,
@@ -31,7 +32,7 @@ from cliffy.helper import (
     write_to_file,
 )
 from cliffy.homer import get_clis, get_metadata, get_metadata_path, remove_metadata, save_metadata
-from cliffy.loader import Loader
+from cliffy.loader import Loader, LoaderError
 from cliffy.manifest import CLIManifest
 from cliffy.reloader import Reloader
 from cliffy.rich import Console, click, print_rich_table  # type: ignore
@@ -94,7 +95,10 @@ def update(cli_names: list[str]) -> None:
     """Reloads CLI by name"""
     failed = False
     for cli_name in cli_names:
-        if cli_metadata := get_metadata(cli_name):
+        if problem := cli_name_problem(cli_name):
+            out_err(f"~ {problem}")
+            failed = True
+        elif cli_metadata := get_metadata(cli_name):
             with open(cli_metadata.runner_path, encoding="utf-8") as manifest:
                 T = Transformer(manifest, blueprint=cli_metadata.blueprint)
             Loader.load_from_cli(T.cli)
@@ -193,24 +197,40 @@ def remove(cli_names: list[str]) -> None:
     """Remove a loaded CLI by name"""
     failed = False
     for cli_name in cli_names:
-        if get_metadata_path(cli_name):
-            remove_metadata(cli_name)
-            Loader.unload_cli(cli_name)
-            out(f"~ {cli_name} removed 💥", fg="green")
-        else:
+        if problem := cli_name_problem(cli_name):
+            out_err(f"~ {problem}")
+            failed = True
+        elif not get_metadata_path(cli_name):
             out_err(f"~ {cli_name} not loaded")
+            failed = True
+        elif not remove_loaded_cli(cli_name):
             failed = True
 
     if failed:
         raise SystemExit(1)
 
 
+def remove_loaded_cli(cli_name: str) -> bool:
+    """Remove the launcher, the module and the metadata record of a CLI. All of it, or none of it.
+
+    The record goes last: as long as something of the CLI is left, it is listed and can be removed again.
+    """
+    try:
+        Loader.unload_cli(cli_name)
+    except (LoaderError, ValueError) as e:
+        out_err(f"~ {cli_name} not removed: {e}")
+        return False
+    remove_metadata(cli_name)
+    out(f"~ {cli_name} removed 💥", fg="green")
+    return True
+
+
 def remove_all() -> None:
     """Remove all loaded CLIs"""
-    for metadata in get_clis():
-        remove_metadata(metadata.cli_name)
-        Loader.unload_cli(metadata.cli_name)
-        out(f"~ {metadata.cli_name} removed 💥", fg="green")
+    # all of them are tried. The command fails when one could not be removed
+    removed = [remove_loaded_cli(metadata.cli_name) for metadata in list(get_clis())]
+    if not all(removed):
+        raise SystemExit(1)
 
 
 @click.argument("cli_or_manifests", type=ManifestOrCLI(), nargs=-1)
@@ -252,6 +272,10 @@ def build(
             cli_name = cli.name
         else:
             cli_name = cli_or_manifest
+            if problem := cli_name_problem(cli_name):
+                out_err(f"~ {problem}. A manifest is given as a path that ends in `yaml`")
+                failed = True
+                continue
             if not (metadata := get_metadata(cli_name)):
                 out_err(f"~ {cli_name} not loaded")
                 failed = True
@@ -288,6 +312,8 @@ def build(
 @click.argument("cli_name", type=str)
 def info(cli_name: str) -> None:
     """Display CLI info"""
+    if problem := cli_name_problem(cli_name):
+        exit_err(f"~ {problem}")
     metadata = get_metadata(cli_name) or exit_err(f"~ {cli_name} not loaded")
     out(f"{click.style('name:', fg='blue')} {metadata.cli_name}")
     out(f"{click.style('version:', fg='blue')} {metadata.version}")
@@ -422,6 +448,8 @@ def docs(cli_or_manifest: str, format: str, output_dir: str, blueprint: str | No
         doc_generator.generate(format, output_dir)
         out(f"+ {T.cli.name}.{format}")
     else:
+        if problem := cli_name_problem(cli_or_manifest):
+            exit_err(f"~ {problem}. A manifest is given as a path that ends in `yaml`")
         metadata = get_metadata(cli_or_manifest) or exit_err(f"~ {cli_or_manifest} not loaded")
         # metadata.manifest is the raw manifest text. It still has to be rendered and merged with its
         # includes, so it is transformed from its source like `cli update` does.

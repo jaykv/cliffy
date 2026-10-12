@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from cliffy.commander import CLI
-from cliffy.helper import CLIFFY_METADATA_DIR, write_to_file
+from cliffy.helper import CLIFFY_METADATA_DIR, cli_name_problem, write_to_file
 from cliffy.manifest import CLIMetadata
 
 
@@ -46,6 +46,9 @@ def remove_metadata(cli_name: str) -> None:
     Args:
         cli_name (str): CLI name
     """
+    if cli_name_problem(cli_name):
+        # i.e. `../x`: not the name of a CLI, and it would select files outside of the metadata directory
+        return
     # the name is matched literally: `*` or `?` in it must not select other CLIs
     metadata_paths = glob.glob(f"{glob.escape(str(CLIFFY_METADATA_DIR))}/*/{glob.escape(cli_name)}.*")
     for path in metadata_paths:
@@ -102,6 +105,9 @@ def get_metadata_path(cli_name: str) -> str | None:
     Returns:
         Optional[str]: CLI metadata path
     """
+    if cli_name_problem(cli_name):
+        # i.e. `../x`: not the name of a CLI, and it would select files outside of the metadata directory
+        return None
     if cli_metadata_path := glob.glob(f"{glob.escape(str(CLIFFY_METADATA_DIR))}/*/{glob.escape(cli_name)}.json"):
         return cli_metadata_path[0]
     return None
@@ -115,4 +121,11 @@ def get_clis() -> Iterator[CLIMetadata]:
     """
     metadata_paths = Path(str(CLIFFY_METADATA_DIR)).glob("*/*.json")
     for metadata_path in metadata_paths:
-        yield get_metadata_bypath(metadata_path)
+        metadata = get_metadata_bypath(metadata_path)
+        # A CLI is known by the name of its record file. The name inside the record is not used to
+        # find or remove files: an edited record cannot point `cli rm-all` at another CLI.
+        yield (
+            metadata
+            if metadata.cli_name == metadata_path.stem
+            else metadata.model_copy(update={"cli_name": metadata_path.stem})
+        )
