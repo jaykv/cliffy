@@ -175,8 +175,3 @@ exclude_lines = [
 
 [tool.uv]
 default-groups = ["dev"]
-
-# pybash 0.4.0 is not on PyPI yet. Remove this override once it is published: a wheel on PyPI
-# cannot depend on a git revision, so cliffy cannot be released before then.
-[tool.uv.sources]
-pybash = { git = "https://github.com/jaykv/PyBash", rev = "03622df" }

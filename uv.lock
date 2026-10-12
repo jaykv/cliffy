@@ -573,7 +573,7 @@ requires-dist = [
     { name = "deepmerge", specifier = ">=2.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "packaging", specifier = ">=24.2" },
-    { name = "pybash", git = "https://github.com/jaykv/PyBash?rev=03622df" },
+    { name = "pybash", specifier = ">=0.4.0" },
     { name = "pydantic", specifier = ">=2.12.0" },
     { name = "pydantic-ai", marker = "extra == 'ai'", specifier = ">=2.0.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
@@ -2169,7 +2169,11 @@ wheels = [
 [[package]]
 name = "pybash"
 version = "0.4.0"
-source = { git = "https://github.com/jaykv/PyBash?rev=03622df#03622df0640ea3004a97f40bd7075e984e8cc7db" }
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/df/e876fe2f96a1389d87596e0e1613a9dcadc9f542477818335a2c19f32b99/pybash-0.4.0.tar.gz", hash = "sha256:5c73e5ad1d07057dab29f8281108f9aada0a47708b71da0b8a37a9fa1398ccc3", size = 47767, upload-time = "2026-10-12T16:33:36.921Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/79/55/75b84ea693567e4782b7f522368d90fd5261d9d2e3df84c24fba5b323ca8/pybash-0.4.0-py3-none-any.whl", hash = "sha256:03a4703d0562c0fc4683e3ef3dac87af52059990c7ab0ba17b45fdbd5cc120fa", size = 17499, upload-time = "2026-10-12T16:33:35.835Z" },
+]
 
 [[package]]
 name = "pycparser"
