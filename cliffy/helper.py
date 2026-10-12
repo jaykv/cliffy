@@ -67,7 +67,8 @@ class ManifestOrCLI(File):
 def write_to_file(path: str, text: str, executable: bool = False) -> None:
     output_file = Path(path)
     output_file.parent.mkdir(exist_ok=True, parents=True)
-    output_file.write_text(text)
+    # generated code and manifests are always UTF-8, whatever the locale encoding is
+    output_file.write_text(text, encoding="utf-8")
 
     if executable:
         make_executable(path)
