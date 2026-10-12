@@ -1,5 +1,7 @@
 import os
 import traceback
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from typing import Any, Self, TextIO
 
 import yaml
@@ -10,6 +12,7 @@ from cliffy.blueprint import (
     BLUEPRINT_KEY,
     Blueprint,
     BlueprintError,
+    blueprint_file,
     build_manifest,
     normalize_reference,
     resolve_blueprint,
@@ -132,8 +135,7 @@ class Transformer:
 
         A relative path is looked up next to the including manifest first, then in the working directory.
         """
-        candidates = [os.path.join(os.path.dirname(self.manifest_path), path), path]
-        include_path = next((candidate for candidate in candidates if os.path.isfile(candidate)), None)
+        include_path = self.find_include(self.manifest_path, path)
         if include_path is None:
             exit_err(f"~ error loading manifest: `{self.manifest_io.name}` includes `{path}`, which does not exist")
 
@@ -143,6 +145,12 @@ class Transformer:
 
         with open(include_path, encoding="utf-8") as m:
             return type(self)(m, as_include=True, include_chain=self.include_chain)
+
+    @staticmethod
+    def find_include(manifest_path: str, path: str) -> str | None:
+        """Path of an included file: next to the including manifest first, then in the working directory."""
+        candidates = [os.path.join(os.path.dirname(manifest_path), path), path]
+        return next((candidate for candidate in candidates if os.path.isfile(candidate)), None)
 
     @staticmethod
     def load_manifest(manifest_io: TextIO) -> dict[str, Any]:
@@ -252,3 +260,50 @@ def jinja_problem(error: Exception) -> str:
     if isinstance(error, TemplateSyntaxError):
         return f"Jinja syntax error: {error.message}"
     return f"Jinja could not render this: {type(error).__name__}: {error}"
+
+
+def source_files(manifest_path: str, blueprint: str | None = None) -> set[str]:
+    """Real paths of the files a CLI is generated from: the manifest, the manifests it includes and the
+    Python file of its blueprint. This is what `cli dev` watches.
+
+    Nothing is validated or generated. A file that cannot be read yet (it is being edited) is still listed,
+    without the files it would refer to.
+    """
+    files: set[str] = set()
+
+    def read(path: str) -> dict[str, Any]:
+        try:
+            # a problem is reported when the file is transformed, not here
+            with open(path, encoding="utf-8") as manifest_io, redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                return Transformer.load_manifest(manifest_io)
+        except (Exception, SystemExit):
+            return {}
+
+    def add_manifest(path: str, is_include: bool) -> None:
+        real_path = os.path.realpath(path)
+        if real_path in files:
+            return
+        files.add(real_path)
+        config = read(real_path)
+
+        if not is_include:
+            in_file = config.get(BLUEPRINT_KEY)
+            if blueprint:
+                reference: str | None = normalize_reference(blueprint)
+            elif isinstance(in_file, str) and in_file.strip():
+                reference = normalize_reference(in_file, os.path.dirname(real_path))
+            else:
+                reference = None
+            if reference:
+                # a blueprint spec is not merged with includes
+                if blueprint_path := blueprint_file(reference):
+                    files.add(os.path.realpath(blueprint_path))
+                return
+
+        includes = config.get("includes")
+        for include in includes if isinstance(includes, list) else []:
+            if include_path := Transformer.find_include(real_path, str(include)):
+                add_manifest(include_path, is_include=True)
+
+    add_manifest(manifest_path, is_include=False)
+    return files

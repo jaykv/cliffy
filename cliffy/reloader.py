@@ -2,16 +2,16 @@ import os
 import threading
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
 from watchdog.events import FileModifiedEvent, FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+from watchdog.observers.api import BaseObserver
 
 from cliffy.builder import run_cli as cli_runner
 from cliffy.helper import out, out_err
 from cliffy.homer import save_metadata
 from cliffy.loader import Loader
-from cliffy.transformer import Transformer
+from cliffy.transformer import Transformer, source_files
 
 
 class Reloader(FileSystemEventHandler):
@@ -22,12 +22,28 @@ class Reloader(FileSystemEventHandler):
         self.run_cli_args = run_cli_args
         self.blueprint = blueprint
         self.last_modified = datetime.now()
+        self.observer: BaseObserver | None = None
+        self.scheduled_directories: set[str] = set()
+        # the manifest, the manifests it includes and the Python file of its blueprint
+        self.watched_files: set[str] = set()
+        self.refresh_watched_files()
 
         super().__init__()
 
+    def refresh_watched_files(self) -> None:
+        """Reads which files the CLI is generated from. They change with the manifest, i.e. a new include."""
+        self.watched_files = source_files(self.manifest_path, self.blueprint)
+        if self.observer:
+            for directory in sorted(self.watched_directories() - self.scheduled_directories):
+                self.observer.schedule(self, path=directory, recursive=False)
+                self.scheduled_directories.add(directory)
+
+    def watched_directories(self) -> set[str]:
+        return {os.path.dirname(path) for path in self.watched_files}
+
     def on_modified(self, event: FileSystemEvent) -> None:
         # compared as full paths: `endswith` also matched other-x.yaml when watching x.yaml
-        if event.is_directory or os.path.realpath(os.fsdecode(event.src_path)) != self.manifest_realpath:
+        if event.is_directory or os.path.realpath(os.fsdecode(event.src_path)) not in self.watched_files:
             return
 
         if not isinstance(event, FileModifiedEvent):
@@ -37,6 +53,7 @@ class Reloader(FileSystemEventHandler):
             return
 
         self.last_modified = datetime.now()
+        self.refresh_watched_files()
 
         t = threading.Thread(
             target=self.reload,
@@ -54,7 +71,8 @@ class Reloader(FileSystemEventHandler):
     def watch(cls, manifest_path: str, run_cli: bool, run_cli_args: tuple, blueprint: str | None = None) -> None:
         event_handler = cls(manifest_path, run_cli, run_cli_args, blueprint)
         observer = Observer()
-        observer.schedule(event_handler, path=str(Path(manifest_path).parent), recursive=False)
+        event_handler.observer = observer
+        event_handler.refresh_watched_files()
         observer.start()
 
         try:

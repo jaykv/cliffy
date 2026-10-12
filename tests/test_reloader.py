@@ -385,3 +385,99 @@ def test_watch_stops_observer_on_unexpected_error(MockObserver):
 
     MockObserver.return_value.stop.assert_called_once()
     MockObserver.return_value.join.assert_called_once()
+
+
+BLUEPRINT_FILE = (
+    "from cliffy.blueprint import Blueprint\n\n\n"
+    "class Words(Blueprint):\n"
+    "    name: str\n\n"
+    "    def to_manifest(self):\n"
+    "        return {'name': self.name, 'version': '1', 'commands': {'a': 'print(1)'}}\n"
+)
+
+
+def modified(path) -> FileModifiedEvent:
+    return FileModifiedEvent(str(path))
+
+
+def reloads_on(reloader: Reloader, path) -> bool:
+    reloader.last_modified = datetime.now() - timedelta(seconds=2)
+    with patch("threading.Thread") as mock_thread:
+        reloader.on_modified(modified(path))
+    return mock_thread.called
+
+
+@pytest.mark.parametrize("reference", ["in_file", "option"])
+def test_blueprint_file_is_watched(tmp_path, monkeypatch, reference):
+    # only the YAML file was watched: editing the blueprint did not reload the CLI
+    blueprint_dir = tmp_path / "blueprints"
+    blueprint_dir.mkdir()
+    blueprint_path = blueprint_dir / "words.py"
+    blueprint_path.write_text(BLUEPRINT_FILE)
+    spec_path = tmp_path / "specs" / "spec.yaml"
+    spec_path.parent.mkdir()
+    monkeypatch.chdir(tmp_path)
+
+    if reference == "in_file":
+        spec_path.write_text("blueprint: ../blueprints/words.py\nname: watched\n")
+        reloader = Reloader(str(spec_path), False, ())
+    else:
+        spec_path.write_text("name: watched\n")
+        reloader = Reloader(str(spec_path), False, (), blueprint="blueprints/words.py:Words")
+
+    assert reloads_on(reloader, spec_path)
+    assert reloads_on(reloader, blueprint_path)
+    assert not reloads_on(reloader, blueprint_dir / "other.py")
+    assert reloader.watched_directories() == {str(spec_path.parent.resolve()), str(blueprint_dir.resolve())}
+
+
+def test_included_manifests_are_watched(tmp_path):
+    (tmp_path / "shared").mkdir()
+    (tmp_path / "shared" / "base.yaml").write_text("includes: [deeper.yaml]\ncommands:\n  b: print(2)\n")
+    (tmp_path / "shared" / "deeper.yaml").write_text("commands:\n  c: print(3)\n")
+    manifest_path = tmp_path / "main.yaml"
+    manifest_path.write_text("name: t\nversion: '1'\nincludes: [shared/base.yaml]\ncommands:\n  a: print(1)\n")
+
+    reloader = Reloader(str(manifest_path), False, ())
+
+    assert reloads_on(reloader, tmp_path / "shared" / "base.yaml")
+    assert reloads_on(reloader, tmp_path / "shared" / "deeper.yaml")
+    assert not reloads_on(reloader, tmp_path / "shared" / "unrelated.yaml")
+
+
+def test_watched_files_follow_the_manifest(tmp_path):
+    # a blueprint that is added to the file while `cli dev` runs is picked up on the next save
+    blueprint_path = tmp_path / "words.py"
+    blueprint_path.write_text(BLUEPRINT_FILE)
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text("name: t\nversion: '1'\ncommands:\n  a: print(1)\n")
+    reloader = Reloader(str(spec_path), False, ())
+    assert not reloads_on(reloader, blueprint_path)
+
+    spec_path.write_text("blueprint: words.py\nname: watched\n")
+    assert reloads_on(reloader, spec_path)
+    assert reloads_on(reloader, blueprint_path)
+
+
+def test_broken_manifest_is_still_watched(tmp_path, capsys):
+    manifest_path = tmp_path / "broken.yaml"
+    manifest_path.write_text("name: [unclosed\n")
+
+    reloader = Reloader(str(manifest_path), False, ())
+
+    assert reloads_on(reloader, manifest_path)
+    assert capsys.readouterr().err == ""
+
+
+@patch("cliffy.reloader.Observer")
+@patch("cliffy.reloader.time.sleep", side_effect=KeyboardInterrupt)
+def test_watch_schedules_every_watched_directory(mock_sleep, MockObserver, tmp_path):
+    (tmp_path / "bp").mkdir()
+    (tmp_path / "bp" / "words.py").write_text(BLUEPRINT_FILE)
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text("blueprint: bp/words.py\nname: watched\n")
+
+    Reloader.watch(str(spec_path), False, ())
+
+    scheduled = {call.kwargs["path"] for call in MockObserver.return_value.schedule.call_args_list}
+    assert scheduled == {str(tmp_path.resolve()), str((tmp_path / "bp").resolve())}
